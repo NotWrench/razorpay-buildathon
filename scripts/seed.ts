@@ -22,6 +22,7 @@
 
 import { auth } from "@workspace/auth";
 import {
+  account,
   agentDb,
   CATEGORY_DEFINITIONS,
   db,
@@ -66,13 +67,31 @@ function daysAgo(days: number): Date {
   return date;
 }
 
+/**
+ * The demo merchant account, with a password that actually works.
+ *
+ * A user row on its own is not a login: better-auth keeps the credential in
+ * `account`, and a user without one cannot sign in. Returning early on the
+ * user alone made the seed print a working login when there was none — worth
+ * checking, because the failure only shows up at the sign-in page.
+ */
 async function ensureOwner(): Promise<string> {
   const existing = await db.query.user.findFirst({
     where: eq(user.email, OWNER_EMAIL),
   });
 
   if (existing) {
-    return existing.id;
+    const credential = await db.query.account.findFirst({
+      where: eq(account.userId, existing.id),
+    });
+
+    if (credential) {
+      return existing.id;
+    }
+
+    // A user with no credential is unusable and cannot be signed up over, so
+    // it is removed and recreated rather than left to fail later.
+    await db.delete(user).where(eq(user.id, existing.id));
   }
 
   await auth.api.signUpEmail({
