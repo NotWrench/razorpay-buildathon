@@ -97,6 +97,7 @@ export {
 export {
   approvalSigningSecret,
   chatModel,
+  chatProviderName,
   describeProvider,
   EMBEDDING_DIMENSIONS,
   embeddingModel,
@@ -104,6 +105,7 @@ export {
   fastModel,
   hasEmbeddingCredentials,
   hasModelCredentials,
+  isLocalChatProvider,
 } from "./provider";
 export {
   type AppliedCampaign,

@@ -144,6 +144,22 @@ export function hasEmbeddingCredentials(): boolean {
   return Boolean(googleKey());
 }
 
+/**
+ * Which provider is answering chat.
+ *
+ * Exported so callers can branch on it without re-parsing `AI_PROVIDER`
+ * themselves — a second copy of that check is exactly the thing that drifts
+ * when the selection rule changes here.
+ */
+export function chatProviderName(): Provider {
+  return chatProvider();
+}
+
+/** True when chat is served by a local model, so no rate limit applies. */
+export function isLocalChatProvider(): boolean {
+  return chatProvider() === "ollama";
+}
+
 /** Which provider is answering chat, for logs and verification output. */
 export function describeProvider(): string {
   return chatProvider() === "ollama"

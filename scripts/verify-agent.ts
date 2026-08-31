@@ -16,6 +16,7 @@ import {
   formatPaise,
   getMerchantBySlug,
   hasModelCredentials,
+  isLocalChatProvider,
   merchantApproval,
   merchantPrompt,
   merchantToolSet,
@@ -44,11 +45,14 @@ function check(label: string, condition: boolean, detail?: string) {
  * The Gemini free tier allows 5 requests per minute and every agent step is one
  * request, so scenarios are spaced out rather than run back to back.
  *
- * A local model has no such limit, so the wait defaults away when one is in
- * use — otherwise the suite spends ten minutes sleeping to respect a quota
- * that does not apply. Set AGENT_VERIFY_PACE_MS to override either way.
+ * A local model has no quota to respect, so there is no wait at all — the
+ * suite would otherwise spend ten minutes asleep for nothing. The provider
+ * module decides what counts as local, rather than this script re-reading
+ * `AI_PROVIDER` and drifting from it.
+ *
+ * `AGENT_VERIFY_PACE_MS` overrides either way.
  */
-const DEFAULT_PACE_MS = process.env.AI_PROVIDER === "ollama" ? 0 : 65_000;
+const DEFAULT_PACE_MS = isLocalChatProvider() ? 0 : 65_000;
 const PACE_MS = Number(process.env.AGENT_VERIFY_PACE_MS ?? DEFAULT_PACE_MS);
 
 async function pace(next: string) {
