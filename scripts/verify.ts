@@ -31,16 +31,27 @@ import {
   rememberMemory,
   searchCatalog,
 } from "@workspace/ai";
+import { createBuild, validateBuildById } from "@workspace/commerce/builds";
+import {
+  addBuildToCart,
+  getOpenCart,
+  removeFromCart,
+  validateCartBuilds,
+} from "@workspace/commerce/carts";
 import {
   agentDb,
   agentMemoryLong,
   auditLogs,
+  builds,
   campaigns,
+  carts,
   conversations,
   db,
   hasDedicatedAgentDatabase,
+  products,
 } from "@workspace/db";
-import { count, eq } from "drizzle-orm";
+import { createCheckoutOrderFromCart } from "@workspace/payments";
+import { count, eq, inArray } from "drizzle-orm";
 
 const SLUG = process.env.AI_BUYER_STORE_SLUG ?? "nova-electronics";
 
@@ -495,8 +506,192 @@ async function main() {
     .where(eq(agentMemoryLong.memoryKey, "verify_preferred_brand"));
   await agentDb.delete(auditLogs).where(eq(auditLogs.action, "VERIFY_PROBE"));
 
+  // ------------------------------------------------------- builds & carts
+  section("8. Builds, carts and the compatibility gate");
+
+  const BUILD_BUYER = "verify-builder@example.com";
+
+  const clearBuilder = async () => {
+    await db.delete(carts).where(eq(carts.buyerIdentifier, BUILD_BUYER));
+    await db.delete(builds).where(eq(builds.buyerIdentifier, BUILD_BUYER));
+  };
+
+  await clearBuilder();
+
+  const buildScope = {
+    buyerIdentifier: BUILD_BUYER,
+    merchantId: merchant.id,
+  };
+
+  const partIds = async (skus: string[]) => {
+    const rows = await db
+      .select({ id: products.id, sku: products.sku })
+      .from(products)
+      .where(inArray(products.sku, skus));
+
+    const bySku = new Map(rows.map((row) => [row.sku ?? "", row.id]));
+
+    return skus.map((sku) => {
+      const id = bySku.get(sku);
+
+      if (!id) {
+        throw new Error(`Seed product missing: ${sku}`);
+      }
+
+      return { productId: id };
+    });
+  };
+
+  // The §29 build: complete, compatible, and under the ₹80,000 target.
+  const GOOD_SKUS = [
+    "CPU-AMD-R5-7600",
+    "MBD-ASUS-B650M-PLUS",
+    "RAM-KING-16-5600",
+    "GPU-ZOT-4060",
+    "SSD-WD-SN770-1T",
+    "PSU-MSI-A650BN",
+    "CSE-DEEP-CH370",
+  ];
+
+  const good = await createBuild({
+    ...buildScope,
+    items: await partIds(GOOD_SKUS),
+    name: "Verify: 1440p under 80k",
+  });
+
+  const goodValidation = await validateBuildById({
+    ...buildScope,
+    buildId: good.build.id,
+  });
+
+  console.log(
+    `  ${goodValidation.validation.estimatedWattage}W drawn, wants a ${goodValidation.validation.recommendedPsuWattage}W supply`
+  );
+
+  check(
+    "a complete build validates",
+    goodValidation.validation.canCheckout,
+    goodValidation.validation.status
+  );
+  check(
+    "a validated build is recorded as validated",
+    goodValidation.build.status === "validated"
+  );
+
+  // A processor on the wrong socket must never validate.
+  const mismatched = await createBuild({
+    ...buildScope,
+    items: await partIds(["CPU-AMD-R5-5600", ...GOOD_SKUS.slice(1)]),
+    name: "Verify: AM4 on an AM5 board",
+  });
+
+  const mismatchValidation = await validateBuildById({
+    ...buildScope,
+    buildId: mismatched.build.id,
+  });
+
+  check(
+    "a socket mismatch blocks checkout",
+    !mismatchValidation.validation.canCheckout
+  );
+  check(
+    "the blocking rule is named",
+    mismatchValidation.validation.issues.some(
+      (issue) =>
+        issue.rule === "cpu_motherboard_socket" && issue.severity === "blocking"
+    )
+  );
+  check(
+    "an unvalidated build stays a draft",
+    mismatchValidation.build.status === "draft"
+  );
+
+  let cart = await addBuildToCart(
+    { ...buildScope, userId: null },
+    { buildId: good.build.id }
+  );
+
+  console.log(
+    `  cart: ${cart.lines.length} lines, ${formatPaise(cart.subtotalPaise)}`
+  );
+
+  check("a build enters the cart as a group", cart.lines.length === 7);
+  check(
+    "every line is tagged with its build",
+    cart.lines.every((line) => line.buildId === good.build.id)
+  );
+  check(
+    "the build lands under the 80,000 target",
+    cart.subtotalPaise < 8_000_000,
+    formatPaise(cart.subtotalPaise)
+  );
+
+  const reopened = await getOpenCart({ ...buildScope, userId: null });
+
+  check("one open cart per buyer", reopened.cart.id === cart.cart.id);
+
+  // Removing a part must be caught by the *cart's* validation even though the
+  // build row still carries its earlier pass.
+  const [caseId] = await partIds(["CSE-DEEP-CH370"]);
+
+  cart = await removeFromCart(
+    { ...buildScope, userId: null },
+    { buildId: good.build.id, productId: caseId?.productId ?? "" }
+  );
+
+  const cartValidation = await validateCartBuilds({
+    ...buildScope,
+    cartId: cart.cart.id,
+  });
+
+  check(
+    "the cart is validated as it stands, not as the build was saved",
+    cartValidation[0]?.validation.canCheckout === false,
+    `build row still says "${(await validateBuildById({ ...buildScope, buildId: good.build.id })).build.status}"`
+  );
+
+  let refusal = "";
+
+  try {
+    await createCheckoutOrderFromCart({
+      buyerIdentifier: BUILD_BUYER,
+      buyerType: "human",
+      cartId: cart.cart.id,
+      merchantId: merchant.id,
+    });
+  } catch (error) {
+    refusal = (error as Error).message;
+  }
+
+  check(
+    "checkout refuses an incomplete build",
+    refusal.includes("cannot be ordered"),
+    refusal
+  );
+
+  // Ownership is enforced in the query, not by a prompt.
+  let isolation = "";
+
+  try {
+    await validateBuildById({
+      buildId: good.build.id,
+      buyerIdentifier: "verify-someone-else@example.com",
+      merchantId: merchant.id,
+    });
+  } catch (error) {
+    isolation = (error as Error).message;
+  }
+
+  check(
+    "another buyer cannot read this build",
+    isolation.includes("No build found"),
+    isolation
+  );
+
+  await clearBuilder();
+
   // ------------------------------------------------------------ embeddings
-  section("8. Embedding backfill is idempotent");
+  section("9. Embedding backfill is idempotent");
 
   const again = await backfillEmbeddings();
 
