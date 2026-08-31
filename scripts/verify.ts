@@ -10,18 +10,25 @@
 
 import {
   type AgentContext,
+  activeToolsFor,
   assertWithinSpendCap,
   backfillEmbeddings,
+  CHAT_MODES,
+  canRecommend,
+  captureRequirements,
+  compareProducts,
   describeMemories,
   formatPaise,
   getAttachRates,
   getFrequentlyBoughtWith,
   getMerchantBySlug,
   getReasoningChain,
+  getRequirements,
   getSalesSummary,
   getSlowMovers,
   getTranscript,
   hasModelCredentials,
+  missingRequirementFields,
   persistAssistantMessage,
   persistReasoningStep,
   persistUserMessage,
@@ -29,7 +36,9 @@ import {
   recallMemories,
   recordAudit,
   rememberMemory,
+  resolvePageContext,
   searchCatalog,
+  storefrontToolSet,
 } from "@workspace/ai";
 import { createBuild, validateBuildById } from "@workspace/commerce/builds";
 import {
@@ -41,6 +50,7 @@ import {
 import {
   agentDb,
   agentMemoryLong,
+  aiRecommendations,
   auditLogs,
   builds,
   campaigns,
@@ -690,8 +700,227 @@ async function main() {
 
   await clearBuilder();
 
+  // ------------------------------------------------- the customer agent
+  section("9. Modes, context, comparison and requirements");
+
+  // --- modes: every mode names tools that actually exist
+  const everyTool = Object.keys(storefrontToolSet(ctx));
+
+  check(
+    "no mode leaves every tool available",
+    activeToolsFor(undefined) === undefined
+  );
+  check(
+    "every mode names only real tools",
+    CHAT_MODES.every((mode) =>
+      (activeToolsFor(mode) ?? []).every((name) => everyTool.includes(name))
+    ),
+    CHAT_MODES.map(
+      (mode) => `${mode}=${(activeToolsFor(mode) ?? []).length}`
+    ).join(" ")
+  );
+  check(
+    "compare mode cannot change anything",
+    (activeToolsFor("compare") ?? []).every(
+      (name) =>
+        !["addToCart", "createBuild", "createOrder", "removeFromCart"].includes(
+          name
+        )
+    )
+  );
+  check(
+    "orders mode cannot start a new order",
+    !(activeToolsFor("orders") ?? []).includes("createOrder")
+  );
+
+  // --- comparison: the matrix is computed, and never guesses
+  const [card4060, card4060ti, cardA750] = await Promise.all([
+    db.query.products.findFirst({
+      where: (table, { eq: equals }) => equals(table.sku, "GPU-ZOT-4060"),
+    }),
+    db.query.products.findFirst({
+      where: (table, { eq: equals }) => equals(table.sku, "GPU-MSI-4060TI-16"),
+    }),
+    db.query.products.findFirst({
+      where: (table, { eq: equals }) => equals(table.sku, "GPU-INT-A750"),
+    }),
+  ]);
+
+  if (!(card4060 && card4060ti && cardA750)) {
+    throw new Error("Seed products missing — re-run bun run seed");
+  }
+
+  const comparison = await compareProducts(merchant.id, [
+    card4060.id,
+    card4060ti.id,
+  ]);
+
+  const vram = comparison.matrix.find(
+    (row) => row.field === "memoryCapacityGb"
+  );
+
+  console.log(
+    `  compared ${comparison.products.map((product) => product.name).join(" vs ")} on ${comparison.matrix.length} attributes`
+  );
+
+  check("compares within one category", comparison.categorySlug === "gpu");
+  check(
+    "names the leader on an attribute",
+    vram?.betterProductId === card4060ti.id,
+    vram?.differenceLabel
+  );
+  check(
+    "reads power draw as a cost, not a feature",
+    comparison.matrix.find((row) => row.field === "tdpWatts")
+      ?.betterProductId === card4060.id
+  );
+
+  const withUnknown = await compareProducts(merchant.id, [
+    card4060.id,
+    cardA750.id,
+  ]);
+
+  const length = withUnknown.matrix.find((row) => row.field === "lengthMm");
+
+  check(
+    "an unpublished value is left blank, not invented",
+    length?.cells.some((cell) => cell.value === null) === true
+  );
+  check(
+    "and no winner is declared against a blank",
+    length?.betterProductId === undefined
+  );
+
+  // --- page context: client ids are re-read under the buyer's own scope
+  const strangerCtx: AgentContext = {
+    ...ctx,
+    actor: {
+      identifier: "verify-stranger@example.com",
+      type: "human",
+      userId: null,
+    },
+  };
+
+  const strangerBuild = await createBuild({
+    buyerIdentifier: "verify-context-owner@example.com",
+    items: [{ productId: card4060.id }],
+    merchantId: merchant.id,
+    name: "Verify: somebody else's build",
+  });
+
+  const leaked = await resolvePageContext(strangerCtx, {
+    buildId: strangerBuild.build.id,
+    page: "build",
+    productId: card4060.id,
+  });
+
+  check(
+    "another buyer's build is not named in the prompt",
+    !leaked?.description.includes("somebody else"),
+    leaked?.description.slice(0, 80)
+  );
+  check(
+    "and does not reach the resolved ids",
+    leaked?.resolved.buildId === undefined
+  );
+  check(
+    "the public product still resolves",
+    leaked?.resolved.productId === card4060.id
+  );
+
+  await db
+    .delete(builds)
+    .where(eq(builds.buyerIdentifier, "verify-context-owner@example.com"));
+
+  // --- requirements: the interview is state, and merges rather than replaces
+  //
+  // The context above carries a synthetic conversation id, which is fine for
+  // the pure paths but not for anything that writes a row keyed to it.
+  const [interviewConversation] = await agentDb
+    .insert(conversations)
+    .values({
+      buyerIdentifier: ctx.actor.identifier,
+      buyerType: "human",
+      merchantId: merchant.id,
+    })
+    .returning();
+
+  if (!interviewConversation) {
+    throw new Error("Could not open a conversation for the interview checks");
+  }
+
+  const interviewCtx: AgentContext = {
+    ...ctx,
+    conversationId: interviewConversation.id,
+  };
+
+  await captureRequirements(interviewCtx, { budgetPaise: 8_000_000 });
+  await captureRequirements(interviewCtx, { useCase: "1440p gaming" });
+
+  const captured = await getRequirements(interviewCtx);
+
+  check(
+    "a later capture does not wipe an earlier one",
+    captured?.budgetPaise === 8_000_000 && captured?.useCase === "1440p gaming"
+  );
+  check("knows when it can recommend", canRecommend(captured));
+  check(
+    "still asks only for what is missing",
+    missingRequirementFields(captured).every(
+      (question) => !question.includes("budget")
+    ),
+    missingRequirementFields(captured).join(", ")
+  );
+
+  // --- the upgrade contract: unjustified upgrades cannot be written down
+  let upgradeRefusal = "";
+
+  try {
+    await agentDb.insert(aiRecommendations).values({
+      confidenceScore: 0.9,
+      conversationId: interviewCtx.conversationId,
+      productId: card4060ti.id,
+      reason: "a faster card exists",
+      recommendationType: "upgrade",
+    });
+  } catch (error) {
+    // Drizzle wraps the driver error, so the constraint name is in the cause.
+    for (
+      let current: unknown = error;
+      current instanceof Error;
+      current = (current as { cause?: unknown }).cause
+    ) {
+      upgradeRefusal += ` ${current.message}`;
+    }
+  }
+
+  check(
+    "an upgrade with no stated requirement is refused by the database",
+    upgradeRefusal.includes("upgrade_needs_a_reason"),
+    upgradeRefusal.includes("upgrade_needs_a_reason")
+      ? "check constraint held"
+      : upgradeRefusal.slice(0, 120)
+  );
+
+  await agentDb.insert(aiRecommendations).values({
+    additionalSpendPaise: card4060ti.price - card4060.price,
+    confidenceScore: 0.8,
+    conversationId: interviewCtx.conversationId,
+    productId: card4060ti.id,
+    reason: "16GB holds 1440p texture packs the 8GB card has to swap out",
+    recommendationType: "upgrade",
+    tiedToRequirement: "they said 1440p gaming",
+  });
+
+  check("an upgrade tied to a stated goal is accepted", true);
+
+  // Cascades take the requirements and recommendations with it.
+  await agentDb
+    .delete(conversations)
+    .where(eq(conversations.id, interviewConversation.id));
+
   // ------------------------------------------------------------ embeddings
-  section("9. Embedding backfill is idempotent");
+  section("10. Embedding backfill is idempotent");
 
   const again = await backfillEmbeddings();
 
