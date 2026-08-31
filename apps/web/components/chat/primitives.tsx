@@ -1,0 +1,80 @@
+import { cn } from "@workspace/ui/lib/utils";
+import type { ReactNode } from "react";
+
+/**
+ * Shared chrome for the things an agent says with structure rather than prose.
+ *
+ * Anything involving money gets a card, never a paragraph: a total buried in a
+ * sentence is a total nobody checks.
+ */
+
+export function ToolCard({
+  children,
+  className,
+  title,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  className?: string;
+  title?: string;
+  tone?: "neutral" | "warning" | "danger" | "success";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border bg-card p-3 text-sm",
+        tone === "neutral" && "border-border",
+        tone === "warning" && "border-amber-500/50 bg-amber-500/5",
+        tone === "danger" && "border-destructive/50 bg-destructive/5",
+        tone === "success" && "border-emerald-500/50 bg-emerald-500/5",
+        className
+      )}
+    >
+      {title ? (
+        <p className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+          {title}
+        </p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+/** A quiet single-line status, for tool calls still in flight. */
+export function ToolStatus({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 text-muted-foreground text-xs">
+      <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
+      {children}
+    </p>
+  );
+}
+
+export function ConfidenceBadge({ value }: { value: number }) {
+  const percent = Math.round(value * 100);
+
+  return (
+    <span
+      className={cn(
+        "rounded-sm px-1.5 py-0.5 font-medium text-[10px] uppercase tracking-wider",
+        percent >= 80 &&
+          "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        percent >= 50 &&
+          percent < 80 &&
+          "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        percent < 50 && "bg-muted text-muted-foreground"
+      )}
+      title="How confident the assistant is in this match"
+    >
+      {percent}% confident
+    </span>
+  );
+}
+
+export function ErrorCard({ message }: { message: string }) {
+  return (
+    <ToolCard title="That did not work" tone="danger">
+      <p className="text-foreground">{message}</p>
+    </ToolCard>
+  );
+}
