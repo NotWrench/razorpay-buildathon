@@ -18,10 +18,12 @@ import {
   ordersRelations,
   paymentsRelations,
   productCategoriesRelations,
+  productSpecsRelations,
   productsRelations,
   sessionRelations,
   userRelations,
 } from "./relations";
+import { productSpecs } from "./specs";
 
 /**
  * The project database (`razorpay_project`): auth and business data.
@@ -50,7 +52,6 @@ export {
 } from "./business";
 
 export { productCategories } from "./catalog";
-
 export {
   accountRelations,
   apikeyRelations,
@@ -60,10 +61,12 @@ export {
   ordersRelations,
   paymentsRelations,
   productCategoriesRelations,
+  productSpecsRelations,
   productsRelations,
   sessionRelations,
   userRelations,
 } from "./relations";
+export { type PciePowerConnector, productSpecs } from "./specs";
 
 /** Aggregation passed to `drizzle()` for the project client. */
 export const projectSchema = {
@@ -83,6 +86,8 @@ export const projectSchema = {
   paymentsRelations,
   productCategories,
   productCategoriesRelations,
+  productSpecs,
+  productSpecsRelations,
   products,
   productsRelations,
   session,
@@ -109,6 +114,8 @@ export type Product = InferSelectModel<typeof products>;
 export type NewProduct = InferInsertModel<typeof products>;
 export type ProductCategory = InferSelectModel<typeof productCategories>;
 export type NewProductCategory = InferInsertModel<typeof productCategories>;
+export type ProductSpec = InferSelectModel<typeof productSpecs>;
+export type NewProductSpec = InferInsertModel<typeof productSpecs>;
 export type Order = InferSelectModel<typeof orders>;
 export type NewOrder = InferInsertModel<typeof orders>;
 export type OrderItem = InferSelectModel<typeof orderItems>;

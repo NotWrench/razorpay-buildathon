@@ -9,6 +9,7 @@ import {
   products,
 } from "./business";
 import { productCategories } from "./catalog";
+import { productSpecs } from "./specs";
 
 /**
  * Relations inside the project database.
@@ -59,10 +60,22 @@ export const productCategoriesRelations = relations(
   })
 );
 
+export const productSpecsRelations = relations(productSpecs, ({ one }) => ({
+  merchant: one(merchants, {
+    fields: [productSpecs.merchantId],
+    references: [merchants.id],
+  }),
+  product: one(products, {
+    fields: [productSpecs.productId],
+    references: [products.id],
+  }),
+}));
+
 export const merchantsRelations = relations(merchants, ({ one, many }) => ({
   campaigns: many(campaigns),
   orders: many(orders),
   productCategories: many(productCategories),
+  productSpecs: many(productSpecs),
   products: many(products),
   user: one(user, {
     fields: [merchants.userId],
@@ -80,6 +93,10 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     references: [merchants.id],
   }),
   orderItems: many(orderItems),
+  specs: one(productSpecs, {
+    fields: [products.id],
+    references: [productSpecs.productId],
+  }),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
