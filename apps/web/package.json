@@ -12,13 +12,16 @@
   "dependencies": {
     "@better-auth/api-key": "catalog:",
     "@workspace/auth": "workspace:*",
+    "@workspace/db": "workspace:*",
+    "@workspace/payments": "workspace:*",
     "@workspace/ui": "workspace:*",
     "better-auth": "catalog:",
     "lucide-react": "catalog:",
     "next": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",

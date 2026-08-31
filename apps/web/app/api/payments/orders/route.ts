@@ -1,0 +1,56 @@
+import { createCheckoutOrder } from "@workspace/payments";
+import type { NextRequest } from "next/server";
+import { z } from "zod";
+import { resolveActor } from "@/lib/api/actor";
+import { handleRouteError, ok, unauthorized } from "@/lib/api/respond";
+
+const bodySchema = z.object({
+  /** Required for agent purchases: why this cart was chosen. */
+  aiPurchaseReason: z.string().max(2000).optional(),
+  discountAmount: z.number().int().min(0).optional(),
+  items: z
+    .array(
+      z.object({
+        isUpsell: z.boolean().optional(),
+        productId: z.uuid(),
+        quantity: z.number().int().min(1).max(100),
+      })
+    )
+    .min(1),
+  merchantId: z.uuid(),
+  notes: z.record(z.string(), z.string()).optional(),
+});
+
+/**
+ * POST /api/payments/orders
+ *
+ * Prices a cart, persists the order, and — for human buyers — creates the
+ * Razorpay order. Agent orders come back with `checkout: null` until a merchant
+ * approves them via `/api/payments/orders/{orderId}/approve`.
+ */
+export async function POST(request: NextRequest): Promise<Response> {
+  try {
+    const actor = await resolveActor(request);
+
+    if (!actor) {
+      return unauthorized();
+    }
+
+    const body = bodySchema.parse(await request.json());
+
+    const result = await createCheckoutOrder({
+      aiPurchaseReason: body.aiPurchaseReason,
+      buyerIdentifier: actor.identifier,
+      buyerType: actor.type,
+      discountAmount: body.discountAmount,
+      items: body.items,
+      merchantId: body.merchantId,
+      notes: body.notes,
+      userId: actor.userId,
+    });
+
+    return ok(result, 201);
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
