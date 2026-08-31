@@ -53,6 +53,8 @@ export const account = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     id: text("id").primaryKey(),
     idToken: text("id_token"),
+    /** Required by better-auth >= 1.7 to disambiguate OIDC providers. */
+    issuer: text("issuer"),
     password: text("password"),
     providerId: text("provider_id").notNull(),
     refreshToken: text("refresh_token"),
