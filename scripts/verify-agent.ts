@@ -12,6 +12,7 @@ import {
   type AgentContext,
   activeToolsFor,
   chatModel,
+  describeProvider,
   formatPaise,
   getMerchantBySlug,
   hasModelCredentials,
@@ -41,10 +42,14 @@ function check(label: string, condition: boolean, detail?: string) {
 
 /**
  * The Gemini free tier allows 5 requests per minute and every agent step is one
- * request, so scenarios are spaced out rather than run back to back. Set
- * AGENT_VERIFY_PACE_MS=0 on a paid key to run at full speed.
+ * request, so scenarios are spaced out rather than run back to back.
+ *
+ * A local model has no such limit, so the wait defaults away when one is in
+ * use — otherwise the suite spends ten minutes sleeping to respect a quota
+ * that does not apply. Set AGENT_VERIFY_PACE_MS to override either way.
  */
-const PACE_MS = Number(process.env.AGENT_VERIFY_PACE_MS ?? 65_000);
+const DEFAULT_PACE_MS = process.env.AI_PROVIDER === "ollama" ? 0 : 65_000;
+const PACE_MS = Number(process.env.AGENT_VERIFY_PACE_MS ?? DEFAULT_PACE_MS);
 
 async function pace(next: string) {
   if (PACE_MS <= 0) {
@@ -108,8 +113,8 @@ async function main() {
     storeSlug: merchant.storeSlug,
   };
 
-  console.log(`Model: ${process.env.AI_CHAT_MODEL ?? "gemini-2.5-flash"}`);
   console.log(`Store: ${merchant.businessName}`);
+  console.log(`Model: ${describeProvider()}`);
 
   const shopTools = storefrontToolSet(ctx);
   const shopInstructions = storefrontPrompt({

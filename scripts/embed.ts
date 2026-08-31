@@ -8,10 +8,10 @@
  * catalog still searches lexically, so skipping this only costs recall.
  */
 
-import { backfillEmbeddings, hasModelCredentials } from "@workspace/ai";
+import { backfillEmbeddings, hasEmbeddingCredentials } from "@workspace/ai";
 
 async function main() {
-  if (!hasModelCredentials()) {
+  if (!hasEmbeddingCredentials()) {
     console.log(
       "No GEMINI_API_KEY set — skipping. Search falls back to lexical matching."
     );

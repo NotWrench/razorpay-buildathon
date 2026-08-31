@@ -15,7 +15,7 @@ import {
 import {
   embeddingModel,
   embeddingProviderOptions,
-  hasModelCredentials,
+  hasEmbeddingCredentials,
 } from "./provider";
 
 /**
@@ -152,7 +152,7 @@ export async function searchCatalog(
 ): Promise<ProductSearchResult> {
   const limit = Math.min(input.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
-  if (hasModelCredentials()) {
+  if (hasEmbeddingCredentials()) {
     try {
       const semantic = await semanticSearch(merchantId, input, limit);
 

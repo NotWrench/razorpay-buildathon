@@ -4,7 +4,7 @@ import { and, eq, isNull, type SQL } from "drizzle-orm";
 import {
   embeddingModel,
   embeddingProviderOptions,
-  hasModelCredentials,
+  hasEmbeddingCredentials,
 } from "./provider";
 
 /**
@@ -54,7 +54,7 @@ export async function embedQuery(query: string): Promise<number[]> {
 export async function backfillEmbeddings(
   options: { force?: boolean; merchantId?: string } = {}
 ): Promise<{ embedded: number; skipped: number }> {
-  if (!hasModelCredentials()) {
+  if (!hasEmbeddingCredentials()) {
     return { embedded: 0, skipped: 0 };
   }
 

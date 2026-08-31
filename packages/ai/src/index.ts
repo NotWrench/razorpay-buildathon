@@ -97,10 +97,12 @@ export {
 export {
   approvalSigningSecret,
   chatModel,
+  describeProvider,
   EMBEDDING_DIMENSIONS,
   embeddingModel,
   embeddingProviderOptions,
   fastModel,
+  hasEmbeddingCredentials,
   hasModelCredentials,
 } from "./provider";
 export {
