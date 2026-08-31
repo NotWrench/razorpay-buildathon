@@ -46,9 +46,12 @@ export const products = pgTable(
     attributes: jsonb("attributes").$type<Record<string, unknown>>(),
     brand: text("brand"),
     /**
-     * Free-text category, kept only until the taxonomy backfill is verified.
+     * The category slug, denormalised from `categoryId`.
      *
-     * `categoryId` is the authoritative answer to "what is this product".
+     * `categoryId` is authoritative — this is a mirror kept so search, the
+     * agent-readable catalog and the storefront can name a category without a
+     * join. It is written from the taxonomy and never by hand; free text here
+     * is a bug, not a feature.
      */
     category: text("category"),
     categoryId: uuid("category_id").references(() => productCategories.id, {

@@ -44,9 +44,9 @@ interface CheckoutHandoff {
 }
 
 const SUGGESTIONS = [
-  "I need noise cancelling headphones under ₹25,000",
-  "What's good for working on trains?",
-  "Show me a laptop under ₹1,20,000",
+  "I need a graphics card for 1440p gaming under ₹30,000",
+  "Is this GPU going to fit my case?",
+  "Build me a gaming PC for ₹80,000",
 ];
 
 export function StorefrontChat({

@@ -84,8 +84,8 @@ async function main() {
   section("1. Semantic search");
 
   const semantic = await searchCatalog(merchant.id, {
-    budgetMaxPaise: 2_500_000,
-    query: "noise cancelling headphones for a long flight",
+    budgetMaxPaise: 6_000_000,
+    query: "which GPU should I buy for gaming",
   });
 
   console.log(`  strategy: ${semantic.strategy}`);
@@ -102,26 +102,26 @@ async function main() {
     `strategy=${semantic.strategy}`
   );
   check(
-    "top hit is a headphone",
-    semantic.products[0]?.product.category === "Headphones",
+    "top hit is a graphics card",
+    semantic.products[0]?.product.category === "gpu",
     semantic.products[0]?.product.name
   );
   check(
     "respects the budget filter",
-    semantic.products.every((row) => row.product.price <= 2_500_000)
+    semantic.products.every((row) => row.product.price <= 6_000_000)
   );
 
   // The interesting case: wording that appears nowhere in the product text.
   const oblique = await searchCatalog(merchant.id, {
-    query: "something to carry my laptop in safely",
+    query: "my processor runs hot when I render for hours",
   });
 
   console.log(`  oblique query top hit: ${oblique.products[0]?.product.name}`);
   check(
-    "matches an oblique description to the sleeve",
+    "matches an oblique description to a cooler",
     oblique.products
       .slice(0, 3)
-      .some((row) => row.product.name.includes("Sleeve")),
+      .some((row) => row.product.category === "cooler"),
     oblique.products
       .slice(0, 3)
       .map((row) => row.product.name)
@@ -156,8 +156,8 @@ async function main() {
 
   check("finds slow movers", slow.length > 0);
   check(
-    "the sleeve is among the slowest",
-    slow.slice(0, 4).some((row) => row.name.includes("Sleeve")),
+    "the 450W supply is among the slowest",
+    slow.slice(0, 4).some((row) => row.name.includes("Antec CSK 450")),
     slow.map((row) => row.name).join(" | ")
   );
 
@@ -178,14 +178,14 @@ async function main() {
     attach.every((rate) => rate.attachRate > 0 && rate.attachRate <= 1)
   );
 
-  const laptop = await db.query.products.findFirst({
-    where: (table, { eq: equals }) => equals(table.sku, "LAP-DELL-XPS14"),
+  const cpu = await db.query.products.findFirst({
+    where: (table, { eq: equals }) => equals(table.sku, "CPU-AMD-R5-7600"),
   });
 
-  if (laptop) {
-    const cross = await getFrequentlyBoughtWith(merchant.id, laptop.id, 5);
+  if (cpu) {
+    const cross = await getFrequentlyBoughtWith(merchant.id, cpu.id, 6);
 
-    console.log(`  bought with ${laptop.name}:`);
+    console.log(`  bought with ${cpu.name}:`);
     for (const rate of cross) {
       console.log(
         `    ${(rate.attachRate * 100).toFixed(1)}%  ${rate.attachedName}`
@@ -193,32 +193,21 @@ async function main() {
     }
 
     check("cross-sell returns companions", cross.length > 0);
-    // The hub and the keyboard tie at 2/6 in the seed data, so assert the
-    // pair rather than an ordering that a tie-break decides arbitrarily.
+    // A processor is almost never bought without a board, and that is the
+    // strongest signal in the history — so it should lead.
     check(
-      "the top companions are the hub and the keyboard",
-      cross
-        .slice(0, 2)
-        .every(
-          (rate) =>
-            rate.attachedName.includes("Hub") ||
-            rate.attachedName.includes("Keychron")
-        ),
-      cross
-        .slice(0, 2)
-        .map((rate) => rate.attachedName)
-        .join(" | ")
+      "the top companion is a motherboard",
+      cross[0]?.attachedName.includes("B650") === true,
+      cross[0]?.attachedName
     );
 
-    const sleeveRate = cross.find((rate) =>
-      rate.attachedName.includes("Sleeve")
-    );
+    const fanRate = cross.find((rate) => rate.attachedName.includes("Uni Fan"));
 
     check(
-      "the sleeve attaches weakly (the campaign finding)",
-      !sleeveRate || sleeveRate.attachRate < 0.2,
-      sleeveRate
-        ? `${(sleeveRate.attachRate * 100).toFixed(1)}%`
+      "the RGB fans attach weakly (the campaign finding)",
+      !fanRate || fanRate.attachRate < 0.2,
+      fanRate
+        ? `${(fanRate.attachRate * 100).toFixed(1)}%`
         : "never bought together"
     );
   }
@@ -226,21 +215,21 @@ async function main() {
   // --------------------------------------------------------------- pricing
   section("4. Quote arithmetic");
 
-  const xm5 = await db.query.products.findFirst({
-    where: (table, { eq: equals }) => equals(table.sku, "AUD-SONY-XM5"),
+  const gpu = await db.query.products.findFirst({
+    where: (table, { eq: equals }) => equals(table.sku, "GPU-ZOT-4060"),
   });
 
-  const hpCase = await db.query.products.findFirst({
-    where: (table, { eq: equals }) => equals(table.sku, "ACC-NOVA-HPC"),
+  const psu = await db.query.products.findFirst({
+    where: (table, { eq: equals }) => equals(table.sku, "PSU-CORS-RM750E"),
   });
 
-  if (!(xm5 && hpCase)) {
+  if (!(gpu && psu)) {
     throw new Error("Seed products missing — re-run bun run scripts/seed.ts");
   }
 
   const plain = await quoteCart(ctx, [
-    { productId: xm5.id, quantity: 1 },
-    { isUpsell: true, productId: hpCase.id, quantity: 1 },
+    { productId: gpu.id, quantity: 1 },
+    { isUpsell: true, productId: psu.id, quantity: 1 },
   ]);
 
   console.log(
@@ -252,7 +241,7 @@ async function main() {
 
   check(
     "subtotal is the sum of the lines",
-    plain.subtotalPaise === xm5.price + hpCase.price
+    plain.subtotalPaise === gpu.price + psu.price
   );
   check("no campaign, no discount", plain.discountPaise === 0);
   check("total equals subtotal", plain.totalPaise === plain.subtotalPaise);
@@ -265,15 +254,15 @@ async function main() {
     .insert(campaigns)
     .values({
       aiGeneratedReason:
-        "Verification script: headphone cases attach to only a fraction of headphone orders.",
+        "Verification script: a supply is bought alongside only a fraction of graphics-card orders.",
       approvedByMerchant: false,
       discountType: "percentage",
       discountValue: 15,
       merchantId: merchant.id,
       status: "pending_approval",
-      title: "Verify: 15% headphone bundle",
+      title: "Verify: 15% GPU and PSU bundle",
       triggerRules: {
-        productIds: [xm5.id, hpCase.id],
+        productIds: [gpu.id, psu.id],
         requiresAllProducts: true,
       },
     })
@@ -284,8 +273,8 @@ async function main() {
   }
 
   const whileDraft = await quoteCart(ctx, [
-    { productId: xm5.id, quantity: 1 },
-    { productId: hpCase.id, quantity: 1 },
+    { productId: gpu.id, quantity: 1 },
+    { productId: psu.id, quantity: 1 },
   ]);
 
   check(
@@ -300,8 +289,8 @@ async function main() {
     .where(eq(campaigns.id, draft.id));
 
   const whileActive = await quoteCart(ctx, [
-    { productId: xm5.id, quantity: 1 },
-    { productId: hpCase.id, quantity: 1 },
+    { productId: gpu.id, quantity: 1 },
+    { productId: psu.id, quantity: 1 },
   ]);
 
   const expectedDiscount = Math.floor((whileActive.subtotalPaise * 15) / 100);
@@ -317,7 +306,7 @@ async function main() {
   );
   check(
     "the campaign is named on the quote",
-    whileActive.appliedCampaign?.title === "Verify: 15% headphone bundle"
+    whileActive.appliedCampaign?.title === "Verify: 15% GPU and PSU bundle"
   );
   check(
     "total = subtotal - discount",
@@ -326,7 +315,7 @@ async function main() {
   );
 
   // A bundle requiring both products must not fire on one of them.
-  const partial = await quoteCart(ctx, [{ productId: xm5.id, quantity: 1 }]);
+  const partial = await quoteCart(ctx, [{ productId: gpu.id, quantity: 1 }]);
 
   check(
     "a bundle does not fire on a partial cart",
@@ -342,7 +331,7 @@ async function main() {
   // Stock is checked after the structural caps, so this needs a quantity that
   // is inside the per-line cap but above what is actually on the shelf.
   const scarce = await db.query.products.findFirst({
-    where: (table, { eq: equals }) => equals(table.sku, "LAP-APPL-MBA13"),
+    where: (table, { eq: equals }) => equals(table.sku, "MBD-ASRK-B650E-ITX"),
   });
 
   let stockError = "";
@@ -364,7 +353,7 @@ async function main() {
   let shapeError = "";
 
   try {
-    await quoteCart(ctx, [{ productId: xm5.id, quantity: 50 }]);
+    await quoteCart(ctx, [{ productId: gpu.id, quantity: 50 }]);
   } catch (error) {
     shapeError = (error as Error).message;
   }

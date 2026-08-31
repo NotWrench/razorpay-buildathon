@@ -116,14 +116,13 @@ async function main() {
   });
 
   // ------------------------------------------------------------- scenario 1
-  console.log("\n1. Buyer asks for headphones under a budget");
+  console.log("\n1. Buyer asks for a graphics card under a budget");
 
   const search = await generateText({
     instructions: shopInstructions,
     messages: [
       {
-        content:
-          "I need noise cancelling headphones for long flights, under 25000 rupees.",
+        content: "I need a graphics card for 1440p gaming, under 30000 rupees.",
         role: "user",
       },
     ],
@@ -145,7 +144,7 @@ async function main() {
   );
   check(
     "mentions a real catalogue product",
-    /XM5|Bose|Soundcore|Sennheiser|WF-1000/i.test(search.text),
+    /4060|RX 7600|Zotac|Sapphire|Arc A750/i.test(search.text),
     "grounded in retrieved products"
   );
   check(
@@ -170,14 +169,13 @@ async function main() {
 
   const history: ModelMessage[] = [
     {
-      content:
-        "I need noise cancelling headphones for long flights, under 25000 rupees.",
+      content: "I need a graphics card for 1440p gaming, under 30000 rupees.",
       role: "user",
     },
     { content: search.text, role: "assistant" },
     {
       content:
-        "The Sony WH-1000XM5 sounds right. I'll take one, and add a case if there's a good one.",
+        "The RTX 4060 sounds right. I'll take one, and add a power supply if there's a good one.",
       role: "user",
     },
   ];
@@ -345,7 +343,7 @@ async function main() {
   );
   check(
     "names a genuinely slow product",
-    /sleeve|soundcore|t7|sn850x|hd 599/i.test(insight.text),
+    /antec|csk 450|hyper 212|uni fan|nf-a12|crucial pro/i.test(insight.text),
     "cites a real slow mover"
   );
   check(

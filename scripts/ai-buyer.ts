@@ -9,7 +9,7 @@
  * That constraint is the point. If this works, the merchant is genuinely
  * transactable by an AI buyer — not merely transactable by *our* AI.
  *
- *   bun run ai-buyer -- --budget 25000 --want "noise cancelling headphones"
+ *   bun run ai-buyer -- --budget 30000 --want "a graphics card for 1440p gaming"
  *
  * Requires AI_BUYER_API_KEY (issue one from the merchant dashboard).
  */
@@ -125,7 +125,7 @@ async function main() {
     process.exit(1);
   }
 
-  const want = argValue("--want") ?? "noise cancelling headphones";
+  const want = argValue("--want") ?? "a graphics card for 1440p gaming";
   const budgetPaise = Number(argValue("--budget") ?? 25_000) * 100;
 
   console.log("Autonomous buyer starting.");
