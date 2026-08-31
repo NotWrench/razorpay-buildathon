@@ -18,9 +18,11 @@ import {
   CHAT_MODES,
   canRecommend,
   captureRequirements,
+  checkoutTools,
   closeTask,
   compareProducts,
   describeMemories,
+  describeProvider,
   formatPaise,
   getAttachRates,
   getCancellationSummary,
@@ -78,6 +80,7 @@ import {
   conversations,
   db,
   hasDedicatedAgentDatabase,
+  orders,
   products,
   reorderRequests,
 } from "@workspace/db";
@@ -121,7 +124,9 @@ async function main() {
   };
 
   console.log(`Store: ${merchant.businessName} (${merchant.id})`);
-  console.log(`Gemini configured: ${hasModelCredentials() ? "yes" : "no"}`);
+  console.log(
+    `Model: ${describeProvider()} (configured: ${hasModelCredentials() ? "yes" : "no"})`
+  );
 
   // ---------------------------------------------------------------- search
   section("1. Semantic search");
@@ -370,6 +375,58 @@ async function main() {
 
   // ------------------------------------------------------------ guardrails
   section("6. Guardrails");
+
+  // §20's customer/order isolation. Every customer-facing order tool must
+  // refuse an order belonging to another buyer in the same store, not merely
+  // one belonging to another store — getOrderStatus once checked only the
+  // second, so any signed-in buyer could read any order in the shop by id.
+  const [strangerOrder] = await db
+    .insert(orders)
+    .values({
+      approvalStatus: "approved",
+      buyerIdentifier: "verify-stranger@example.com",
+      buyerType: "human",
+      merchantId: merchant.id,
+      orderStatus: "created",
+      subtotal: 1_234_500,
+      totalAmount: 1_234_500,
+    })
+    .returning();
+
+  if (!strangerOrder) {
+    throw new Error("Could not create the isolation probe order");
+  }
+
+  const customerOrderTools = checkoutTools(ctx);
+
+  for (const toolName of [
+    "getOrderStatus",
+    "cancelOrder",
+    "createPaymentLink",
+  ] as const) {
+    let refusal = "";
+
+    try {
+      await (
+        customerOrderTools[toolName] as {
+          execute: (input: unknown, options: unknown) => Promise<unknown>;
+        }
+      ).execute(
+        { orderId: strangerOrder.id, reason: "verification probe" },
+        { messages: [], toolCallId: "verify" }
+      );
+    } catch (error) {
+      refusal = (error as Error).message;
+    }
+
+    check(
+      `${toolName} refuses another buyer's order in the same store`,
+      refusal.includes("No order found"),
+      refusal || "NO REFUSAL — the order was returned"
+    );
+  }
+
+  await db.delete(orders).where(eq(orders.id, strangerOrder.id));
 
   // Stock is checked after the structural caps, so this needs a quantity that
   // is inside the per-line cap but above what is actually on the shelf.

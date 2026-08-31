@@ -34,6 +34,36 @@ import { quoteCart } from "../quote";
  * refuses to issue for an unapproved order. The gate is convenience; the
  * database is the guarantee.
  */
+/**
+ * Loads an order the buyer in this context actually placed.
+ *
+ * Both clauses matter and neither is optional. The merchant check keeps one
+ * store out of another's orders; the buyer check keeps one shopper out of
+ * another's. `getOrderStatus` was missing the second, so any signed-in buyer
+ * could read any order in the store by id — its status, its total and its
+ * line items — which is precisely the isolation §20 requires.
+ *
+ * It lives here as one function because that bug was a third copy of a
+ * two-clause check that had drifted to one clause. A single helper is the only
+ * version of this that cannot rot.
+ *
+ * The error says "no order found" rather than "not yours" on purpose: telling
+ * a caller an order exists but belongs to someone else is itself a
+ * disclosure, and the buyer whose order it is loses nothing by the wording.
+ */
+async function getOwnedOrder(ctx: AgentContext, orderId: string) {
+  const summary = await getOrderSummary(orderId);
+
+  if (
+    summary.order.merchantId !== ctx.merchantId ||
+    summary.order.buyerIdentifier !== ctx.actor.identifier
+  ) {
+    throw new PaymentError("ORDER_NOT_FOUND", `No order found for ${orderId}`);
+  }
+
+  return summary;
+}
+
 export function checkoutTools(ctx: AgentContext) {
   const actorType = auditActorType(ctx.actor.type);
 
@@ -43,17 +73,7 @@ export function checkoutTools(ctx: AgentContext) {
         "Cancel an unpaid order at the buyer's request. Releases the order and " +
         "records why. Never call this without the buyer asking.",
       execute: async ({ orderId, reason }) => {
-        const summary = await getOrderSummary(orderId);
-
-        if (
-          summary.order.merchantId !== ctx.merchantId ||
-          summary.order.buyerIdentifier !== ctx.actor.identifier
-        ) {
-          throw new PaymentError(
-            "ORDER_NOT_FOUND",
-            `No order found for ${orderId}`
-          );
-        }
+        const summary = await getOwnedOrder(ctx, orderId);
 
         if (summary.order.orderStatus === "paid") {
           throw new PaymentError(
@@ -214,21 +234,7 @@ export function checkoutTools(ctx: AgentContext) {
         "the safe handoff: the link goes to the human, and no card details " +
         "ever pass through you. Only works once the order is approved.",
       execute: async ({ orderId }) => {
-        const summary = await getOrderSummary(orderId);
-
-        if (summary.order.merchantId !== ctx.merchantId) {
-          throw new PaymentError(
-            "ORDER_NOT_FOUND",
-            `No order found for ${orderId}`
-          );
-        }
-
-        if (summary.order.buyerIdentifier !== ctx.actor.identifier) {
-          throw new PaymentError(
-            "ORDER_NOT_FOUND",
-            `No order found for ${orderId}`
-          );
-        }
+        await getOwnedOrder(ctx, orderId);
 
         const link = await createPaymentLinkForOrder({ orderId });
 
@@ -257,14 +263,7 @@ export function checkoutTools(ctx: AgentContext) {
         "failure with its reason. Call this when the buyer asks what happened, " +
         "or after a payment attempt.",
       execute: async ({ orderId }) => {
-        const summary = await getOrderSummary(orderId);
-
-        if (summary.order.merchantId !== ctx.merchantId) {
-          throw new PaymentError(
-            "ORDER_NOT_FOUND",
-            `No order found for ${orderId}`
-          );
-        }
+        const summary = await getOwnedOrder(ctx, orderId);
 
         const latest = summary.payments.at(-1);
 
