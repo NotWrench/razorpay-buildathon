@@ -1,6 +1,10 @@
+import { cartCheckoutLines } from "@workspace/commerce/carts";
+import type { CompatibilityIssue } from "@workspace/commerce/compatibility";
 import { db, orders } from "@workspace/db";
 import {
+  type CheckoutOrder,
   createCheckoutOrder,
+  createCheckoutOrderFromCart,
   createPaymentLinkForOrder,
   getOrderSummary,
   PaymentError,
@@ -92,12 +96,22 @@ export function checkoutTools(ctx: AgentContext) {
     }),
     createOrder: tool({
       description:
-        "Create an order for a cart the buyer has agreed to. This reserves " +
+        "Create an order the buyer has agreed to. Pass cartId to order the " +
+        "buyer's saved cart, or items for a one-off list. This reserves " +
         "nothing and charges nothing — it records the intent and, for a " +
-        "signed-in shopper, prepares the Razorpay checkout. Quote the cart " +
-        "first and only call this once the buyer has said yes.",
-      execute: async ({ items, reason }) => {
-        const quote = await quoteCart(ctx, items);
+        "signed-in shopper, prepares the Razorpay checkout. Quote first and " +
+        "only call this once the buyer has said yes. An order for a cart " +
+        "whose build does not pass the compatibility check will be refused.",
+      execute: async ({ cartId, items, reason }) => {
+        const lines = cartId
+          ? await cartCheckoutLines({
+              buyerIdentifier: ctx.actor.identifier,
+              cartId,
+              merchantId: ctx.merchantId,
+            })
+          : (items ?? []);
+
+        const quote = await quoteCart(ctx, lines);
 
         await assertWithinSpendCap(ctx, quote.totalPaise);
 
@@ -110,20 +124,40 @@ export function checkoutTools(ctx: AgentContext) {
           metadata: { totalPaise: quote.totalPaise },
         });
 
-        const result = await createCheckoutOrder({
+        const common = {
           aiPurchaseReason: reason,
           buyerIdentifier: ctx.actor.identifier,
           buyerType: ctx.actor.type,
           discountAmount: quote.discountPaise,
-          items: items.map((item) => ({
-            isUpsell: item.isUpsell,
-            productId: item.productId,
-            quantity: item.quantity,
-          })),
           merchantId: ctx.merchantId,
           notes: { conversationId: ctx.conversationId },
           userId: ctx.actor.userId,
-        });
+        };
+
+        // The cart path re-runs compatibility inside the payments package and
+        // throws before anything is written. That refusal is the backend's,
+        // not this tool's — see `packages/payments/src/cart-checkout.ts`.
+        let result: CheckoutOrder;
+        let warnings: CompatibilityIssue[] = [];
+
+        if (cartId) {
+          const fromCart = await createCheckoutOrderFromCart({
+            ...common,
+            cartId,
+          });
+
+          result = fromCart;
+          warnings = fromCart.warnings;
+        } else {
+          result = await createCheckoutOrder({
+            ...common,
+            items: (items ?? []).map((item) => ({
+              isUpsell: item.isUpsell,
+              productId: item.productId,
+              quantity: item.quantity,
+            })),
+          });
+        }
 
         const needsMerchantApproval =
           result.order.approvalStatus === "pending_approval";
@@ -134,6 +168,8 @@ export function checkoutTools(ctx: AgentContext) {
           // Present only for a human buyer; an agent order has none until the
           // merchant approves it.
           checkout: result.checkout,
+          /** Non-blocking compatibility findings the buyer must still hear. */
+          compatibilityWarnings: warnings.map((issue) => issue.message),
           message: needsMerchantApproval
             ? "The order is recorded and waiting for the merchant to approve it. Nothing has been charged."
             : "The order is ready for payment. Nothing has been charged yet.",
@@ -141,26 +177,35 @@ export function checkoutTools(ctx: AgentContext) {
           totalPaise: result.order.totalAmount,
         };
       },
-      inputSchema: z.object({
-        items: z
-          .array(
-            z.object({
-              isUpsell: z.boolean().default(false),
-              productId: z.uuid(),
-              quantity: z.number().int().min(1).max(10),
-            })
-          )
-          .min(1)
-          .max(20),
-        reason: z
-          .string()
-          .min(20)
-          .max(2000)
-          .describe(
-            "Why this exact cart: what the buyer asked for and why each item " +
-              "is in it. This is stored on the order and shown to the merchant."
-          ),
-      }),
+      inputSchema: z
+        .object({
+          cartId: z
+            .uuid()
+            .optional()
+            .describe("Order the buyer's saved cart. Omit to pass items."),
+          items: z
+            .array(
+              z.object({
+                isUpsell: z.boolean().default(false),
+                productId: z.uuid(),
+                quantity: z.number().int().min(1).max(10),
+              })
+            )
+            .min(1)
+            .max(20)
+            .optional(),
+          reason: z
+            .string()
+            .min(20)
+            .max(2000)
+            .describe(
+              "Why this exact cart: what the buyer asked for and why each item " +
+                "is in it. This is stored on the order and shown to the merchant."
+            ),
+        })
+        .refine((input) => Boolean(input.cartId) !== Boolean(input.items), {
+          message: "Pass either cartId or items, not both and not neither.",
+        }),
     }),
 
     createPaymentLink: tool({

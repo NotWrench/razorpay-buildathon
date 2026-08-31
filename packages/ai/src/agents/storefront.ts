@@ -17,6 +17,7 @@ import {
   touchConversation,
 } from "../persistence";
 import { approvalSigningSecret, chatModel } from "../provider";
+import { builderTools } from "../tools/builder";
 import { checkoutTools } from "../tools/checkout";
 import { explainTools } from "../tools/explain";
 import { shoppingTools } from "../tools/shopping";
@@ -28,6 +29,7 @@ import { summariseStep } from "./steps";
 export function storefrontToolSet(ctx: AgentContext) {
   return {
     ...shoppingTools(ctx),
+    ...builderTools(ctx),
     ...checkoutTools(ctx),
     ...explainTools(ctx),
   };
@@ -41,7 +43,9 @@ export type StorefrontMessage = UIMessage<
   StorefrontUITools
 >;
 
-const MAX_STEPS = 8;
+// A build is several tool calls before a word is said: search, check, save,
+// add to cart. Eight steps left no room to actually answer afterwards.
+const MAX_STEPS = 12;
 
 /**
  * Runs one turn of the shopping agent and returns a UI message stream.

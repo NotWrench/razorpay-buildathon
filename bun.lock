@@ -47,6 +47,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ai-sdk/google": "catalog:",
+        "@workspace/commerce": "workspace:*",
         "@workspace/db": "workspace:*",
         "@workspace/payments": "workspace:*",
         "ai": "catalog:",

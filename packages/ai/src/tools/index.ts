@@ -1,3 +1,4 @@
+export { builderTools } from "./builder";
 export { campaignTools } from "./campaigns";
 export { checkoutTools } from "./checkout";
 export { explainTools } from "./explain";

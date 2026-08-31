@@ -1,3 +1,4 @@
+import { cartCheckoutLines } from "@workspace/commerce/carts";
 import type { ToolApprovalStatus } from "ai";
 import type { AgentContext } from "../context";
 import { formatPaise } from "../money";
@@ -34,13 +35,25 @@ interface CartItem {
  */
 export function storefrontApproval(ctx: AgentContext) {
   const createOrder: ApprovalFor<{
-    items: CartItem[];
+    cartId?: string;
+    items?: CartItem[];
     reason: string;
-  }> = async ({ items }) => {
+  }> = async ({ cartId, items }) => {
     let quote: Awaited<ReturnType<typeof quoteCart>>;
 
     try {
-      quote = await quoteCart(ctx, items);
+      // The gate prices whatever is actually about to be ordered, so the
+      // total on the confirmation card is the total the buyer will pay —
+      // whether it came from a saved cart or an inline list.
+      const lines = cartId
+        ? await cartCheckoutLines({
+            buyerIdentifier: ctx.actor.identifier,
+            cartId,
+            merchantId: ctx.merchantId,
+          })
+        : (items ?? []);
+
+      quote = await quoteCart(ctx, lines);
     } catch {
       // If the cart cannot even be priced, let the tool run and produce a
       // proper domain error rather than asking a human to approve nonsense.
