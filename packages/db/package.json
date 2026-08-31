@@ -10,7 +10,9 @@
     "./schema/business": "./src/schema/business.ts",
     "./schema/ai": "./src/schema/ai.ts",
     "./agent": "./src/schema/agent.ts",
-    "./project": "./src/schema/project.ts"
+    "./project": "./src/schema/project.ts",
+    "./schema/catalog": "./src/schema/catalog.ts",
+    "./taxonomy": "./src/taxonomy.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle.agent.config.ts",

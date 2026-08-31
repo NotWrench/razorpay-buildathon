@@ -8,6 +8,7 @@ import {
   payments,
   products,
 } from "./business";
+import { productCategories } from "./catalog";
 
 /**
  * Relations inside the project database.
@@ -47,9 +48,21 @@ export const apikeyRelations = relations(apikey, ({ one }) => ({
   }),
 }));
 
+export const productCategoriesRelations = relations(
+  productCategories,
+  ({ one, many }) => ({
+    merchant: one(merchants, {
+      fields: [productCategories.merchantId],
+      references: [merchants.id],
+    }),
+    products: many(products),
+  })
+);
+
 export const merchantsRelations = relations(merchants, ({ one, many }) => ({
   campaigns: many(campaigns),
   orders: many(orders),
+  productCategories: many(productCategories),
   products: many(products),
   user: one(user, {
     fields: [merchants.userId],
@@ -58,6 +71,10 @@ export const merchantsRelations = relations(merchants, ({ one, many }) => ({
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
+  category: one(productCategories, {
+    fields: [products.categoryId],
+    references: [productCategories.id],
+  }),
   merchant: one(merchants, {
     fields: [products.merchantId],
     references: [merchants.id],

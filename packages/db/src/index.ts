@@ -43,3 +43,4 @@ export const agentDb = drizzle({ client: agentClient, schema: agentSchema });
 export const hasDedicatedAgentDatabase = agentDatabaseUrl !== databaseUrl;
 
 export * from "./schema/index";
+export * from "./taxonomy";

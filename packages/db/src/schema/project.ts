@@ -8,6 +8,7 @@ import {
   payments,
   products,
 } from "./business";
+import { productCategories } from "./catalog";
 import {
   accountRelations,
   apikeyRelations,
@@ -16,6 +17,7 @@ import {
   orderItemsRelations,
   ordersRelations,
   paymentsRelations,
+  productCategoriesRelations,
   productsRelations,
   sessionRelations,
   userRelations,
@@ -47,6 +49,8 @@ export {
   products,
 } from "./business";
 
+export { productCategories } from "./catalog";
+
 export {
   accountRelations,
   apikeyRelations,
@@ -55,6 +59,7 @@ export {
   orderItemsRelations,
   ordersRelations,
   paymentsRelations,
+  productCategoriesRelations,
   productsRelations,
   sessionRelations,
   userRelations,
@@ -76,6 +81,8 @@ export const projectSchema = {
   ordersRelations,
   payments,
   paymentsRelations,
+  productCategories,
+  productCategoriesRelations,
   products,
   productsRelations,
   session,
@@ -100,6 +107,8 @@ export type Merchant = InferSelectModel<typeof merchants>;
 export type NewMerchant = InferInsertModel<typeof merchants>;
 export type Product = InferSelectModel<typeof products>;
 export type NewProduct = InferInsertModel<typeof products>;
+export type ProductCategory = InferSelectModel<typeof productCategories>;
+export type NewProductCategory = InferInsertModel<typeof productCategories>;
 export type Order = InferSelectModel<typeof orders>;
 export type NewOrder = InferInsertModel<typeof orders>;
 export type OrderItem = InferSelectModel<typeof orderItems>;

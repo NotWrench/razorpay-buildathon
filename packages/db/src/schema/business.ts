@@ -11,6 +11,7 @@ import {
   vector,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { productCategories } from "./catalog";
 
 export const merchants = pgTable(
   "merchants",
@@ -44,7 +45,15 @@ export const products = pgTable(
   {
     attributes: jsonb("attributes").$type<Record<string, unknown>>(),
     brand: text("brand"),
+    /**
+     * Free-text category, kept only until the taxonomy backfill is verified.
+     *
+     * `categoryId` is the authoritative answer to "what is this product".
+     */
     category: text("category"),
+    categoryId: uuid("category_id").references(() => productCategories.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     description: text("description"),
     embedding: vector("embedding", { dimensions: 1536 }),
@@ -66,6 +75,7 @@ export const products = pgTable(
   (table) => [
     index("products_merchantId_idx").on(table.merchantId),
     index("products_category_idx").on(table.category),
+    index("products_categoryId_idx").on(table.categoryId),
     index("products_sku_idx").on(table.sku),
     index("products_embedding_hnsw_idx").using(
       "hnsw",
