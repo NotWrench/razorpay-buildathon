@@ -43,6 +43,13 @@
       "when": 1788202488502,
       "tag": "0005_natural_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788204129909,
+      "tag": "0006_motionless_psynapse",
+      "breakpoints": true
     }
   ]
 }

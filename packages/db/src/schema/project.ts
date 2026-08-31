@@ -1,5 +1,6 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { account, apikey, session, user, verification } from "./auth";
+import { buildItems, builds } from "./builds";
 import {
   campaigns,
   merchants,
@@ -13,6 +14,8 @@ import { inventory } from "./inventory";
 import {
   accountRelations,
   apikeyRelations,
+  buildItemsRelations,
+  buildsRelations,
   campaignsRelations,
   inventoryRelations,
   merchantsRelations,
@@ -43,7 +46,7 @@ export {
   user,
   verification,
 } from "./auth";
-
+export { buildItems, builds } from "./builds";
 export {
   campaigns,
   merchants,
@@ -58,6 +61,8 @@ export { inventory } from "./inventory";
 export {
   accountRelations,
   apikeyRelations,
+  buildItemsRelations,
+  buildsRelations,
   campaignsRelations,
   inventoryRelations,
   merchantsRelations,
@@ -79,6 +84,10 @@ export const projectSchema = {
   accountRelations,
   apikey,
   apikeyRelations,
+  buildItems,
+  buildItemsRelations,
+  builds,
+  buildsRelations,
   campaigns,
   campaignsRelations,
   inventory,
@@ -114,6 +123,11 @@ export type Verification = InferSelectModel<typeof verification>;
 export type NewVerification = InferInsertModel<typeof verification>;
 export type ApiKey = InferSelectModel<typeof apikey>;
 export type NewApiKey = InferInsertModel<typeof apikey>;
+
+export type Build = InferSelectModel<typeof builds>;
+export type NewBuild = InferInsertModel<typeof builds>;
+export type BuildItem = InferSelectModel<typeof buildItems>;
+export type NewBuildItem = InferInsertModel<typeof buildItems>;
 
 export type Merchant = InferSelectModel<typeof merchants>;
 export type NewMerchant = InferInsertModel<typeof merchants>;

@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { account, apikey, session, user } from "./auth";
+import { buildItems, builds } from "./builds";
 import {
   campaigns,
   merchants,
@@ -24,6 +25,7 @@ import { productSpecs } from "./specs";
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   apikeys: many(apikey),
+  builds: many(builds),
   merchants: many(merchants),
   orders: many(orders),
   sessions: many(session),
@@ -61,6 +63,29 @@ export const productCategoriesRelations = relations(
   })
 );
 
+export const buildsRelations = relations(builds, ({ one, many }) => ({
+  items: many(buildItems),
+  merchant: one(merchants, {
+    fields: [builds.merchantId],
+    references: [merchants.id],
+  }),
+  user: one(user, {
+    fields: [builds.userId],
+    references: [user.id],
+  }),
+}));
+
+export const buildItemsRelations = relations(buildItems, ({ one }) => ({
+  build: one(builds, {
+    fields: [buildItems.buildId],
+    references: [builds.id],
+  }),
+  product: one(products, {
+    fields: [buildItems.productId],
+    references: [products.id],
+  }),
+}));
+
 export const inventoryRelations = relations(inventory, ({ one }) => ({
   merchant: one(merchants, {
     fields: [inventory.merchantId],
@@ -84,6 +109,7 @@ export const productSpecsRelations = relations(productSpecs, ({ one }) => ({
 }));
 
 export const merchantsRelations = relations(merchants, ({ one, many }) => ({
+  builds: many(builds),
   campaigns: many(campaigns),
   inventory: many(inventory),
   orders: many(orders),
@@ -97,6 +123,7 @@ export const merchantsRelations = relations(merchants, ({ one, many }) => ({
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
+  buildItems: many(buildItems),
   category: one(productCategories, {
     fields: [products.categoryId],
     references: [productCategories.id],
