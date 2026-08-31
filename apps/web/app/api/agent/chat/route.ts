@@ -1,5 +1,6 @@
 import {
   buildStorefrontContext,
+  CHAT_MODES,
   hasModelCredentials,
   type StorefrontMessage,
   streamStorefrontTurn,
@@ -15,6 +16,11 @@ export const maxDuration = 30;
 const bodySchema = z.object({
   conversationId: z.uuid().optional(),
   messages: z.array(z.any()),
+  /**
+   * §6's task mode. Optional: without one the agent keeps every tool, which
+   * is the behaviour every existing caller already relies on.
+   */
+  mode: z.enum(CHAT_MODES).optional(),
   slug: z.string().min(1).max(120),
 });
 
@@ -54,6 +60,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     return await streamStorefrontTurn({
       ctx,
       messages: body.messages as StorefrontMessage[],
+      mode: body.mode,
     });
   } catch (error) {
     return handleRouteError(error);

@@ -23,6 +23,7 @@ import { explainTools } from "../tools/explain";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
 import { storefrontApproval } from "./approval";
+import { activeToolsFor, type ChatMode, modeInstructions } from "./modes";
 import { storefrontPrompt } from "./prompts";
 import { summariseStep } from "./steps";
 
@@ -59,8 +60,9 @@ const MAX_STEPS = 12;
 export async function streamStorefrontTurn(params: {
   ctx: AgentContext;
   messages: StorefrontMessage[];
+  mode?: ChatMode;
 }): Promise<Response> {
-  const { ctx, messages } = params;
+  const { ctx, messages, mode } = params;
 
   const merchant = await getMerchantBySlug(ctx.storeSlug);
   const memories = await recallMemories(ctx);
@@ -81,9 +83,11 @@ export async function streamStorefrontTurn(params: {
   const tools = storefrontToolSet(ctx);
 
   const result = streamText({
+    activeTools: activeToolsFor(mode) as (keyof typeof tools)[] | undefined,
     experimental_toolApprovalSecret: approvalSigningSecret(),
     instructions: storefrontPrompt({
       memorySummary: describeMemories(memories),
+      modeInstructions: modeInstructions(mode),
       storeName: merchant.businessName,
     }),
     messages: await convertToModelMessages(messages),

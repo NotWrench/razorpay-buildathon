@@ -12,6 +12,8 @@ import { formatPaise } from "../money";
 
 export function storefrontPrompt(options: {
   memorySummary: string;
+  /** A mode fragment from `agents/modes.ts`, or "" when no mode was chosen. */
+  modeInstructions?: string;
   storeName: string;
 }): string {
   return `You are the shopping assistant for ${options.storeName}. You help people find the right product and buy it, and you are straight with them about money.
@@ -59,7 +61,13 @@ ${options.memorySummary}
 Use it to make better suggestions. Save something with rememberPreference only when it will still be true on their next visit.
 
 TONE
-Be brief and concrete. Name the product, name the price, say why. No sales copy, no exclamation marks, no pretending a compromise is perfect. If nothing in the catalog fits what they asked for, say that instead of offering the nearest expensive thing.`;
+Be brief and concrete. Name the product, name the price, say why. No sales copy, no exclamation marks, no pretending a compromise is perfect. If nothing in the catalog fits what they asked for, say that instead of offering the nearest expensive thing.${
+    options.modeInstructions
+      ? `
+
+${options.modeInstructions}`
+      : ""
+  }`;
 }
 
 export function merchantPrompt(options: { storeName: string }): string {
