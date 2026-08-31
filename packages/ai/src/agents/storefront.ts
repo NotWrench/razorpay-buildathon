@@ -10,6 +10,7 @@ import {
 } from "ai";
 import { type AgentContext, getMerchantBySlug } from "../context";
 import { describeMemories, recallMemories } from "../memory";
+import { type PageContextInput, resolvePageContext } from "../page-context";
 import {
   persistAssistantMessage,
   persistReasoningStep,
@@ -58,6 +59,7 @@ const MAX_STEPS = 12;
  * breaks the stream.
  */
 export async function streamStorefrontTurn(params: {
+  context?: PageContextInput;
   ctx: AgentContext;
   messages: StorefrontMessage[];
   mode?: ChatMode;
@@ -66,6 +68,7 @@ export async function streamStorefrontTurn(params: {
 
   const merchant = await getMerchantBySlug(ctx.storeSlug);
   const memories = await recallMemories(ctx);
+  const pageContext = await resolvePageContext(ctx, params.context);
 
   const latest = messages.at(-1);
 
@@ -88,6 +91,7 @@ export async function streamStorefrontTurn(params: {
     instructions: storefrontPrompt({
       memorySummary: describeMemories(memories),
       modeInstructions: modeInstructions(mode),
+      pageContext: pageContext?.description,
       storeName: merchant.businessName,
     }),
     messages: await convertToModelMessages(messages),

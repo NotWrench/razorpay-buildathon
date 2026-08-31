@@ -14,6 +14,8 @@ export function storefrontPrompt(options: {
   memorySummary: string;
   /** A mode fragment from `agents/modes.ts`, or "" when no mode was chosen. */
   modeInstructions?: string;
+  /** Server-resolved §7 page context. Only ever names rows that resolved. */
+  pageContext?: string;
   storeName: string;
 }): string {
   return `You are the shopping assistant for ${options.storeName}. You help people find the right product and buy it, and you are straight with them about money.
@@ -54,6 +56,10 @@ MONEY
 
 WHEN A PAYMENT FAILS
 Call getOrderStatus, then say clearly: what failed, that nothing was charged, and the options — retry, a payment link for another device, a cheaper alternative, or cancelling. Let them choose. Do not retry on your own.
+
+WHERE THEY ARE
+${options.pageContext ?? "No page context was sent, so do not assume what they are looking at."}
+Use it to resolve "this" and "it" without asking. Do not read anything into what is absent — a context that does not mention an order means none was sent, not that they have none.
 
 MEMORY
 What is already known about this buyer:

@@ -1,6 +1,7 @@
 import {
   buildStorefrontContext,
   CHAT_MODES,
+  CONTEXT_PAGES,
   hasModelCredentials,
   type StorefrontMessage,
   streamStorefrontTurn,
@@ -14,6 +15,21 @@ import { fail, handleRouteError, unauthorized } from "@/lib/api/respond";
 export const maxDuration = 30;
 
 const bodySchema = z.object({
+  /**
+   * §7 page context. Every id here is client-supplied and re-read server-side
+   * under the buyer's own scope; anything that does not resolve is dropped
+   * rather than refused. See `packages/ai/src/page-context.ts`.
+   */
+  context: z
+    .object({
+      buildId: z.uuid().optional(),
+      cartId: z.uuid().optional(),
+      orderId: z.uuid().optional(),
+      page: z.enum(CONTEXT_PAGES),
+      productId: z.uuid().optional(),
+      searchQuery: z.string().max(300).optional(),
+    })
+    .optional(),
   conversationId: z.uuid().optional(),
   messages: z.array(z.any()),
   /**
@@ -58,6 +74,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
 
     return await streamStorefrontTurn({
+      context: body.context,
       ctx,
       messages: body.messages as StorefrontMessage[],
       mode: body.mode,
