@@ -32,6 +32,11 @@ export {
   toModelProduct,
 } from "./catalog";
 export {
+  type ComparisonResult,
+  type ComparisonRow,
+  compareProducts,
+} from "./compare";
+export {
   type AgentActor,
   type AgentContext,
   autoApproveCeilingPaise,

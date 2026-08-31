@@ -9,6 +9,7 @@ import {
   searchCatalog,
   toModelProduct,
 } from "../catalog";
+import { compareProducts } from "../compare";
 import type { AgentContext } from "../context";
 import { describeMemories, recallMemories, rememberMemory } from "../memory";
 import { formatPaise } from "../money";
@@ -25,6 +26,41 @@ export function shoppingTools(ctx: AgentContext) {
   const actorType = auditActorType(ctx.actor.type);
 
   return {
+    compareProducts: tool({
+      description:
+        "Compare 2-4 products from this store side by side. Returns a table " +
+        "of the attributes their category actually publishes, with which one " +
+        "leads each row and by how much. Use this for every comparison — the " +
+        "numbers come from the catalog, and yours do not. An attribute " +
+        "nothing publishes is left out rather than guessed at; say so when " +
+        "the buyer asks about one.",
+      execute: async ({ productIds }) => {
+        const result = await compareProducts(ctx.merchantId, productIds);
+
+        if (result.products.length < 2) {
+          return {
+            error:
+              "Fewer than two of those products are in this store, so there is nothing to compare.",
+            found: result.products.length,
+          };
+        }
+
+        await recordAudit({
+          action: AuditAction.AGENT_SEARCH,
+          actorId: ctx.actor.identifier,
+          actorType,
+          explanation: `Compared ${result.products.map((product) => product.name).join(" vs ")}`,
+          merchantId: ctx.merchantId,
+          metadata: { productIds },
+        });
+
+        return result;
+      },
+      inputSchema: z.object({
+        productIds: z.array(z.uuid()).min(2).max(4),
+      }),
+    }),
+
     getProduct: tool({
       description: "Full detail and live stock for one product.",
       execute: async ({ productId }) => {
