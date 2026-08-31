@@ -22,8 +22,10 @@
 
 import { auth } from "@workspace/auth";
 import {
+  agentDb,
   CATEGORY_DEFINITIONS,
   db,
+  failures,
   inventory,
   merchants,
   orderItems,
@@ -35,7 +37,11 @@ import {
   user,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { PC_CATALOG, PC_ORDER_HISTORY } from "./data/pc-catalog";
+import {
+  PC_CANCELLATIONS,
+  PC_CATALOG,
+  PC_ORDER_HISTORY,
+} from "./data/pc-catalog";
 
 const STORE_SLUG = "nova-electronics";
 const OWNER_EMAIL = "merchant@example.com";
@@ -283,6 +289,72 @@ async function main() {
   }
 
   console.log(`  ${orderCount} historical paid orders`);
+
+  // ------------------------------------------------------- cancellations
+  //
+  // The failure trail is what `getCancellationSummary` reads, and a merchant
+  // agent asked "why are we losing orders" needs a real distribution of
+  // reasons rather than a count of zero.
+  let cancelledCount = 0;
+
+  for (const [index, entry] of PC_CANCELLATIONS.entries()) {
+    const lines = entry.skus
+      .map((sku) => bySku.get(sku))
+      .filter((product): product is NonNullable<typeof product> =>
+        Boolean(product)
+      );
+
+    if (lines.length === 0) {
+      continue;
+    }
+
+    const subtotal = lines.reduce((total, product) => total + product.price, 0);
+    const createdAt = daysAgo(entry.daysAgo);
+
+    const [order] = await db
+      .insert(orders)
+      .values({
+        approvalStatus: "approved",
+        buyerIdentifier: `lapsed${index + 1}@example.com`,
+        buyerType: "human",
+        createdAt,
+        currency: "INR",
+        merchantId: merchant.id,
+        orderStatus: entry.status,
+        subtotal,
+        totalAmount: subtotal,
+        updatedAt: createdAt,
+      })
+      .returning();
+
+    if (!order) {
+      continue;
+    }
+
+    await db.insert(orderItems).values(
+      lines.map((product) => ({
+        orderId: order.id,
+        productId: product.id,
+        quantity: 1,
+        subtotal: product.price,
+        unitPrice: product.price,
+      }))
+    );
+
+    // The failure lives in the agent database, which is where the trail of
+    // what went wrong belongs (§15).
+    await agentDb.insert(failures).values({
+      createdAt,
+      errorMessage: entry.errorMessage,
+      errorType: entry.errorType,
+      orderId: order.id,
+      recoveryAction: entry.recoveryAction,
+    });
+
+    cancelledCount += 1;
+  }
+
+  console.log(`  ${cancelledCount} cancelled or failed orders, with reasons`);
   console.log("");
   console.log("Done.");
   console.log(`  Store:    http://localhost:3000/store/${STORE_SLUG}`);

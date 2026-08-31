@@ -257,7 +257,7 @@ export function merchantTools(ctx: AgentContext) {
         const rows = await getStockRisk(ctx.merchantId, windowDays, limit);
 
         return {
-          assumptions: `Velocity is measured over the last ${windowDays} days of paid orders and projected forward flat. It does not account for seasonality or a campaign that has since ended.`,
+          assumptions: `Velocity is measured over the last ${windowDays} days of paid orders and projected forward flat — no seasonality, and no allowance for a campaign that has since ended. A product is listed when it has under three weeks of cover, or when its cover is shorter than the supplier's lead time.`,
           count: rows.length,
           products: rows,
           windowDays,

@@ -24,8 +24,15 @@ import { and, count, eq, gte, inArray, sum } from "drizzle-orm";
 
 const PAID_STATUSES = ["paid"] as const;
 
-/** Below this many days of cover, a product is at risk of stocking out. */
-const RISK_DAYS_OF_COVER = 14;
+/**
+ * Days of cover below which a product is worth flagging.
+ *
+ * Three weeks, chosen so a merchant reviewing weekly sees a problem twice
+ * before it bites. It is a floor, not the whole test: a product whose cover is
+ * shorter than its supplier's lead time is at risk at any number, because the
+ * replacement cannot arrive before the shelf empties.
+ */
+const RISK_DAYS_OF_COVER = 21;
 
 function since(days: number): Date {
   const date = new Date();

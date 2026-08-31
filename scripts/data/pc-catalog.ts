@@ -107,7 +107,7 @@ export const PC_CATALOG: SeedProduct[] = [
       socket: "AM5",
       tdpWatts: 65,
     },
-    stock: 22,
+    stock: 3,
   },
   {
     attributes: { cache: "96MB 3D V-Cache", cores: "8C/16T", igpu: true },
@@ -328,7 +328,7 @@ export const PC_CATALOG: SeedProduct[] = [
       sataPorts: 4,
       socket: "AM5",
     },
-    stock: 19,
+    stock: 2,
   },
   {
     attributes: { networking: "2.5GbE + Wi-Fi 6E", pcie: "PCIe 5.0 x16" },
@@ -576,7 +576,7 @@ export const PC_CATALOG: SeedProduct[] = [
       memorySpeedMhz: 5600,
       memoryType: "DDR5",
     },
-    stock: 41,
+    stock: 9,
   },
   {
     attributes: { kit: "2 x 32GB", latency: "CL30", profile: "EXPO" },
@@ -675,7 +675,7 @@ export const PC_CATALOG: SeedProduct[] = [
       recommendedPsuWatts: 550,
       tdpWatts: 115,
     },
-    stock: 21,
+    stock: 4,
   },
   {
     attributes: { outputs: "3x DP 1.4a, 1x HDMI 2.1", vram: "16GB GDDR6" },
@@ -917,7 +917,7 @@ export const PC_CATALOG: SeedProduct[] = [
       extra: { capacityGb: 1000 },
       storageInterface: "M.2 NVMe",
     },
-    stock: 38,
+    stock: 6,
   },
   {
     attributes: { capacity: "2TB", read: "5000 MB/s" },
@@ -1081,7 +1081,7 @@ export const PC_CATALOG: SeedProduct[] = [
       pciePowerConnectors: [{ count: 2, pins: 8 }],
       psuWattage: 650,
     },
-    stock: 27,
+    stock: 5,
   },
   {
     attributes: { efficiency: "80+ Bronze", modular: "non-modular" },
@@ -1708,6 +1708,61 @@ export interface SeedOrder {
   daysAgo: number;
   skus: string[];
 }
+
+export interface SeedCancellation {
+  daysAgo: number;
+  errorMessage: string;
+  errorType: string;
+  /** Matches `RecoveryAction` in `packages/ai/src/audit.ts`. */
+  recoveryAction: string;
+  skus: string[];
+  status: "cancelled" | "failed";
+}
+
+/**
+ * Orders that did not complete, and why.
+ *
+ * `getCancellationSummary` reads the failure trail, and a tool that always
+ * returns an empty list is a tool nobody has actually tested. These are the
+ * three shapes a real store sees: a card that declined, a buyer who changed
+ * their mind, and one who found it cheaper elsewhere — different reasons,
+ * which is the point, because "why are we losing orders" is answered by the
+ * distribution and not the count.
+ */
+export const PC_CANCELLATIONS: SeedCancellation[] = [
+  {
+    daysAgo: 5,
+    errorMessage: "Card declined by the issuing bank",
+    errorType: "PAYMENT_FAILED",
+    recoveryAction: "RETRY_LINK_GENERATED",
+    skus: ["GPU-GIGA-4070TIS", "PSU-CORS-RM850X"],
+    status: "failed",
+  },
+  {
+    daysAgo: 11,
+    errorMessage: "Buyer changed their mind about the case",
+    errorType: "ORDER_CANCELLED",
+    recoveryAction: "CANCELLED_BY_BUYER",
+    skus: ["CSE-FRAC-NORTH"],
+    status: "cancelled",
+  },
+  {
+    daysAgo: 18,
+    errorMessage: "Card declined by the issuing bank",
+    errorType: "PAYMENT_FAILED",
+    recoveryAction: "CANCELLED_BY_BUYER",
+    skus: ["CPU-INT-I7-14700K", "MBD-ASUS-Z790-PLUS"],
+    status: "failed",
+  },
+  {
+    daysAgo: 26,
+    errorMessage: "Buyer found the same card cheaper elsewhere",
+    errorType: "ORDER_CANCELLED",
+    recoveryAction: "CANCELLED_BY_BUYER",
+    skus: ["GPU-MSI-4060TI-16"],
+    status: "cancelled",
+  },
+];
 
 /**
  * Historical paid orders, written as SKUs so the intent stays readable.
