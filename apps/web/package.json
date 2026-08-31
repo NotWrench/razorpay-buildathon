@@ -15,6 +15,7 @@
     "@workspace/ai": "workspace:*",
     "@workspace/auth": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/mcp": "workspace:*",
     "@workspace/payments": "workspace:*",
     "@workspace/ui": "workspace:*",
     "ai": "catalog:",
