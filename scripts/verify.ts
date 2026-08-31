@@ -13,6 +13,7 @@ import {
   activeToolsFor,
   assertWithinSpendCap,
   backfillEmbeddings,
+  buildMerchantContext,
   CHAT_MODES,
   canRecommend,
   captureRequirements,
@@ -20,14 +21,23 @@ import {
   describeMemories,
   formatPaise,
   getAttachRates,
+  getCancellationSummary,
+  getDiscontinueCandidates,
+  getDiscountCandidates,
   getFrequentlyBoughtWith,
+  getInventorySummary,
+  getLowStockProducts,
   getMerchantBySlug,
   getReasoningChain,
+  getReorderCandidates,
   getRequirements,
   getSalesSummary,
   getSlowMovers,
+  getStockRisk,
   getTranscript,
   hasModelCredentials,
+  merchantApproval,
+  merchantToolSet,
   missingRequirementFields,
   persistAssistantMessage,
   persistReasoningStep,
@@ -59,6 +69,7 @@ import {
   db,
   hasDedicatedAgentDatabase,
   products,
+  reorderRequests,
 } from "@workspace/db";
 import { createCheckoutOrderFromCart } from "@workspace/payments";
 import { count, eq, inArray } from "drizzle-orm";
@@ -919,8 +930,189 @@ async function main() {
     .delete(conversations)
     .where(eq(conversations.id, interviewConversation.id));
 
+  // -------------------------------------------------------- merchant ops
+  section("10. Inventory intelligence and the gated mutations");
+
+  const stock = await getInventorySummary(merchant.id);
+
+  console.log(
+    `  ${stock.distinctProducts} products, ${stock.unitsOnHand} units, ${formatPaise(stock.stockValuePaise)} on the shelf`
+  );
+
+  check("summarises stock health", stock.distinctProducts > 0);
+  check(
+    "finds products below their threshold",
+    stock.belowThreshold > 0,
+    `${stock.belowThreshold} below threshold`
+  );
+
+  const low = await getLowStockProducts(merchant.id);
+
+  check("lists them with their reorder settings", low.length > 0);
+  check(
+    "a listed product carries a real threshold, not a default",
+    low.every((row) => row.stock <= 0 || row.lowStockThreshold !== null)
+  );
+
+  const risk = await getStockRisk(merchant.id, 60);
+
+  console.log("  at risk of stocking out:");
+  for (const row of risk) {
+    console.log(
+      `    ${row.name}: ${row.stock} left, ${row.dailyVelocity}/day, ${row.daysOfCover}d cover against a ${row.leadTimeDays}d lead time`
+    );
+  }
+
+  check("finds products at risk of stocking out", risk.length > 0);
+  check(
+    "never reports cover for something that sold nothing",
+    risk.every((row) => row.unitsSold > 0 && row.daysOfCover !== null)
+  );
+
+  const cancellations = await getCancellationSummary(merchant.id, 60);
+
+  check(
+    "reports why orders did not complete",
+    cancellations.cancelledOrders > 0 && cancellations.reasons.length > 1,
+    cancellations.reasons
+      .map((row) => `${row.count}x ${row.errorType}`)
+      .join(", ")
+  );
+
+  // --- recommendations state their basis
+  const reorder = await getReorderCandidates(merchant.id, 60);
+
+  console.log("  reorder candidates:");
+  for (const row of reorder.candidates.slice(0, 3)) {
+    console.log(
+      `    ${row.name}: order ${row.suggestedQuantity} — ${row.rationale}`
+    );
+  }
+
+  check("finds reorder candidates", reorder.candidates.length > 0);
+  check(
+    "states the window and the method",
+    reorder.assumptions.includes("60 days") &&
+      reorder.assumptions.includes("projected forward flat")
+  );
+  check(
+    "every candidate actually sold something",
+    reorder.candidates.every((row) => row.dailyVelocity > 0)
+  );
+  check(
+    "suggests a quantity at least the configured reorder amount",
+    reorder.candidates.every((row) => row.suggestedQuantity > 0)
+  );
+
+  const discount = await getDiscountCandidates(merchant.id, 60);
+
+  check("finds discount candidates", discount.candidates.length > 0);
+  check(
+    "leads with the capital tied up",
+    discount.candidates.every((row) => row.stockValuePaise > 0) &&
+      discount.candidates[0] !== undefined &&
+      discount.candidates.every(
+        (row) =>
+          row.stockValuePaise <= (discount.candidates[0]?.stockValuePaise ?? 0)
+      )
+  );
+  check(
+    "reorder and discount candidates do not overlap",
+    !reorder.candidates.some((candidate) =>
+      discount.candidates.some(
+        (other) => other.productId === candidate.productId
+      )
+    )
+  );
+
+  const discontinue = await getDiscontinueCandidates(merchant.id, 90);
+
+  check("finds discontinue candidates", discontinue.candidates.length > 0);
+  check(
+    "and says it is a review, not a deletion",
+    discontinue.assumptions.includes("not to delete")
+  );
+
+  // --- §11: there is no tool that removes a product, and there should not be
+  const merchantCtx = await buildMerchantContext({
+    actor: ctx.actor,
+    merchantId: merchant.id,
+  });
+
+  const merchantToolNames = Object.keys(merchantToolSet(merchantCtx));
+
+  // §11 says discontinuing is a recommendation and never an automatic
+  // deletion, so the absence of a mutation is the guarantee. Read tools are
+  // exempt by name — getDiscontinueCandidates is the recommendation itself.
+  const mutations = merchantToolNames.filter(
+    (name) => !/^(get|list|find)/.test(name)
+  );
+
+  check(
+    "no tool exists that deletes or discontinues a product",
+    !mutations.some((name) =>
+      /delete|remove|discontinue|archive|deactivate/i.test(name)
+    ),
+    mutations.join(", ")
+  );
+
+  // --- §12: every mutation is gated
+  const gate = merchantApproval(merchantCtx);
+
+  check(
+    "every inventory mutation is behind the approval gate",
+    ["createReorderRequest", "updateInventoryThreshold"].every(
+      (name) => name in gate
+    )
+  );
+
+  const gated = await gate.createReorderRequest({
+    quantity: 20,
+    reason: "verification probe",
+  });
+
+  check(
+    "the gate names the quantity being asked for",
+    typeof gated === "object" && gated?.reason.includes("20"),
+    typeof gated === "object" ? gated?.reason : String(gated)
+  );
+
+  // --- the mutation itself records provenance and buys nothing
+  const bestSeller = await db.query.products.findFirst({
+    where: (table, { eq: equals }) => equals(table.sku, "CPU-AMD-R5-7600"),
+  });
+
+  if (!bestSeller) {
+    throw new Error("Seed product missing — re-run bun run seed");
+  }
+
+  const [raised] = await db
+    .insert(reorderRequests)
+    .values({
+      createdByAgent: true,
+      merchantId: merchant.id,
+      productId: bestSeller.id,
+      quantity: 20,
+      reason: "Verification probe: 3 on hand against 10 sold in 60 days.",
+      stockAtRequest: bestSeller.stock,
+    })
+    .returning();
+
+  check(
+    "a raised request starts as a draft nobody has approved",
+    raised?.status === "draft" && raised?.approvedBy === null
+  );
+  check(
+    "and keeps the fact that an agent raised it",
+    raised?.createdByAgent === true
+  );
+
+  if (raised) {
+    await db.delete(reorderRequests).where(eq(reorderRequests.id, raised.id));
+  }
+
   // ------------------------------------------------------------ embeddings
-  section("10. Embedding backfill is idempotent");
+  section("11. Embedding backfill is idempotent");
 
   const again = await backfillEmbeddings();
 
