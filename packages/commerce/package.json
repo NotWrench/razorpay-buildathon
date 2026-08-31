@@ -5,14 +5,17 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./compatibility": "./src/compatibility/index.ts"
+    "./compatibility": "./src/compatibility/index.ts",
+    "./builds": "./src/builds.ts",
+    "./carts": "./src/carts.ts"
   },
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@workspace/db": "workspace:*"
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.4.0",

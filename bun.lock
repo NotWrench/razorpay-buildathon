@@ -79,6 +79,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@workspace/db": "workspace:*",
+        "drizzle-orm": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "^1.4.0",

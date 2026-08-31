@@ -22,3 +22,19 @@ each exported and testable on its own. A rule whose inputs are null returns
 `insufficient_data` — never `compatible`.
 
     bun test
+
+## `builds` and `carts`
+
+`@workspace/commerce/builds` and `@workspace/commerce/carts` are the rows the
+rules run on. Unlike the root export they do talk to the database, which is why
+they are separate import paths — the engine stays loadable, and testable, with
+no `DATABASE_URL` at all.
+
+Every function in both takes a `merchantId` and a `buyerIdentifier` and filters
+on both. Neither is ever accepted from a model; they come from the
+server-resolved agent context, so a tool cannot reach another shopper's build
+or basket however it is called.
+
+Neither module decides a price. A cart line stores what a product cost when it
+was added, for display and for noticing the price has since moved. What the
+buyer is charged is re-derived from live product rows at checkout.
