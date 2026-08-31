@@ -22,6 +22,13 @@
       "when": 1788205007312,
       "tag": "0002_smooth_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788206811035,
+      "tag": "0003_daffy_menace",
+      "breakpoints": true
     }
   ]
 }

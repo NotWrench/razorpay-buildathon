@@ -155,6 +155,128 @@ export const buildRequirements = pgTable(
   ]
 );
 
+/**
+ * One row per tool execution.
+ *
+ * Tool calls were already stored as jsonb on the assistant message, which is
+ * enough to read a transcript back and useless for anything else: you cannot
+ * ask which tool fails most, what the median latency is, or whether a denied
+ * approval actually stopped anything, because the answer is buried inside a
+ * document per message.
+ *
+ * §24 asks for per-call telemetry, so this is that — one row, written from the
+ * SDK's own execution callbacks rather than by wrapping each tool, so no tool
+ * has to remember to log and none can be added that forgets.
+ *
+ * `output_summary` is a summary on purpose. A full tool result can be an
+ * entire catalog page, and keeping every one of them would turn an
+ * observability table into a second copy of the database. What is kept is
+ * shape and size — enough to spot a tool that started returning nothing.
+ */
+export const agentToolCalls = pgTable(
+  "agent_tool_calls",
+  {
+    agentType: text("agent_type", { enum: ["customer", "admin"] }).notNull(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    /** Populated when the call errored or was denied. */
+    errorText: text("error_text"),
+    id: uuid("id").defaultRandom().primaryKey(),
+    input: jsonb("input").$type<Record<string, unknown>>(),
+    latencyMs: integer("latency_ms"),
+    /** The §6 chat mode in force, when one was selected. */
+    mode: text("mode"),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>(),
+    /**
+     * `denied` is its own state, not an error.
+     *
+     * An approval the human refused is the system working, and counting it as
+     * a failure would make the guardrail look like a defect in the dashboard.
+     */
+    status: text("status", { enum: ["ok", "error", "denied"] }).notNull(),
+    /** Which step of the tool loop this was. */
+    stepNumber: integer("step_number"),
+    toolCallId: text("tool_call_id"),
+    toolName: text("tool_name").notNull(),
+  },
+  (table) => [
+    index("agent_tool_calls_conversationId_idx").on(table.conversationId),
+    index("agent_tool_calls_toolName_idx").on(table.toolName),
+    index("agent_tool_calls_status_idx").on(table.status),
+    index("agent_tool_calls_createdAt_idx").on(table.createdAt),
+  ]
+);
+
+/**
+ * What the agent was asked to do, and whether it got there.
+ *
+ * A conversation is a transcript; a task is an intent with an outcome. §26's
+ * domain model wants both, because "did the agent help" is not answerable from
+ * message counts — a shopper who asked for a build and left without one had a
+ * conversation that looks entirely healthy.
+ */
+export const agentTasks = pgTable(
+  "agent_tasks",
+  {
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** What the buyer was trying to do, in their terms. */
+    intent: text("intent").notNull(),
+    mode: text("mode"),
+    /** How it ended. Null while the task is still open. */
+    outcome: text("outcome", {
+      enum: ["resolved", "abandoned", "handed_off", "failed"],
+    }),
+    /** Free-form detail on the outcome — which build, which order, why not. */
+    outcomeDetail: text("outcome_detail"),
+    state: text("state", { enum: ["open", "closed"] })
+      .default("open")
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("agent_tasks_conversationId_idx").on(table.conversationId),
+    index("agent_tasks_state_idx").on(table.state),
+  ]
+);
+
+/**
+ * What the person thought of it.
+ *
+ * The only signal in the agent database that does not come from the agent, and
+ * therefore the only one that can contradict it. A recommendation the model
+ * scored 0.9 and the buyer thumbed down is the interesting row in this schema.
+ */
+export const agentFeedback = pgTable(
+  "agent_feedback",
+  {
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    note: text("note"),
+    /** The recommendation being judged, when the feedback is about one. */
+    recommendationId: uuid("recommendation_id").references(
+      () => aiRecommendations.id,
+      { onDelete: "cascade" }
+    ),
+    thumbs: text("thumbs", { enum: ["up", "down"] }).notNull(),
+  },
+  (table) => [
+    index("agent_feedback_conversationId_idx").on(table.conversationId),
+    index("agent_feedback_recommendationId_idx").on(table.recommendationId),
+  ]
+);
+
 export const agentMemoryLong = pgTable(
   "agent_memory_long",
   {

@@ -1,5 +1,8 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
+  agentFeedbackRelations,
+  agentTasksRelations,
+  agentToolCallsRelations,
   aiRecommendationsRelations,
   buildRequirementsRelations,
   conversationMessagesRelations,
@@ -7,7 +10,10 @@ import {
   reasoningLogsRelations,
 } from "./agent-relations";
 import {
+  agentFeedback,
   agentMemoryLong,
+  agentTasks,
+  agentToolCalls,
   aiRecommendations,
   auditLogs,
   buildRequirements,
@@ -30,6 +36,9 @@ import {
  */
 
 export {
+  agentFeedbackRelations,
+  agentTasksRelations,
+  agentToolCallsRelations,
   aiRecommendationsRelations,
   buildRequirementsRelations,
   conversationMessagesRelations,
@@ -37,7 +46,10 @@ export {
   reasoningLogsRelations,
 } from "./agent-relations";
 export {
+  agentFeedback,
   agentMemoryLong,
+  agentTasks,
+  agentToolCalls,
   aiRecommendations,
   auditLogs,
   buildRequirements,
@@ -49,7 +61,13 @@ export {
 
 /** Aggregation passed to `drizzle()` for the agent client. */
 export const agentSchema = {
+  agentFeedback,
+  agentFeedbackRelations,
   agentMemoryLong,
+  agentTasks,
+  agentTasksRelations,
+  agentToolCalls,
+  agentToolCallsRelations,
   aiRecommendations,
   aiRecommendationsRelations,
   auditLogs,
@@ -70,6 +88,12 @@ export type ConversationMessage = InferSelectModel<typeof conversationMessages>;
 export type NewConversationMessage = InferInsertModel<
   typeof conversationMessages
 >;
+export type AgentToolCall = InferSelectModel<typeof agentToolCalls>;
+export type NewAgentToolCall = InferInsertModel<typeof agentToolCalls>;
+export type AgentTask = InferSelectModel<typeof agentTasks>;
+export type NewAgentTask = InferInsertModel<typeof agentTasks>;
+export type AgentFeedback = InferSelectModel<typeof agentFeedback>;
+export type NewAgentFeedback = InferInsertModel<typeof agentFeedback>;
 export type BuildRequirements = InferSelectModel<typeof buildRequirements>;
 export type NewBuildRequirements = InferInsertModel<typeof buildRequirements>;
 export type AiRecommendation = InferSelectModel<typeof aiRecommendations>;

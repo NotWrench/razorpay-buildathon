@@ -129,4 +129,10 @@ export {
   missingFields as missingRequirementFields,
   type RequirementInput,
 } from "./requirements";
+export {
+  type AgentType,
+  recordToolCall,
+  type ToolCallRecord,
+  toolCallRecorder,
+} from "./telemetry";
 export * from "./tools";

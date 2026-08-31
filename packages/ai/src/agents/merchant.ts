@@ -18,6 +18,7 @@ import {
   touchConversation,
 } from "../persistence";
 import { approvalSigningSecret, chatModel } from "../provider";
+import { toolCallRecorder } from "../telemetry";
 import { campaignTools } from "../tools/campaigns";
 import { explainTools } from "../tools/explain";
 import { merchantTools } from "../tools/merchant";
@@ -81,6 +82,7 @@ export async function streamMerchantTurn(params: {
     onStepFinish: async (step) => {
       await persistReasoningStep(ctx, summariseStep(step));
     },
+    onToolExecutionEnd: toolCallRecorder({ agentType: "admin", ctx }),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: merchantApproval(ctx),
     tools: merchantToolSet(ctx),

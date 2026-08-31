@@ -18,6 +18,7 @@ import {
   touchConversation,
 } from "../persistence";
 import { approvalSigningSecret, chatModel } from "../provider";
+import { toolCallRecorder } from "../telemetry";
 import { builderTools } from "../tools/builder";
 import { checkoutTools } from "../tools/checkout";
 import { explainTools } from "../tools/explain";
@@ -107,6 +108,13 @@ export async function streamStorefrontTurn(params: {
     onStepFinish: async (step) => {
       await persistReasoningStep(ctx, summariseStep(step));
     },
+    // §24's per-call telemetry. Hooked into the loop rather than wrapped
+    // around each tool, so a tool cannot be added that escapes it.
+    onToolExecutionEnd: toolCallRecorder({
+      agentType: "customer",
+      ctx,
+      mode,
+    }),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools,
