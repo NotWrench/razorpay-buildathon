@@ -1,16 +1,35 @@
 services:
-  postgres:
+  project-db:
     image: postgres:18
-    container_name: razorpay-buildathon-postgres
+    container_name: razorpay-buildathon-project-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-razorpay_buildathon}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${PROJECT_DB_NAME:-razorpay_project}
+      POSTGRES_USER: ${PROJECT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${PROJECT_DB_PASSWORD:-postgres}
     ports:
       - "5443:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - project_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  agent-db:
+    image: postgres:18
+    container_name: razorpay-buildathon-agent-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AGENT_DB_NAME:-razorpay_agent_memory}
+      POSTGRES_USER: ${AGENT_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${AGENT_DB_PASSWORD:-postgres}
+    ports:
+      - "5445:5432"
+    volumes:
+      - agent_db_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -19,4 +38,5 @@ services:
       start_period: 10s
 
 volumes:
-  postgres_data:
+  agent_db_data:
+  project_db_data:
