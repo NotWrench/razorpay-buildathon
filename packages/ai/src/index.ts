@@ -130,6 +130,15 @@ export {
   type RequirementInput,
 } from "./requirements";
 export {
+  closeTask,
+  type FeedbackInput,
+  getOpenTask,
+  type OpenTaskInput,
+  openTask,
+  recordFeedback,
+  type TaskOutcome,
+} from "./tasks";
+export {
   type AgentType,
   recordToolCall,
   type ToolCallRecord,
