@@ -1,11 +1,13 @@
-import "dotenv/config";
+import { config } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
-const databaseUrl = process.env.DATABASE_URL;
+// Load from local or root .env
+config({ path: "../../.env" });
+config();
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  "postgres://postgres:postgres@localhost:5443/razorpay_project";
 
 export default defineConfig({
   dbCredentials: {
@@ -13,5 +15,5 @@ export default defineConfig({
   },
   dialect: "postgresql",
   out: "./drizzle",
-  schema: "./src/schema.ts",
+  schema: "./src/schema/index.ts",
 });

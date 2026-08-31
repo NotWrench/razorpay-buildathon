@@ -1,6 +1,6 @@
 services:
   project-db:
-    image: postgres:18
+    image: pgvector/pgvector:pg17
     container_name: razorpay-buildathon-project-db
     restart: unless-stopped
     environment:
@@ -19,7 +19,7 @@ services:
       start_period: 10s
 
   agent-db:
-    image: postgres:18
+    image: pgvector/pgvector:pg17
     container_name: razorpay-buildathon-agent-db
     restart: unless-stopped
     environment:

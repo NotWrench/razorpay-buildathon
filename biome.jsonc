@@ -7,5 +7,12 @@
   ],
   "files": {
     "includes": ["!**/.next", "!**/dist"]
+  },
+  "linter": {
+    "rules": {
+      "performance": {
+        "noBarrelFile": "off"
+      }
+    }
   }
 }

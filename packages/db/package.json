@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema/index.ts",
+    "./schema/auth": "./src/schema/auth.ts",
+    "./schema/business": "./src/schema/business.ts",
+    "./schema/ai": "./src/schema/ai.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
