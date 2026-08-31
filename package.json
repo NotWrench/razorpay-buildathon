@@ -49,6 +49,7 @@
     "format": "ultracite fix",
     "lint": "ultracite check",
     "seed": "bun run scripts/seed.ts",
+    "test": "turbo test",
     "typecheck": "turbo typecheck",
     "verify": "bun run scripts/verify.ts",
     "verify:agent": "bun run scripts/verify-agent.ts"
