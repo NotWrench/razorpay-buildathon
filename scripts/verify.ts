@@ -13,10 +13,12 @@ import {
   activeToolsFor,
   assertWithinSpendCap,
   backfillEmbeddings,
+  builderTools,
   buildMerchantContext,
   CHAT_MODES,
   canRecommend,
   captureRequirements,
+  closeTask,
   compareProducts,
   describeMemories,
   formatPaise,
@@ -38,16 +40,21 @@ import {
   hasModelCredentials,
   merchantApproval,
   merchantToolSet,
+  merchantTools,
   missingRequirementFields,
+  openTask,
   persistAssistantMessage,
   persistReasoningStep,
   persistUserMessage,
   quoteCart,
   recallMemories,
   recordAudit,
+  recordFeedback,
+  recordToolCall,
   rememberMemory,
   resolvePageContext,
   searchCatalog,
+  shoppingTools,
   storefrontToolSet,
 } from "@workspace/ai";
 import { createBuild, validateBuildById } from "@workspace/commerce/builds";
@@ -59,7 +66,10 @@ import {
 } from "@workspace/commerce/carts";
 import {
   agentDb,
+  agentFeedback,
   agentMemoryLong,
+  agentTasks,
+  agentToolCalls,
   aiRecommendations,
   auditLogs,
   builds,
@@ -71,6 +81,7 @@ import {
   products,
   reorderRequests,
 } from "@workspace/db";
+import { CAPABILITIES, capabilitiesFor, findCapability } from "@workspace/mcp";
 import { createCheckoutOrderFromCart } from "@workspace/payments";
 import { count, eq, inArray } from "drizzle-orm";
 
@@ -1111,8 +1122,239 @@ async function main() {
     await db.delete(reorderRequests).where(eq(reorderRequests.id, raised.id));
   }
 
+  // -------------------------------------------------- MCP and telemetry
+  section("11. The MCP scope split");
+
+  const customerCapabilities = capabilitiesFor("customer").map(
+    (capability) => capability.name
+  );
+  const merchantCapabilities = capabilitiesFor("merchant").map(
+    (capability) => capability.name
+  );
+
+  console.log(`  customer: ${customerCapabilities.join(", ")}`);
+  console.log(
+    `  merchant: +${merchantCapabilities.length - customerCapabilities.length} more`
+  );
+
+  check(
+    "a customer connection cannot see merchant capabilities",
+    ["inventory.summary", "sales.summary", "orders.summary"].every(
+      (name) => !customerCapabilities.includes(name)
+    )
+  );
+  check(
+    "and cannot resolve one by name",
+    findCapability("customer", "inventory.summary") === undefined
+  );
+  check(
+    "a merchant connection reaches everything",
+    merchantCapabilities.length === CAPABILITIES.length
+  );
+  check(
+    "no capability exposes raw SQL",
+    !CAPABILITIES.some((capability) =>
+      /sql|query|exec|raw/i.test(capability.name)
+    )
+  );
+  check(
+    "no capability takes an identity as an argument",
+    CAPABILITIES.every((capability) =>
+      ["merchantId", "buyerIdentifier", "userId"].every(
+        (field) => !Object.keys(capability.inputSchema).includes(field)
+      )
+    )
+  );
+  check(
+    "every capability delegates to a tool that exists",
+    CAPABILITIES.every((capability) => {
+      const sets: Record<string, Record<string, unknown>> = {
+        builder: builderTools(ctx),
+        merchant: merchantTools(merchantCtx),
+        shopping: shoppingTools(ctx),
+      };
+
+      return Boolean(sets[capability.tool.set]?.[capability.tool.name]);
+    }),
+    CAPABILITIES.map((capability) => capability.tool.name).join(", ")
+  );
+
+  // ------------------------------------------------------------ telemetry
+  section("12. Observability");
+
+  const telemetryConversation = await agentDb
+    .insert(conversations)
+    .values({
+      buyerIdentifier: ctx.actor.identifier,
+      buyerType: "human",
+      merchantId: merchant.id,
+    })
+    .returning();
+
+  const telemetryId = telemetryConversation[0]?.id;
+
+  if (!telemetryId) {
+    throw new Error("Could not open a conversation for the telemetry checks");
+  }
+
+  const telemetryCtx: AgentContext = {
+    ...ctx,
+    conversationId: telemetryId,
+  };
+
+  await recordToolCall(telemetryCtx, {
+    agentType: "customer",
+    input: { limit: 6, query: "a graphics card" },
+    latencyMs: 412,
+    mode: "build",
+    output: { products: [1, 2, 3], strategy: "semantic" },
+    status: "ok",
+    toolName: "searchProducts",
+  });
+  await recordToolCall(telemetryCtx, {
+    agentType: "customer",
+    errorText: "This build cannot be ordered as it stands.",
+    input: { cartId: "x" },
+    status: "error",
+    toolName: "createOrder",
+  });
+  await recordToolCall(telemetryCtx, {
+    agentType: "customer",
+    errorText: "Buyer declined the approval",
+    status: "denied",
+    toolName: "createOrder",
+  });
+
+  const calls = await agentDb
+    .select()
+    .from(agentToolCalls)
+    .where(eq(agentToolCalls.conversationId, telemetryId));
+
+  check("tool calls are recorded one row each", calls.length === 3);
+  check(
+    "a refused approval is denied, not an error",
+    calls.filter((row) => row.status === "denied").length === 1 &&
+      calls.filter((row) => row.status === "error").length === 1
+  );
+  check(
+    "latency and mode survive",
+    calls.some((row) => row.latencyMs === 412 && row.mode === "build")
+  );
+
+  const summarised = calls.find((row) => row.toolName === "searchProducts");
+
+  check(
+    "the output is summarised, not copied",
+    (summarised?.outputSummary as { sizes?: Record<string, number> })?.sizes
+      ?.products === 3
+  );
+
+  // --- tasks: an outcome, not just a transcript
+  await openTask(telemetryCtx, {
+    intent: "Build a 1440p PC under 80k",
+    mode: "build",
+  });
+  const reopenedTask = await openTask(telemetryCtx, {
+    intent: "something else",
+  });
+
+  const openTasks = await agentDb
+    .select()
+    .from(agentTasks)
+    .where(eq(agentTasks.conversationId, telemetryId));
+
+  check(
+    "one open task per conversation",
+    openTasks.length === 1 && reopenedTask.intent.includes("1440p")
+  );
+
+  const closed = await closeTask(
+    telemetryCtx,
+    "abandoned",
+    "Buyer left without a build"
+  );
+
+  check(
+    "abandonment is a recorded outcome, not an absence",
+    closed?.state === "closed" && closed?.outcome === "abandoned"
+  );
+
+  // --- feedback: the one signal that can contradict the agent
+  const [recommendation] = await agentDb
+    .insert(aiRecommendations)
+    .values({
+      confidenceScore: 0.9,
+      conversationId: telemetryId,
+      productId: card4060.id,
+      reason: "Verification probe recommendation",
+      recommendationType: "best_fit",
+    })
+    .returning();
+
+  const accepted = await recordFeedback(telemetryCtx, {
+    recommendationId: recommendation?.id,
+    thumbs: "up",
+  });
+
+  check(
+    "feedback links to a recommendation in this conversation",
+    accepted.recommendationId === recommendation?.id
+  );
+
+  const [afterThumbsUp] = await agentDb
+    .select()
+    .from(aiRecommendations)
+    .where(eq(aiRecommendations.id, recommendation?.id ?? ""));
+
+  check(
+    "a thumbs-up marks the recommendation accepted",
+    afterThumbsUp?.accepted === true
+  );
+
+  // A recommendation from another conversation must not be linkable.
+  const [otherConversation] = await agentDb
+    .insert(conversations)
+    .values({
+      buyerIdentifier: "verify-other-buyer@example.com",
+      buyerType: "human",
+      merchantId: merchant.id,
+    })
+    .returning();
+
+  const [foreign] = await agentDb
+    .insert(aiRecommendations)
+    .values({
+      confidenceScore: 0.5,
+      conversationId: otherConversation?.id ?? "",
+      productId: card4060.id,
+      reason: "Belongs to a different conversation",
+      recommendationType: "best_fit",
+    })
+    .returning();
+
+  const dropped = await recordFeedback(telemetryCtx, {
+    recommendationId: foreign?.id,
+    thumbs: "down",
+  });
+
+  check(
+    "feedback cannot be attached to another conversation's recommendation",
+    dropped.recommendationId === null
+  );
+
+  await agentDb
+    .delete(agentFeedback)
+    .where(eq(agentFeedback.conversationId, telemetryId));
+  await agentDb.delete(conversations).where(eq(conversations.id, telemetryId));
+
+  if (otherConversation) {
+    await agentDb
+      .delete(conversations)
+      .where(eq(conversations.id, otherConversation.id));
+  }
+
   // ------------------------------------------------------------ embeddings
-  section("11. Embedding backfill is idempotent");
+  section("13. Embedding backfill is idempotent");
 
   const again = await backfillEmbeddings();
 
