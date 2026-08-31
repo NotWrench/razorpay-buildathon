@@ -13,7 +13,8 @@
     "./project": "./src/schema/project.ts",
     "./schema/catalog": "./src/schema/catalog.ts",
     "./taxonomy": "./src/taxonomy.ts",
-    "./schema/specs": "./src/schema/specs.ts"
+    "./schema/specs": "./src/schema/specs.ts",
+    "./schema/inventory": "./src/schema/inventory.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle.agent.config.ts",

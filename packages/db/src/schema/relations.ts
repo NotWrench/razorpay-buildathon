@@ -9,6 +9,7 @@ import {
   products,
 } from "./business";
 import { productCategories } from "./catalog";
+import { inventory } from "./inventory";
 import { productSpecs } from "./specs";
 
 /**
@@ -60,6 +61,17 @@ export const productCategoriesRelations = relations(
   })
 );
 
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  merchant: one(merchants, {
+    fields: [inventory.merchantId],
+    references: [merchants.id],
+  }),
+  product: one(products, {
+    fields: [inventory.productId],
+    references: [products.id],
+  }),
+}));
+
 export const productSpecsRelations = relations(productSpecs, ({ one }) => ({
   merchant: one(merchants, {
     fields: [productSpecs.merchantId],
@@ -73,6 +85,7 @@ export const productSpecsRelations = relations(productSpecs, ({ one }) => ({
 
 export const merchantsRelations = relations(merchants, ({ one, many }) => ({
   campaigns: many(campaigns),
+  inventory: many(inventory),
   orders: many(orders),
   productCategories: many(productCategories),
   productSpecs: many(productSpecs),
@@ -87,6 +100,10 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   category: one(productCategories, {
     fields: [products.categoryId],
     references: [productCategories.id],
+  }),
+  inventory: one(inventory, {
+    fields: [products.id],
+    references: [inventory.productId],
   }),
   merchant: one(merchants, {
     fields: [products.merchantId],

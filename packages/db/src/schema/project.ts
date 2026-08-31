@@ -9,10 +9,12 @@ import {
   products,
 } from "./business";
 import { productCategories } from "./catalog";
+import { inventory } from "./inventory";
 import {
   accountRelations,
   apikeyRelations,
   campaignsRelations,
+  inventoryRelations,
   merchantsRelations,
   orderItemsRelations,
   ordersRelations,
@@ -52,10 +54,12 @@ export {
 } from "./business";
 
 export { productCategories } from "./catalog";
+export { inventory } from "./inventory";
 export {
   accountRelations,
   apikeyRelations,
   campaignsRelations,
+  inventoryRelations,
   merchantsRelations,
   orderItemsRelations,
   ordersRelations,
@@ -66,6 +70,7 @@ export {
   sessionRelations,
   userRelations,
 } from "./relations";
+
 export { type PciePowerConnector, productSpecs } from "./specs";
 
 /** Aggregation passed to `drizzle()` for the project client. */
@@ -76,6 +81,8 @@ export const projectSchema = {
   apikeyRelations,
   campaigns,
   campaignsRelations,
+  inventory,
+  inventoryRelations,
   merchants,
   merchantsRelations,
   orderItems,
@@ -114,6 +121,8 @@ export type Product = InferSelectModel<typeof products>;
 export type NewProduct = InferInsertModel<typeof products>;
 export type ProductCategory = InferSelectModel<typeof productCategories>;
 export type NewProductCategory = InferInsertModel<typeof productCategories>;
+export type Inventory = InferSelectModel<typeof inventory>;
+export type NewInventory = InferInsertModel<typeof inventory>;
 export type ProductSpec = InferSelectModel<typeof productSpecs>;
 export type NewProductSpec = InferInsertModel<typeof productSpecs>;
 export type Order = InferSelectModel<typeof orders>;
