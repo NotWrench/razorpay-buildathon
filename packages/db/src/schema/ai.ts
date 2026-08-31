@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -53,10 +55,26 @@ export const conversationMessages = pgTable(
   ]
 );
 
+/**
+ * What the agent put in front of the buyer, and why.
+ *
+ * §3.3 asks for two levels: the best fit, and — only sometimes — an upgrade.
+ * §5 then says the agent must not manipulate anyone into spending more. That
+ * rule is enforced here rather than in a prompt, by making a bad upgrade
+ * impossible to write down: an `upgrade` row must carry
+ * `tied_to_requirement`, naming the stated goal it serves.
+ *
+ * An upgrade with no goal to point at cannot be expressed, and an upgrade
+ * nobody needs is simply an absent row. Making the absence representable is
+ * the whole trick — "a faster card exists" is not a reason, and now there is
+ * nowhere to put it.
+ */
 export const aiRecommendations = pgTable(
   "ai_recommendations",
   {
     accepted: boolean("accepted").default(false).notNull(),
+    /** What the upgrade costs over the best fit, in paise. Upgrades only. */
+    additionalSpendPaise: integer("additional_spend_paise"),
     confidenceScore: real("confidence_score").notNull(), // e.g. 0.94
     conversationId: uuid("conversation_id")
       .notNull()
@@ -67,12 +85,25 @@ export const aiRecommendations = pgTable(
     productId: uuid("product_id").notNull(),
     reason: text("reason").notNull(), // Human-readable justification
     recommendationType: text("recommendation_type", {
-      enum: ["search_result", "upsell", "bundle"],
+      enum: ["search_result", "best_fit", "upgrade", "upsell", "bundle"],
     }).notNull(),
+    /** The best fit this upgrade is offered against. Upgrades only. */
+    replacesProductId: uuid("replaces_product_id"),
+    /**
+     * Which stated requirement the extra spend serves.
+     *
+     * Required for an upgrade by a check constraint, not by convention — see
+     * the note above. This is §5 made structural.
+     */
+    tiedToRequirement: text("tied_to_requirement"),
   },
   (table) => [
     index("ai_recommendations_conversationId_idx").on(table.conversationId),
     index("ai_recommendations_productId_idx").on(table.productId),
+    check(
+      "ai_recommendations_upgrade_needs_a_reason",
+      sql`${table.recommendationType} <> 'upgrade' or (${table.tiedToRequirement} is not null and ${table.additionalSpendPaise} is not null)`
+    ),
   ]
 );
 

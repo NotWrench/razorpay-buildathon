@@ -92,65 +92,148 @@ export function shoppingTools(ctx: AgentContext) {
 
     recommendProducts: tool({
       description:
-        "Record the products you are recommending, each with the reason it " +
-        "fits and how confident you are. Call this whenever you present " +
-        "options, so the recommendation is on the record and auditable.",
+        "Record what you are recommending. Every item needs a bestFit: the " +
+        "product that most directly meets what the buyer actually asked for, " +
+        "within their budget. Add an upgrade ONLY when spending more buys " +
+        "something the buyer specifically said they need — you must name the " +
+        "stated requirement it serves. If you cannot name one, there is no " +
+        "upgrade to offer, and leaving it out is the correct answer. A more " +
+        "powerful part is not by itself a reason.",
       execute: async ({ recommendations }) => {
         // Resolve every referenced product in one query, then write the
         // recommendations in one insert: a per-item round trip would put the
         // whole agent turn behind N database calls.
         const found = await getProductsByIds(
           ctx.merchantId,
-          recommendations.map((item) => item.productId)
+          recommendations.flatMap((item) =>
+            item.upgrade
+              ? [item.bestFit.productId, item.upgrade.productId]
+              : [item.bestFit.productId]
+          )
         );
 
         const valid = recommendations.filter((item) =>
-          found.has(item.productId)
-        );
-        const stored = valid.map(
-          (item) => found.get(item.productId)?.name ?? item.productId
+          found.has(item.bestFit.productId)
         );
 
-        if (valid.length > 0) {
-          await agentDb.insert(aiRecommendations).values(
-            valid.map((item) => ({
-              confidenceScore: item.confidence,
+        const rows = valid.flatMap((item) => {
+          const bestFit = found.get(item.bestFit.productId);
+          const upgradeProduct = item.upgrade
+            ? found.get(item.upgrade.productId)
+            : undefined;
+
+          const base = {
+            confidenceScore: item.bestFit.confidence,
+            conversationId: ctx.conversationId,
+            productId: item.bestFit.productId,
+            reason: item.bestFit.reason,
+            recommendationType: "best_fit" as const,
+          };
+
+          if (!(item.upgrade && upgradeProduct && bestFit)) {
+            return [base];
+          }
+
+          // The price gap is computed from catalog rows, never taken from the
+          // model. "Only 2,000 more" has to be true, and §19 puts the
+          // arithmetic behind any number the buyer acts on on the server.
+          const additionalSpendPaise = upgradeProduct.price - bestFit.price;
+
+          // An upgrade that costs nothing more is not an upgrade, and the
+          // check constraint would refuse it anyway.
+          if (additionalSpendPaise <= 0) {
+            return [base];
+          }
+
+          return [
+            base,
+            {
+              additionalSpendPaise,
+              confidenceScore: item.upgrade.confidence,
               conversationId: ctx.conversationId,
-              productId: item.productId,
-              reason: item.reason,
-              recommendationType: "search_result" as const,
-            }))
-          );
+              productId: item.upgrade.productId,
+              reason: item.upgrade.benefit,
+              recommendationType: "upgrade" as const,
+              replacesProductId: item.bestFit.productId,
+              tiedToRequirement: item.upgrade.tiedToRequirement,
+            },
+          ];
+        });
+
+        if (rows.length > 0) {
+          await agentDb.insert(aiRecommendations).values(rows);
         }
+
+        const stored = valid.map(
+          (item) =>
+            found.get(item.bestFit.productId)?.name ?? item.bestFit.productId
+        );
+
+        const upgrades = rows.filter(
+          (row) => row.recommendationType === "upgrade"
+        );
 
         await recordAudit({
           action: AuditAction.AGENT_RECOMMENDED,
           actorId: ctx.actor.identifier,
           actorType,
-          explanation: `Recommended ${stored.length} product(s): ${stored.join(", ")}`,
+          explanation: `Recommended ${stored.length} product(s): ${stored.join(", ")}${upgrades.length > 0 ? ` with ${upgrades.length} upgrade(s)` : " with no upgrade offered"}`,
           merchantId: ctx.merchantId,
           metadata: { recommendations },
         });
 
-        return { recorded: stored.length };
+        return {
+          recorded: stored.length,
+          // Echoed back so the model quotes the server's arithmetic rather
+          // than restating its own guess at the gap.
+          upgrades: upgrades.map((row) => ({
+            additionalSpendPaise: row.additionalSpendPaise,
+            productId: row.productId,
+            tiedToRequirement: row.tiedToRequirement,
+          })),
+        };
       },
       inputSchema: z.object({
         recommendations: z
           .array(
             z.object({
-              confidence: z
-                .number()
-                .min(0)
-                .max(1)
-                .describe("0-1. Be honest — a weak match should score low."),
-              productId: z.uuid(),
-              reason: z
-                .string()
-                .min(15)
-                .max(500)
-                .describe(
-                  "Why this product, tied to what the buyer actually asked for."
-                ),
+              bestFit: z.object({
+                confidence: z
+                  .number()
+                  .min(0)
+                  .max(1)
+                  .describe("0-1. Be honest — a weak match should score low."),
+                productId: z.uuid(),
+                reason: z
+                  .string()
+                  .min(15)
+                  .max(500)
+                  .describe(
+                    "Why this product, tied to what the buyer actually asked for."
+                  ),
+              }),
+              upgrade: z
+                .object({
+                  benefit: z
+                    .string()
+                    .min(15)
+                    .max(500)
+                    .describe(
+                      "What the extra spend actually buys them, concretely."
+                    ),
+                  confidence: z.number().min(0).max(1),
+                  productId: z.uuid(),
+                  tiedToRequirement: z
+                    .string()
+                    .min(5)
+                    .max(300)
+                    .describe(
+                      "The requirement the buyer stated that this serves, in " +
+                        "their words. If you cannot name one, omit the whole " +
+                        "upgrade — that is the right answer, not a failure."
+                    ),
+                })
+                .optional(),
             })
           )
           .min(1)

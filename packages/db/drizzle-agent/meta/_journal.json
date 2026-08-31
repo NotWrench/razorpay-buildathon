@@ -15,6 +15,13 @@
       "when": 1788204886632,
       "tag": "0001_equal_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788205007312,
+      "tag": "0002_smooth_queen_noir",
+      "breakpoints": true
     }
   ]
 }
