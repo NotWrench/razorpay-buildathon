@@ -12,6 +12,7 @@ import {
 import { cartItems, carts } from "./carts";
 import { productCategories } from "./catalog";
 import { inventory } from "./inventory";
+import { reorderRequests } from "./reorders";
 import { productSpecs } from "./specs";
 
 /**
@@ -114,6 +115,24 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   }),
 }));
 
+export const reorderRequestsRelations = relations(
+  reorderRequests,
+  ({ one }) => ({
+    approver: one(user, {
+      fields: [reorderRequests.approvedBy],
+      references: [user.id],
+    }),
+    merchant: one(merchants, {
+      fields: [reorderRequests.merchantId],
+      references: [merchants.id],
+    }),
+    product: one(products, {
+      fields: [reorderRequests.productId],
+      references: [products.id],
+    }),
+  })
+);
+
 export const inventoryRelations = relations(inventory, ({ one }) => ({
   merchant: one(merchants, {
     fields: [inventory.merchantId],
@@ -166,6 +185,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     references: [merchants.id],
   }),
   orderItems: many(orderItems),
+  reorderRequests: many(reorderRequests),
   specs: one(productSpecs, {
     fields: [products.id],
     references: [productSpecs.productId],

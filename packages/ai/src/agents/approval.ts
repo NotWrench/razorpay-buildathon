@@ -80,7 +80,7 @@ export function storefrontApproval(ctx: AgentContext) {
   return { cancelOrder, createOrder, createPaymentLink };
 }
 
-/** Approval policy for the merchant agent: approvals and campaign activation. */
+/** Approval policy for the merchant agent: order approvals, campaigns, stock. */
 export function merchantApproval(_ctx: AgentContext) {
   const approveAgentOrder: ApprovalFor<{
     explanation: string;
@@ -100,5 +100,33 @@ export function merchantApproval(_ctx: AgentContext) {
       "Activate this campaign? It will discount every matching order from now on."
     );
 
-  return { activateCampaign, approveAgentOrder, rejectAgentOrder };
+  /**
+   * §12's inventory mutations.
+   *
+   * Neither spends money by itself — a reorder request is a request, and a
+   * threshold is a setting. They are gated anyway, because both change what
+   * the merchant will be told to do next: a threshold quietly raised by the
+   * assistant turns into reorder advice the merchant never chose to solicit,
+   * and that is the kind of drift §12 exists to prevent.
+   */
+  const createReorderRequest: ApprovalFor<{
+    quantity: number;
+    reason: string;
+  }> = ({ quantity }) =>
+    requireApproval(
+      `Raise a reorder request for ${quantity} unit(s)? Nothing is bought — this records the request for you to act on.`
+    );
+
+  const updateInventoryThreshold: ApprovalFor<{ productId: string }> = () =>
+    requireApproval(
+      "Change this product's stock thresholds? It changes which products get flagged for reordering."
+    );
+
+  return {
+    activateCampaign,
+    approveAgentOrder,
+    createReorderRequest,
+    rejectAgentOrder,
+    updateInventoryThreshold,
+  };
 }

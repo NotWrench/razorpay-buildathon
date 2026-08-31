@@ -16,7 +16,8 @@
     "./schema/specs": "./src/schema/specs.ts",
     "./schema/inventory": "./src/schema/inventory.ts",
     "./schema/builds": "./src/schema/builds.ts",
-    "./schema/carts": "./src/schema/carts.ts"
+    "./schema/carts": "./src/schema/carts.ts",
+    "./schema/reorders": "./src/schema/reorders.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle.agent.config.ts",

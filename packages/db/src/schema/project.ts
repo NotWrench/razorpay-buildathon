@@ -28,9 +28,11 @@ import {
   productCategoriesRelations,
   productSpecsRelations,
   productsRelations,
+  reorderRequestsRelations,
   sessionRelations,
   userRelations,
 } from "./relations";
+import { reorderRequests } from "./reorders";
 import { productSpecs } from "./specs";
 
 /**
@@ -79,9 +81,12 @@ export {
   productCategoriesRelations,
   productSpecsRelations,
   productsRelations,
+  reorderRequestsRelations,
   sessionRelations,
   userRelations,
 } from "./relations";
+
+export { reorderRequests } from "./reorders";
 
 export { type PciePowerConnector, productSpecs } from "./specs";
 
@@ -117,6 +122,8 @@ export const projectSchema = {
   productSpecsRelations,
   products,
   productsRelations,
+  reorderRequests,
+  reorderRequestsRelations,
   session,
   sessionRelations,
   user,
@@ -153,6 +160,8 @@ export type ProductCategory = InferSelectModel<typeof productCategories>;
 export type NewProductCategory = InferInsertModel<typeof productCategories>;
 export type Inventory = InferSelectModel<typeof inventory>;
 export type NewInventory = InferInsertModel<typeof inventory>;
+export type ReorderRequest = InferSelectModel<typeof reorderRequests>;
+export type NewReorderRequest = InferInsertModel<typeof reorderRequests>;
 export type ProductSpec = InferSelectModel<typeof productSpecs>;
 export type NewProductSpec = InferInsertModel<typeof productSpecs>;
 export type Order = InferSelectModel<typeof orders>;

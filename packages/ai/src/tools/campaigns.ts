@@ -74,10 +74,11 @@ export function campaignTools(ctx: AgentContext) {
     }),
     draftCampaign: tool({
       description:
-        "Draft a campaign for the merchant to review. Base it on evidence you " +
-        "have actually pulled — slow movers, attach rates — and say what you " +
-        "expect it to do. Drafting changes no prices; the merchant must " +
-        "approve it before it affects a single order.",
+        "Draft a discount or bundle for the merchant to review. Base it on " +
+        "evidence you have actually pulled — getDiscountCandidates, " +
+        "findSlowMovers, getAttachRate — and name which tool it came from in " +
+        "basedOn, so the merchant can re-run it. Drafting changes no prices; " +
+        "the merchant must approve it before it affects a single order.",
       execute: async (input) => {
         const rows = await db
           .select()
@@ -121,6 +122,10 @@ export function campaignTools(ctx: AgentContext) {
             status: "pending_approval",
             title: input.title,
             triggerRules: {
+              // Provenance travels with the campaign, so a merchant reviewing
+              // it a week later can re-run the query that produced it rather
+              // than take the reason on trust.
+              basedOn: input.basedOn ?? null,
               productIds: input.productIds,
               requiresAllProducts: input.requiresAllProducts,
             },
@@ -138,6 +143,7 @@ export function campaignTools(ctx: AgentContext) {
           explanation: input.reason,
           merchantId: ctx.merchantId,
           metadata: {
+            basedOn: input.basedOn ?? null,
             campaignId: campaign.id,
             discountType: input.discountType,
             discountValue: clampedValue,
@@ -150,13 +156,32 @@ export function campaignTools(ctx: AgentContext) {
           drafted: true,
           note: wasClamped
             ? `The discount was capped at ${LIMITS.maxDiscountPercent}% by policy (you proposed ${input.discountValue}%). Tell the merchant this.`
-            : undefined,
+            : input.basedOn
+              ? undefined
+              : "No evidence source was recorded. Pull the numbers and say which tool they came from — a discount with no cited basis is one the merchant cannot check.",
           projection,
           status: "pending_approval",
           summary: `"${input.title}" is drafted and waiting for approval. It changes no prices until approved.`,
         };
       },
       inputSchema: z.object({
+        basedOn: z
+          .object({
+            /** The measured figures, so the claim is checkable. */
+            evidence: z.string().min(10).max(600),
+            tool: z.enum([
+              "getDiscountCandidates",
+              "findSlowMovers",
+              "getAttachRate",
+              "getTopPerformers",
+              "getStockRisk",
+            ]),
+            windowDays: z.number().int().min(1).max(365),
+          })
+          .optional()
+          .describe(
+            "Which tool produced the evidence, over what window, and the numbers it returned."
+          ),
         description: z.string().max(1000).optional(),
         discountType: z.enum(["percentage", "flat", "bundle"]),
         discountValue: z

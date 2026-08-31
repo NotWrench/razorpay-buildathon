@@ -1,11 +1,17 @@
-import { db, orderItems, products } from "@workspace/db";
+import {
+  db,
+  inventory,
+  orderItems,
+  products,
+  reorderRequests,
+} from "@workspace/db";
 import {
   approveOrder,
   getOrderOrThrow,
   rejectOrder,
 } from "@workspace/payments";
 import { type ToolSet, tool } from "ai";
-import { eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   getAttachRates,
@@ -81,6 +87,79 @@ export function merchantTools(ctx: AgentContext) {
       inputSchema: z.object({
         explanation: z.string().min(5).max(1000),
         orderId: z.uuid(),
+      }),
+    }),
+
+    createReorderRequest: tool({
+      description:
+        "Raise a reorder request for the merchant to approve. This buys " +
+        "nothing and commits nothing — it records the request, the quantity " +
+        "and the evidence behind it, and waits for a human. Ground the reason " +
+        "in numbers you actually pulled from getReorderCandidates or " +
+        "getStockRisk.",
+      execute: async ({ productId, quantity, reason }) => {
+        const product = await db.query.products.findFirst({
+          where: and(
+            eq(products.id, productId),
+            eq(products.merchantId, ctx.merchantId)
+          ),
+        });
+
+        if (!product) {
+          return {
+            created: false,
+            error: "That product is not in this store.",
+          };
+        }
+
+        const [request] = await db
+          .insert(reorderRequests)
+          .values({
+            createdByAgent: true,
+            merchantId: ctx.merchantId,
+            productId,
+            quantity,
+            reason,
+            status: "draft",
+            stockAtRequest: product.stock,
+          })
+          .returning();
+
+        if (!request) {
+          return { created: false, error: "Could not save the request." };
+        }
+
+        await recordAudit({
+          action: AuditAction.REORDER_REQUESTED,
+          actorId: ctx.actor.userId ?? ctx.actor.identifier,
+          actorType: "ai_assistant",
+          explanation: reason,
+          merchantId: ctx.merchantId,
+          metadata: {
+            productId,
+            quantity,
+            reorderRequestId: request.id,
+            stockAtRequest: product.stock,
+          },
+        });
+
+        return {
+          created: true,
+          reorderRequestId: request.id,
+          status: request.status,
+          summary: `Requested ${quantity} more ${product.name} (${product.stock} on hand). Nothing has been ordered — this waits for your approval.`,
+        };
+      },
+      inputSchema: z.object({
+        productId: z.uuid(),
+        quantity: z.number().int().min(1).max(10_000),
+        reason: z
+          .string()
+          .min(30)
+          .max(2000)
+          .describe(
+            "The evidence: velocity, cover and lead time as you measured them. The merchant reads this."
+          ),
       }),
     }),
 
@@ -334,6 +413,32 @@ export function merchantTools(ctx: AgentContext) {
       }),
     }),
 
+    listReorderRequests: tool({
+      description:
+        "Reorder requests for this store and their status. Check this before " +
+        "raising a new one — a request already waiting does not need a second.",
+      execute: async () => {
+        const rows = await db
+          .select({
+            createdAt: reorderRequests.createdAt,
+            createdByAgent: reorderRequests.createdByAgent,
+            productName: products.name,
+            quantity: reorderRequests.quantity,
+            reason: reorderRequests.reason,
+            reorderRequestId: reorderRequests.id,
+            status: reorderRequests.status,
+          })
+          .from(reorderRequests)
+          .innerJoin(products, eq(products.id, reorderRequests.productId))
+          .where(eq(reorderRequests.merchantId, ctx.merchantId))
+          .orderBy(desc(reorderRequests.createdAt))
+          .limit(25);
+
+        return { requests: rows };
+      },
+      inputSchema: z.object({}),
+    }),
+
     rejectAgentOrder: tool({
       description:
         "Reject and cancel a pending agent order, with the reason recorded.",
@@ -367,6 +472,81 @@ export function merchantTools(ctx: AgentContext) {
       inputSchema: z.object({
         explanation: z.string().min(5).max(1000),
         orderId: z.uuid(),
+      }),
+    }),
+
+    updateInventoryThreshold: tool({
+      description:
+        "Set the low-stock threshold, reorder point, reorder quantity or " +
+        "supplier lead time for a product. Pass only the fields you are " +
+        "changing. Base the numbers on measured velocity and lead time, not " +
+        "on a round figure that looks tidy.",
+      execute: async ({ productId, ...fields }) => {
+        const product = await db.query.products.findFirst({
+          where: and(
+            eq(products.id, productId),
+            eq(products.merchantId, ctx.merchantId)
+          ),
+        });
+
+        if (!product) {
+          return {
+            error: "That product is not in this store.",
+            updated: false,
+          };
+        }
+
+        const patch = Object.fromEntries(
+          Object.entries(fields).filter(([, value]) => value !== undefined)
+        );
+
+        if (Object.keys(patch).length === 0) {
+          return { error: "Nothing to change.", updated: false };
+        }
+
+        // Upsert: a product seeded without an inventory row still needs one.
+        const [row] = await db
+          .insert(inventory)
+          .values({
+            merchantId: ctx.merchantId,
+            productId,
+            ...patch,
+          })
+          .onConflictDoUpdate({
+            set: patch,
+            target: inventory.productId,
+          })
+          .returning();
+
+        await recordAudit({
+          action: AuditAction.INVENTORY_THRESHOLD_UPDATED,
+          actorId: ctx.actor.userId ?? ctx.actor.identifier,
+          actorType: "ai_assistant",
+          explanation: `Updated inventory settings for ${product.name}: ${Object.entries(
+            patch
+          )
+            .map(([key, value]) => `${key}=${value}`)
+            .join(", ")}`,
+          merchantId: ctx.merchantId,
+          metadata: { patch, productId },
+        });
+
+        return {
+          settings: {
+            lowStockThreshold: row?.lowStockThreshold ?? null,
+            reorderPoint: row?.reorderPoint ?? null,
+            reorderQuantity: row?.reorderQuantity ?? null,
+            supplierLeadTimeDays: row?.supplierLeadTimeDays ?? null,
+          },
+          updated: true,
+        };
+      },
+      inputSchema: z.object({
+        lowStockThreshold: z.number().int().min(0).max(100_000).optional(),
+        productId: z.uuid(),
+        reorderPoint: z.number().int().min(0).max(100_000).optional(),
+        reorderQuantity: z.number().int().min(1).max(100_000).optional(),
+        supplierLeadTimeDays: z.number().int().min(0).max(365).optional(),
       }),
     }),
   } satisfies ToolSet;
