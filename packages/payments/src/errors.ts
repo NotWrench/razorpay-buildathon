@@ -1,4 +1,5 @@
 export type PaymentErrorCode =
+  | "BUILD_INCOMPATIBLE"
   | "INVALID_SIGNATURE"
   | "MERCHANT_NOT_FOUND"
   | "MERCHANT_NOT_CONNECTED"
@@ -13,6 +14,7 @@ export type PaymentErrorCode =
   | "WEBHOOK_SECRET_MISSING";
 
 const STATUS_BY_CODE: Record<PaymentErrorCode, number> = {
+  BUILD_INCOMPATIBLE: 409,
   EMPTY_CART: 400,
   INVALID_SIGNATURE: 400,
   MERCHANT_NOT_CONNECTED: 409,

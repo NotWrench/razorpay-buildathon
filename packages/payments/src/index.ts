@@ -1,5 +1,10 @@
 export { recordAudit, recordFailure } from "./audit";
 export {
+  BuildIncompatibleError,
+  type CartCheckoutInput,
+  createCheckoutOrderFromCart,
+} from "./cart-checkout";
+export {
   createRazorpayClient,
   getMerchantGateway,
   getMerchantOrThrow,

@@ -107,6 +107,7 @@
       "name": "@workspace/payments",
       "version": "0.0.0",
       "dependencies": {
+        "@workspace/commerce": "workspace:*",
         "@workspace/db": "workspace:*",
         "drizzle-orm": "catalog:",
         "razorpay": "catalog:",
