@@ -10,12 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@better-auth/api-key": "^1.7.2",
+    "@better-auth/api-key": "catalog:",
     "@workspace/auth": "workspace:*",
     "@workspace/ui": "workspace:*",
-    "better-auth": "^1.7.2",
+    "better-auth": "catalog:",
     "lucide-react": "catalog:",
-    "next": "16.3.3",
+    "next": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
