@@ -43,6 +43,17 @@ import {
   PC_ORDER_HISTORY,
 } from "./data/pc-catalog";
 
+/**
+ * How long ago the catalog was listed.
+ *
+ * Products default to `now()`, which would make every one of them brand new
+ * beside an order history going back two months. Anything that asks "has this
+ * had a fair chance to sell" — the discount and discontinue candidates — would
+ * then exclude the entire catalog. A store with this much history has products
+ * older than the history.
+ */
+const CATALOG_LISTED_DAYS_AGO = 120;
+
 const STORE_SLUG = "nova-electronics";
 const OWNER_EMAIL = "merchant@example.com";
 const OWNER_PASSWORD = "demo-password-123";
@@ -135,6 +146,8 @@ async function main() {
   console.log(`  ${categories.length} categories`);
 
   // -------------------------------------------------------------- catalog
+  const listedAt = daysAgo(CATALOG_LISTED_DAYS_AGO);
+
   const inserted = await db
     .insert(products)
     .values(
@@ -154,6 +167,7 @@ async function main() {
           // the denormalised copy the search and display paths read.
           category: item.categorySlug,
           categoryId,
+          createdAt: listedAt,
           description: item.description,
           merchantId: merchant.id,
           name: item.name,

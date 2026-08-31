@@ -112,6 +112,15 @@ export {
   quoteCart,
 } from "./quote";
 export {
+  type DiscontinueCandidate,
+  type DiscountCandidate,
+  getDiscontinueCandidates,
+  getDiscountCandidates,
+  getReorderCandidates,
+  type ReorderCandidate,
+  type WindowedResult,
+} from "./recommendations";
+export {
   type BuildRequirements,
   canRecommend,
   captureRequirements,

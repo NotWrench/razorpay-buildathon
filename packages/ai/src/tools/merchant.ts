@@ -25,6 +25,11 @@ import {
   getStockRisk,
 } from "../inventory";
 import { formatPaise } from "../money";
+import {
+  getDiscontinueCandidates,
+  getDiscountCandidates,
+  getReorderCandidates,
+} from "../recommendations";
 
 /**
  * Merchant-facing tools: read the business, then act on it.
@@ -181,6 +186,33 @@ export function merchantTools(ctx: AgentContext) {
       }),
     }),
 
+    getDiscontinueCandidates: tool({
+      description:
+        "Products that have not earned their shelf space over a long window. " +
+        "This is a recommendation to review with the merchant, never an " +
+        "instruction — there is no tool that removes a product, by design. " +
+        "Present the numbers and let them decide.",
+      execute: async ({ limit, windowDays }) =>
+        await getDiscontinueCandidates(ctx.merchantId, windowDays, limit),
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(25).default(10),
+        windowDays: z.number().int().min(30).max(365).default(90),
+      }),
+    }),
+
+    getDiscountCandidates: tool({
+      description:
+        "Stock that is not moving: weak sales against real quantity on hand, " +
+        "with the capital tied up in each. Use this to ground a campaign in " +
+        "evidence rather than picking products that feel slow.",
+      execute: async ({ limit, windowDays }) =>
+        await getDiscountCandidates(ctx.merchantId, windowDays, limit),
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(25).default(15),
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
+
     getInventorySummary: tool({
       description:
         "Stock health across the store: how many products, units on hand, " +
@@ -222,6 +254,21 @@ export function merchantTools(ctx: AgentContext) {
       execute: async ({ windowDays }) =>
         await getOrderSummary(ctx.merchantId, windowDays),
       inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
+
+    getReorderCandidates: tool({
+      description:
+        "Products worth reordering, each with measured velocity, days of " +
+        "cover and a suggested quantity. The quantity buys back to a month " +
+        "of cover, or the merchant's configured reorder quantity if larger. " +
+        "Quote the assumptions field — the merchant should be able to " +
+        "disagree with the basis, not just the number.",
+      execute: async ({ limit, windowDays }) =>
+        await getReorderCandidates(ctx.merchantId, windowDays, limit),
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(25).default(15),
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
     }),
