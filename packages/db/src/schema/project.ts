@@ -9,6 +9,7 @@ import {
   payments,
   products,
 } from "./business";
+import { cartItems, carts } from "./carts";
 import { productCategories } from "./catalog";
 import { inventory } from "./inventory";
 import {
@@ -17,6 +18,8 @@ import {
   buildItemsRelations,
   buildsRelations,
   campaignsRelations,
+  cartItemsRelations,
+  cartsRelations,
   inventoryRelations,
   merchantsRelations,
   orderItemsRelations,
@@ -56,6 +59,8 @@ export {
   products,
 } from "./business";
 
+export { cartItems, carts } from "./carts";
+
 export { productCategories } from "./catalog";
 export { inventory } from "./inventory";
 export {
@@ -64,6 +69,8 @@ export {
   buildItemsRelations,
   buildsRelations,
   campaignsRelations,
+  cartItemsRelations,
+  cartsRelations,
   inventoryRelations,
   merchantsRelations,
   orderItemsRelations,
@@ -90,6 +97,10 @@ export const projectSchema = {
   buildsRelations,
   campaigns,
   campaignsRelations,
+  cartItems,
+  cartItemsRelations,
+  carts,
+  cartsRelations,
   inventory,
   inventoryRelations,
   merchants,
@@ -128,6 +139,11 @@ export type Build = InferSelectModel<typeof builds>;
 export type NewBuild = InferInsertModel<typeof builds>;
 export type BuildItem = InferSelectModel<typeof buildItems>;
 export type NewBuildItem = InferInsertModel<typeof buildItems>;
+
+export type Cart = InferSelectModel<typeof carts>;
+export type NewCart = InferInsertModel<typeof carts>;
+export type CartItem = InferSelectModel<typeof cartItems>;
+export type NewCartItem = InferInsertModel<typeof cartItems>;
 
 export type Merchant = InferSelectModel<typeof merchants>;
 export type NewMerchant = InferInsertModel<typeof merchants>;

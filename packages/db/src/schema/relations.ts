@@ -9,6 +9,7 @@ import {
   payments,
   products,
 } from "./business";
+import { cartItems, carts } from "./carts";
 import { productCategories } from "./catalog";
 import { inventory } from "./inventory";
 import { productSpecs } from "./specs";
@@ -86,6 +87,33 @@ export const buildItemsRelations = relations(buildItems, ({ one }) => ({
   }),
 }));
 
+export const cartsRelations = relations(carts, ({ one, many }) => ({
+  items: many(cartItems),
+  merchant: one(merchants, {
+    fields: [carts.merchantId],
+    references: [merchants.id],
+  }),
+  user: one(user, {
+    fields: [carts.userId],
+    references: [user.id],
+  }),
+}));
+
+export const cartItemsRelations = relations(cartItems, ({ one }) => ({
+  build: one(builds, {
+    fields: [cartItems.buildId],
+    references: [builds.id],
+  }),
+  cart: one(carts, {
+    fields: [cartItems.cartId],
+    references: [carts.id],
+  }),
+  product: one(products, {
+    fields: [cartItems.productId],
+    references: [products.id],
+  }),
+}));
+
 export const inventoryRelations = relations(inventory, ({ one }) => ({
   merchant: one(merchants, {
     fields: [inventory.merchantId],
@@ -111,6 +139,7 @@ export const productSpecsRelations = relations(productSpecs, ({ one }) => ({
 export const merchantsRelations = relations(merchants, ({ one, many }) => ({
   builds: many(builds),
   campaigns: many(campaigns),
+  carts: many(carts),
   inventory: many(inventory),
   orders: many(orders),
   productCategories: many(productCategories),

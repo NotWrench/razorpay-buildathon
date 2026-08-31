@@ -50,6 +50,13 @@
       "when": 1788204129909,
       "tag": "0006_motionless_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788204193115,
+      "tag": "0007_elite_martin_li",
+      "breakpoints": true
     }
   ]
 }
