@@ -8,11 +8,14 @@
       "packages/*"
     ],
     "catalog": {
+      "@ai-sdk/google": "^4.0.58",
+      "@ai-sdk/react": "^4.0.88",
       "@better-auth/api-key": "^1.7.2",
       "@tailwindcss/postcss": "^4.3.3",
       "@types/node": "^26.4.0",
       "@types/react": "^19.2.18",
       "@types/react-dom": "^19.2.5",
+      "ai": "^7.0.85",
       "better-auth": "^1.7.2",
       "dotenv": "^17.4.2",
       "drizzle-kit": "^0.31.10",
@@ -30,6 +33,7 @@
     }
   },
   "scripts": {
+    "ai-buyer": "bun run scripts/ai-buyer.ts",
     "build": "turbo build",
     "check": "ultracite check",
     "db:down": "docker compose down",
@@ -39,10 +43,14 @@
     "db:studio": "bun --filter @workspace/db db:studio",
     "db:up": "docker compose up -d",
     "dev": "turbo dev",
+    "embed": "bun run scripts/embed.ts",
     "fix": "ultracite fix",
     "format": "ultracite fix",
     "lint": "ultracite check",
-    "typecheck": "turbo typecheck"
+    "seed": "bun run scripts/seed.ts",
+    "typecheck": "turbo typecheck",
+    "verify": "bun run scripts/verify.ts",
+    "verify:agent": "bun run scripts/verify-agent.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",

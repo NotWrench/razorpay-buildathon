@@ -1,0 +1,29 @@
+{
+  "name": "@workspace/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tools": "./src/tools/index.ts",
+    "./agents": "./src/agents/index.ts",
+    "./catalog": "./src/catalog.ts",
+    "./analytics": "./src/analytics.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "catalog:",
+    "@workspace/db": "workspace:*",
+    "@workspace/payments": "workspace:*",
+    "ai": "catalog:",
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
