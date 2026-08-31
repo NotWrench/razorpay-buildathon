@@ -55,6 +55,18 @@ export {
   LIMITS,
 } from "./guardrails";
 export {
+  type CancellationSummary,
+  getCancellationSummary,
+  getInventorySummary,
+  getLowStockProducts,
+  getOrderSummary as getOrderStatusSummary,
+  getStockRisk,
+  type InventorySummary,
+  type LowStockProduct,
+  type OrderSummary,
+  type StockRisk,
+} from "./inventory";
+export {
   describeMemories,
   type MemoryEntry,
   recallMemories,

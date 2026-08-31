@@ -17,6 +17,13 @@ import {
 } from "../analytics";
 import { AuditAction, recordAudit } from "../audit";
 import type { AgentContext } from "../context";
+import {
+  getCancellationSummary,
+  getInventorySummary,
+  getLowStockProducts,
+  getOrderSummary,
+  getStockRisk,
+} from "../inventory";
 import { formatPaise } from "../money";
 
 /**
@@ -161,6 +168,63 @@ export function merchantTools(ctx: AgentContext) {
         limit: z.number().int().min(1).max(20).default(10),
       }),
     }),
+
+    getCancellationSummary: tool({
+      description:
+        "Why orders did not complete: cancellations and failures grouped by " +
+        "reason, with the value lost. Use this before speculating about why " +
+        "conversion is down.",
+      execute: async ({ windowDays }) =>
+        await getCancellationSummary(ctx.merchantId, windowDays),
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
+
+    getInventorySummary: tool({
+      description:
+        "Stock health across the store: how many products, units on hand, " +
+        "retail value, how many are out of stock or below their threshold, " +
+        "and how many have no threshold configured at all.",
+      execute: async () => {
+        const summary = await getInventorySummary(ctx.merchantId);
+
+        return {
+          ...summary,
+          note:
+            summary.unconfiguredProducts > 0
+              ? `${summary.unconfiguredProducts} product(s) have no low-stock threshold set, so they cannot appear in a low-stock report. Say so rather than implying the store is fully covered.`
+              : undefined,
+        };
+      },
+      inputSchema: z.object({}),
+    }),
+
+    getLowStockProducts: tool({
+      description:
+        "Products at or below their configured low-stock threshold, plus " +
+        "anything already out of stock. A product with no threshold set is " +
+        "not listed here — that is a gap in the data, not a healthy product.",
+      execute: async ({ limit }) => {
+        const rows = await getLowStockProducts(ctx.merchantId, limit);
+
+        return { count: rows.length, products: rows };
+      },
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    }),
+
+    getOrderSummary: tool({
+      description:
+        "Orders by status over a window — counts and value — plus how many " +
+        "are waiting on the merchant's approval.",
+      execute: async ({ windowDays }) =>
+        await getOrderSummary(ctx.merchantId, windowDays),
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
     getSalesSummary: tool({
       description:
         "Headline numbers for the store: revenue, paid and failed orders, " +
@@ -178,6 +242,29 @@ export function merchantTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
+
+    getStockRisk: tool({
+      description:
+        "Products likely to stock out: sales velocity against remaining " +
+        "stock, giving days of cover, and whether that is shorter than the " +
+        "supplier's lead time. Products that sold nothing are excluded — a " +
+        "product nobody is buying will not stock out, it is a different " +
+        "problem, and getDiscountCandidates is the tool for it.",
+      execute: async ({ limit, windowDays }) => {
+        const rows = await getStockRisk(ctx.merchantId, windowDays, limit);
+
+        return {
+          assumptions: `Velocity is measured over the last ${windowDays} days of paid orders and projected forward flat. It does not account for seasonality or a campaign that has since ended.`,
+          count: rows.length,
+          products: rows,
+          windowDays,
+        };
+      },
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(20),
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
     }),
