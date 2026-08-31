@@ -1,4 +1,5 @@
-import type { CategorySlug, PciePowerConnector } from "@workspace/db";
+import type { PciePowerConnector } from "@workspace/db/schema/specs";
+import type { CategorySlug } from "@workspace/db/taxonomy";
 import type {
   BuildComponent,
   CompatibilityIssue,

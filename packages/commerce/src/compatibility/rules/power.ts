@@ -1,4 +1,4 @@
-import type { CategorySlug } from "@workspace/db";
+import type { CategorySlug } from "@workspace/db/taxonomy";
 import {
   componentsOf,
   connectorTotals,

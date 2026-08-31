@@ -52,7 +52,10 @@ export function gpuCaseClearance(
         issues.push(
           issue({
             affectedProductIds,
-            message: `${cardLength === null ? card.name : enclosure.name} does not publish the measurement needed to check whether ${card.name} fits ${enclosure.name}.`,
+            message:
+              cardLength === null
+                ? `${card.name} does not publish a board length, so it cannot be checked against ${enclosure.name}.`
+                : `${enclosure.name} does not publish a maximum card length, so ${card.name} cannot be checked against it.`,
             missingSpecs: [
               ...missingFields(card, ["lengthMm"]),
               ...missingFields(enclosure, ["maxGpuLengthMm"]),
@@ -110,7 +113,10 @@ export function coolerCaseClearance(
         issues.push(
           issue({
             affectedProductIds,
-            message: `${height === null ? cooler.name : enclosure.name} does not publish the measurement needed to check whether ${cooler.name} fits ${enclosure.name}.`,
+            message:
+              height === null
+                ? `${cooler.name} does not publish a height, so it cannot be checked against ${enclosure.name}.`
+                : `${enclosure.name} does not publish a cooler clearance, so ${cooler.name} cannot be checked against it.`,
             missingSpecs: [
               ...missingFields(cooler, ["heightMm"]),
               ...missingFields(enclosure, ["maxCoolerHeightMm"]),

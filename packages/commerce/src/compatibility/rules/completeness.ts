@@ -1,4 +1,4 @@
-import { CATEGORY_DEFINITIONS } from "@workspace/db";
+import { CATEGORY_DEFINITIONS } from "@workspace/db/taxonomy";
 import { issue } from "../helpers";
 import type { BuildComponent, CompatibilityIssue } from "../types";
 
