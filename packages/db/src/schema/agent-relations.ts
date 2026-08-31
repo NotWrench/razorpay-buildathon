@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   aiRecommendations,
+  buildRequirements,
   conversationMessages,
   conversations,
   reasoningLogs,
@@ -16,11 +17,28 @@ import {
  * different Postgres databases.
  */
 
-export const conversationsRelations = relations(conversations, ({ many }) => ({
-  messages: many(conversationMessages),
-  reasoningLogs: many(reasoningLogs),
-  recommendations: many(aiRecommendations),
-}));
+export const conversationsRelations = relations(
+  conversations,
+  ({ many, one }) => ({
+    messages: many(conversationMessages),
+    reasoningLogs: many(reasoningLogs),
+    recommendations: many(aiRecommendations),
+    requirements: one(buildRequirements, {
+      fields: [conversations.id],
+      references: [buildRequirements.conversationId],
+    }),
+  })
+);
+
+export const buildRequirementsRelations = relations(
+  buildRequirements,
+  ({ one }) => ({
+    conversation: one(conversations, {
+      fields: [buildRequirements.conversationId],
+      references: [conversations.id],
+    }),
+  })
+);
 
 export const conversationMessagesRelations = relations(
   conversationMessages,

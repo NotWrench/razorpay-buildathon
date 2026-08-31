@@ -76,6 +76,54 @@ export const aiRecommendations = pgTable(
   ]
 );
 
+/**
+ * What the buyer said they need, as structured state rather than transcript.
+ *
+ * §3.2 asks the agent to interview a buyer who does not know what to buy, and
+ * to "avoid unnecessary questions". Neither is checkable while the answers live
+ * only in the conversation: the model has to re-derive the budget from prose
+ * every turn, and nothing can tell whether a question has already been asked.
+ *
+ * With a row per conversation, "ask only for what is still missing" becomes a
+ * null check. Every column is nullable because an interview is answered a
+ * piece at a time, and a null here means *not yet asked or not yet answered* —
+ * the same discipline the specs follow, for the same reason.
+ *
+ * This lives in the agent database because it is something the agent wrote
+ * while reasoning, not a fact about the business (§15).
+ */
+export const buildRequirements = pgTable(
+  "build_requirements",
+  {
+    /** Ceiling the buyer stated, in paise. Null means they have not said. */
+    budgetPaise: integer("budget_paise"),
+    /** Hard limits: form factor, noise, an existing case to reuse. */
+    constraints: jsonb("constraints").$type<Record<string, unknown>>(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" })
+      .unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** Parts they already own and want to keep, so they are not re-sold. */
+    ownedParts: jsonb("owned_parts").$type<Record<string, unknown>>(),
+    targetRefreshHz: integer("target_refresh_hz"),
+    /** "1080p" | "1440p" | "4K" — as the buyer said it. */
+    targetResolution: text("target_resolution"),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    /** Gaming, editing, development, office work, mixed. */
+    useCase: text("use_case"),
+    /** Named games or software, which bind a recommendation to something real. */
+    workloads: jsonb("workloads").$type<string[]>(),
+  },
+  (table) => [
+    index("build_requirements_conversationId_idx").on(table.conversationId),
+  ]
+);
+
 export const agentMemoryLong = pgTable(
   "agent_memory_long",
   {

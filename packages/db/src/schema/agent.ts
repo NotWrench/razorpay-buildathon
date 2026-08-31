@@ -1,6 +1,7 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   aiRecommendationsRelations,
+  buildRequirementsRelations,
   conversationMessagesRelations,
   conversationsRelations,
   reasoningLogsRelations,
@@ -9,6 +10,7 @@ import {
   agentMemoryLong,
   aiRecommendations,
   auditLogs,
+  buildRequirements,
   conversationMessages,
   conversations,
   failures,
@@ -29,6 +31,7 @@ import {
 
 export {
   aiRecommendationsRelations,
+  buildRequirementsRelations,
   conversationMessagesRelations,
   conversationsRelations,
   reasoningLogsRelations,
@@ -37,6 +40,7 @@ export {
   agentMemoryLong,
   aiRecommendations,
   auditLogs,
+  buildRequirements,
   conversationMessages,
   conversations,
   failures,
@@ -49,6 +53,8 @@ export const agentSchema = {
   aiRecommendations,
   aiRecommendationsRelations,
   auditLogs,
+  buildRequirements,
+  buildRequirementsRelations,
   conversationMessages,
   conversationMessagesRelations,
   conversations,
@@ -64,6 +70,8 @@ export type ConversationMessage = InferSelectModel<typeof conversationMessages>;
 export type NewConversationMessage = InferInsertModel<
   typeof conversationMessages
 >;
+export type BuildRequirements = InferSelectModel<typeof buildRequirements>;
+export type NewBuildRequirements = InferInsertModel<typeof buildRequirements>;
 export type AiRecommendation = InferSelectModel<typeof aiRecommendations>;
 export type NewAiRecommendation = InferInsertModel<typeof aiRecommendations>;
 export type AgentMemoryLong = InferSelectModel<typeof agentMemoryLong>;

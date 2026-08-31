@@ -87,4 +87,13 @@ export {
   type QuoteLine,
   quoteCart,
 } from "./quote";
+export {
+  type BuildRequirements,
+  canRecommend,
+  captureRequirements,
+  describeRequirements,
+  getRequirements,
+  missingFields as missingRequirementFields,
+  type RequirementInput,
+} from "./requirements";
 export * from "./tools";

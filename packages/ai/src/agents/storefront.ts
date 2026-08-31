@@ -20,6 +20,7 @@ import { approvalSigningSecret, chatModel } from "../provider";
 import { builderTools } from "../tools/builder";
 import { checkoutTools } from "../tools/checkout";
 import { explainTools } from "../tools/explain";
+import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
 import { storefrontApproval } from "./approval";
 import { storefrontPrompt } from "./prompts";
@@ -30,6 +31,7 @@ export function storefrontToolSet(ctx: AgentContext) {
   return {
     ...shoppingTools(ctx),
     ...builderTools(ctx),
+    ...requirementTools(ctx),
     ...checkoutTools(ctx),
     ...explainTools(ctx),
   };
