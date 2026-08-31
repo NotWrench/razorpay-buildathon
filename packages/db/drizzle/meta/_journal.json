@@ -15,6 +15,13 @@
       "when": 1788198066618,
       "tag": "0001_swift_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788201127003,
+      "tag": "0002_pink_starbolt",
+      "breakpoints": true
     }
   ]
 }

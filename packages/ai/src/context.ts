@@ -1,4 +1,4 @@
-import { conversations, db, merchants } from "@workspace/db";
+import { agentDb, conversations, db, merchants } from "@workspace/db";
 import { PaymentError } from "@workspace/payments";
 import { and, eq } from "drizzle-orm";
 import { recordAudit } from "./audit";
@@ -84,7 +84,7 @@ async function resolveConversation(params: {
   merchantId: string;
 }): Promise<string> {
   if (params.conversationId) {
-    const existing = await db.query.conversations.findFirst({
+    const existing = await agentDb.query.conversations.findFirst({
       where: and(
         eq(conversations.id, params.conversationId),
         eq(conversations.merchantId, params.merchantId),
@@ -97,7 +97,7 @@ async function resolveConversation(params: {
     }
   }
 
-  const [created] = await db
+  const [created] = await agentDb
     .insert(conversations)
     .values({
       buyerIdentifier: params.actor.identifier,

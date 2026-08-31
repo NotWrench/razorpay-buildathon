@@ -1,4 +1,4 @@
-import { aiRecommendations, db } from "@workspace/db";
+import { agentDb, aiRecommendations } from "@workspace/db";
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
 import { getFrequentlyBoughtWith } from "../analytics";
@@ -112,7 +112,7 @@ export function shoppingTools(ctx: AgentContext) {
         );
 
         if (valid.length > 0) {
-          await db.insert(aiRecommendations).values(
+          await agentDb.insert(aiRecommendations).values(
             valid.map((item) => ({
               confidenceScore: item.confidence,
               conversationId: ctx.conversationId,

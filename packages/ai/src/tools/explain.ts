@@ -1,4 +1,4 @@
-import { auditLogs, db, failures, orders } from "@workspace/db";
+import { agentDb, auditLogs, db, failures, orders } from "@workspace/db";
 import { type ToolSet, tool } from "ai";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -31,13 +31,16 @@ export function explainTools(ctx: AgentContext) {
           return { found: false };
         }
 
+        // The order is looked up in the project database first, scoped to this
+        // merchant, so ownership is established before any agent record for it
+        // is read. The trail itself lives in the agent database.
         const [trail, failureRows, reasoning] = await Promise.all([
-          db
+          agentDb
             .select()
             .from(auditLogs)
             .where(eq(auditLogs.orderId, orderId))
             .orderBy(auditLogs.createdAt),
-          db.select().from(failures).where(eq(failures.orderId, orderId)),
+          agentDb.select().from(failures).where(eq(failures.orderId, orderId)),
           getReasoningChain(ctx.conversationId),
         ]);
 
@@ -77,7 +80,7 @@ export function explainTools(ctx: AgentContext) {
         "Recent audited actions for this store — who did what, and why. Use " +
         "when asked what the AI has been doing or what changed.",
       execute: async ({ limit }) => {
-        const rows = await db
+        const rows = await agentDb
           .select()
           .from(auditLogs)
           .where(eq(auditLogs.merchantId, ctx.merchantId))

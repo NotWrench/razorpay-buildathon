@@ -21,7 +21,7 @@ import {
   storefrontPrompt,
   storefrontToolSet,
 } from "@workspace/ai";
-import { conversations, db } from "@workspace/db";
+import { agentDb, conversations } from "@workspace/db";
 import { generateText, isStepCount, type ModelMessage } from "ai";
 
 let passed = 0;
@@ -80,7 +80,7 @@ async function main() {
     process.env.AI_BUYER_STORE_SLUG ?? "nova-electronics"
   );
 
-  const [conversation] = await db
+  const [conversation] = await agentDb
     .insert(conversations)
     .values({
       buyerIdentifier: "verify-agent@example.com",

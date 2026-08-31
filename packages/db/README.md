@@ -23,66 +23,89 @@ per tool call. Keeping them in their own database means:
 - **Blast radius is smaller.** The agent writes heavily to its own database and
   only ever reads the business one.
 
-## Current state
+## The cross-database foreign keys
 
-> The schema currently defines all of these tables in one place and
-> `src/index.ts` connects only to `DATABASE_URL`, so today the agent tables are
-> physically created in `razorpay_project`. The `razorpay_agent_memory` database
-> is provisioned and running but still empty.
+Five foreign keys used to cross the boundary. Postgres cannot reference across
+databases, so they are now plain uuid columns:
 
-Everything below is what the split requires. It is staged rather than done
-because five foreign keys cross the boundary, and a cross-database foreign key
-cannot exist in Postgres:
-
-| Column | References | Resolution |
+| Column | Used to reference | Now |
 | --- | --- | --- |
-| `conversations.merchant_id` | `merchants.id` | Drop the FK; keep the uuid |
-| `ai_recommendations.product_id` | `products.id` | Drop the FK; keep the uuid |
-| `audit_logs.merchant_id` | `merchants.id` | Drop the FK; keep the uuid |
-| `audit_logs.order_id` | `orders.id` | Drop the FK; keep the uuid |
-| `failures.order_id` | `orders.id` | Drop the FK; keep the uuid |
+| `conversations.merchant_id` | `merchants.id` | uuid |
+| `ai_recommendations.product_id` | `products.id` | uuid |
+| `audit_logs.merchant_id` | `merchants.id` | uuid |
+| `audit_logs.order_id` | `orders.id` | uuid |
+| `failures.order_id` | `orders.id` | uuid |
 
-The FKs that stay inside the agent database — `conversation_messages` and
+The three that stay inside the agent database — `conversation_messages`,
 `reasoning_logs` and `ai_recommendations` all pointing at `conversations.id` —
-are unaffected.
+are still enforced.
 
-Dropping those five trades referential integrity for the separation. That is an
-acceptable trade for a log: an audit row referencing a deleted order is still a
-true record of what happened, and arguably *should* survive the order. It is not
-an acceptable trade for `order_items.product_id`, which is why the business
-tables stay together.
+Dropping those five trades referential integrity for the separation, and for a
+log that is the right trade: an audit row referencing a deleted order is still a
+true record of what happened, and arguably *should* outlive the order. It would
+not be an acceptable trade for `order_items.product_id`, which is why the
+business tables stay together.
 
-## The split, when it is made
+## Using the two clients
 
-1. Give `src/index.ts` a second client from `AGENT_DATABASE_URL` and export it
-   as `agentDb` alongside `db`.
-2. Move the AI tables into their own drizzle config with a separate migrations
-   folder (`drizzle-agent/`), dropping the five cross-boundary FKs.
-3. Point the agent-side writers at `agentDb`: `packages/ai/src/persistence.ts`,
-   `memory.ts`, the `recordAudit` / `recordFailure` pair in
-   `packages/payments/src/audit.ts`, and the reads in
-   `packages/ai/src/tools/explain.ts`.
-4. Joins that currently cross the boundary — the audit trail resolving a
-   merchant name, `explainDecision` reading an order — become two queries and an
-   in-memory stitch. There are few of them and they are all in the trace and
-   dashboard paths, never in checkout.
+```ts
+import { agentDb, db } from "@workspace/db";
 
-Because the AI layer already funnels every write through those few modules, the
-change is contained to them rather than spread across the tool definitions.
+await db.select().from(orders);          // project database
+await agentDb.select().from(auditLogs);  // agent database
+```
+
+Both are exported from `@workspace/db`, as is every table, so which database a
+table belongs to is not visible at the import. Reaching for the wrong client
+fails against a database that has no such table, so the split is enforced at
+runtime rather than by convention.
+
+Agent writes are funnelled through a small number of modules, which is what kept
+the change contained:
+
+| Module | Writes |
+| --- | --- |
+| `@workspace/payments` `src/audit.ts` | `audit_logs`, `failures` |
+| `@workspace/ai` `src/persistence.ts` | `conversations`, `conversation_messages`, `reasoning_logs` |
+| `@workspace/ai` `src/memory.ts` | `agent_memory_long` |
+| `@workspace/ai` `src/context.ts` | `conversations` |
+| `@workspace/ai` `src/tools/shopping.ts` | `ai_recommendations` |
+
+Reads that need both — the order trace, `explainDecision` — run two queries and
+stitch in memory. In both cases ownership is established against the project
+database *first*, so no agent record is read before the caller's right to see it
+is checked. Neither path is on the checkout hot path.
+
+If `AGENT_DATABASE_URL` is unset, `agentDb` falls back to the project
+connection. Losing the audit trail is worse than sharing a database with it, so
+a missing variable degrades rather than crashes. `hasDedicatedAgentDatabase`
+reports which mode is in effect.
 
 ## Commands
 
 ```bash
-bun run db:up        # start both databases
-bun run db:generate  # generate a migration from the schema
-bun run db:migrate   # apply migrations
-bun run db:push      # push the schema without a migration (dev only)
-bun run db:studio    # drizzle studio
-bun run db:down      # stop both databases
+bun run db:up            # start both databases
+bun run db:generate      # generate migrations for both from the schema
+bun run db:migrate       # apply migrations to both
+bun run db:push          # push both schemas without a migration (dev only)
+bun run db:studio        # drizzle studio, project database
+bun run db:studio:agent  # drizzle studio, agent database
+bun run db:down          # stop both databases
 ```
 
-Migrations live in `drizzle/`. `0000` creates the schema and the `vector`
-extension; `0001` adds `account.issuer`, which better-auth 1.7 requires.
+Each database has its own migration folder and its own drizzle config, so they
+version independently — the agent schema changes far more often than the
+business one and neither should force a migration on the other. `db:generate`,
+`db:migrate` and `db:push` each run against both.
+
+| Folder | Config | Database |
+| --- | --- | --- |
+| `drizzle/` | `drizzle.config.ts` | `razorpay_project` |
+| `drizzle-agent/` | `drizzle.agent.config.ts` | `razorpay_agent_memory` |
+
+Project migrations: `0000` creates the schema and the `vector` extension, `0001`
+adds `account.issuer` for better-auth 1.7, and `0002` drops the agent tables
+after they moved. Agent migrations start at `0000` with all seven tables.
 
 ## Notes
 

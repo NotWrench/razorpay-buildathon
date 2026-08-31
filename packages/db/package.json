@@ -8,13 +8,16 @@
     "./schema": "./src/schema/index.ts",
     "./schema/auth": "./src/schema/auth.ts",
     "./schema/business": "./src/schema/business.ts",
-    "./schema/ai": "./src/schema/ai.ts"
+    "./schema/ai": "./src/schema/ai.ts",
+    "./agent": "./src/schema/agent.ts",
+    "./project": "./src/schema/project.ts"
   },
   "scripts": {
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle.agent.config.ts",
+    "db:migrate": "drizzle-kit migrate && drizzle-kit migrate --config drizzle.agent.config.ts",
+    "db:push": "drizzle-kit push && drizzle-kit push --config drizzle.agent.config.ts",
     "db:studio": "drizzle-kit studio",
+    "db:studio:agent": "drizzle-kit studio --config drizzle.agent.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

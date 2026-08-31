@@ -9,7 +9,6 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { merchants, orders, products } from "./business";
 
 export const conversations = pgTable(
   "conversations",
@@ -18,9 +17,12 @@ export const conversations = pgTable(
     buyerType: text("buyer_type", { enum: ["human", "ai_agent"] }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     id: uuid("id").defaultRandom().primaryKey(),
-    merchantId: uuid("merchant_id")
-      .notNull()
-      .references(() => merchants.id, { onDelete: "cascade" }),
+    /**
+     * The owning merchant, in the project database. Not a foreign key: this
+     * table lives in `razorpay_agent_memory` and Postgres cannot reference
+     * across databases.
+     */
+    merchantId: uuid("merchant_id").notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdate(() => new Date())
@@ -61,9 +63,8 @@ export const aiRecommendations = pgTable(
       .references(() => conversations.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     id: uuid("id").defaultRandom().primaryKey(),
-    productId: uuid("product_id")
-      .notNull()
-      .references(() => products.id, { onDelete: "cascade" }),
+    /** Cross-database reference to `products.id`. */
+    productId: uuid("product_id").notNull(),
     reason: text("reason").notNull(), // Human-readable justification
     recommendationType: text("recommendation_type", {
       enum: ["search_result", "upsell", "bundle"],
@@ -127,13 +128,20 @@ export const auditLogs = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     explanation: text("explanation").notNull(),
     id: uuid("id").defaultRandom().primaryKey(),
-    merchantId: uuid("merchant_id")
-      .notNull()
-      .references(() => merchants.id, { onDelete: "cascade" }),
+    /**
+     * The owning merchant, in the project database. Not a foreign key: this
+     * table lives in `razorpay_agent_memory` and Postgres cannot reference
+     * across databases.
+     */
+    merchantId: uuid("merchant_id").notNull(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
-    orderId: uuid("order_id").references(() => orders.id, {
-      onDelete: "set null",
-    }),
+    /**
+     * Cross-database reference to `orders.id`.
+     *
+     * Deliberately not enforced: an audit or failure row is a true record of
+     * what happened and should outlive the order it describes.
+     */
+    orderId: uuid("order_id"),
   },
   (table) => [
     index("audit_logs_merchantId_idx").on(table.merchantId),
@@ -150,9 +158,13 @@ export const failures = pgTable(
     errorMessage: text("error_message").notNull(),
     errorType: text("error_type").notNull(), // "PAYMENT_DECLINED", "BUDGET_EXCEEDED", "OUT_OF_STOCK"
     id: uuid("id").defaultRandom().primaryKey(),
-    orderId: uuid("order_id").references(() => orders.id, {
-      onDelete: "set null",
-    }),
+    /**
+     * Cross-database reference to `orders.id`.
+     *
+     * Deliberately not enforced: an audit or failure row is a true record of
+     * what happened and should outlive the order it describes.
+     */
+    orderId: uuid("order_id"),
     recoveryAction: text("recovery_action"), // "RETRY_LINK_GENERATED", "DOWNGRADED_CART"
     resolved: boolean("resolved").default(false).notNull(),
   },

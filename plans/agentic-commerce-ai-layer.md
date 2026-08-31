@@ -37,14 +37,11 @@ failure handled gracefully.
 1. No product CRUD and no seed data — the catalog is empty.
 2. No merchant onboarding, so no `merchants` row exists and nothing is addressable by slug.
 3. `products.embedding` exists but nothing writes it.
-4. `AGENT_DATABASE_URL` is in `.env.example` but `packages/db/src/index.ts` only reads
-   `DATABASE_URL`, so the AI tables are physically created in the project DB.
-   **Decision: keep the two databases** — `razorpay_agent_memory` (port 5445) is the
-   home for conversations, reasoning logs, the audit trail and agent memory, so
-   "everything the AI did" is one database to look in, with its own retention and
-   its own load. The connection is not split yet; `packages/db/README.md` records
-   what the split needs, including the five cross-boundary foreign keys that have
-   to be dropped for it.
+4. ~~`AGENT_DATABASE_URL` is unused.~~ **Done.** The agent tables now live in
+   `razorpay_agent_memory` (port 5445) behind their own `agentDb` client and their
+   own migration folder, so "everything the AI did" is one database to look in with
+   its own retention and its own load. The five foreign keys that crossed the
+   boundary are now plain uuids; see `packages/db/README.md`.
 5. `conversations`, `conversation_messages`, `reasoning_logs`, `agent_memory_long` have no writers.
 6. No UI at all — `apps/web/app/page.tsx` is still the scaffold.
 
@@ -58,7 +55,7 @@ Where this plan and the project memory disagree, the option kept and why:
 | --- | --- | --- | --- |
 | Backend / AI runtime | FastAPI + LangGraph, OpenAI GPT | Next.js route handlers + Vercel AI SDK | **Plan.** The repo is a bun/turbo TypeScript monorepo with zero Python; `packages/payments` and better-auth are already TS. A second runtime buys nothing and costs the whole hackathon. *`AGENTS.md`'s Tech Stack section is stale and should be corrected.* |
 | Merchant connects Razorpay | Explicit step in the merchant journey | Absent | **Memory.** `merchants.razorpayKeyId` / `razorpayKeySecret` and `resolveMerchantCredentials` already support per-merchant credentials with platform-key fallback. Added to Phase 0. |
-| Agent database | Two databases (project + agent memory) | Collapse to one | **Memory.** The agent tables are append-only and grow per reasoning step, so a separate `razorpay_agent_memory` gives independent retention, isolated load and a single place to look up what the AI did. Both containers ship in `compose.yml`; see `packages/db/README.md`. |
+| Agent database | Two databases (project + agent memory) | Collapse to one | **Memory.** Implemented: the agent tables live in `razorpay_agent_memory` behind `agentDb`, with their own migrations. Append-only data that grows per reasoning step gets independent retention, isolated load and one place to look up what the AI did. See `packages/db/README.md`. |
 | `agent_memory_short` table | Listed | Not used | **Plan.** Short-term state (budget, current intent, category) is derivable from the live conversation inside one request; a table adds writes and an expiry job for no demo value. Long-term memory stays in `agent_memory_long`. |
 | `tool_calls` table | Listed | `conversation_messages.tool_calls` jsonb + `audit_logs` | **Plan.** The column already exists and every money-relevant call is separately audited. |
 | `agent_events` table | Listed | `audit_logs` | **Plan.** One append-only trail is easier to defend on stage than two. |

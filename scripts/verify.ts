@@ -12,18 +12,35 @@ import {
   type AgentContext,
   assertWithinSpendCap,
   backfillEmbeddings,
+  describeMemories,
   formatPaise,
   getAttachRates,
   getFrequentlyBoughtWith,
   getMerchantBySlug,
+  getReasoningChain,
   getSalesSummary,
   getSlowMovers,
+  getTranscript,
   hasModelCredentials,
+  persistAssistantMessage,
+  persistReasoningStep,
+  persistUserMessage,
   quoteCart,
+  recallMemories,
+  recordAudit,
+  rememberMemory,
   searchCatalog,
 } from "@workspace/ai";
-import { campaigns, db } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import {
+  agentDb,
+  agentMemoryLong,
+  auditLogs,
+  campaigns,
+  conversations,
+  db,
+  hasDedicatedAgentDatabase,
+} from "@workspace/db";
+import { count, eq } from "drizzle-orm";
 
 const SLUG = process.env.AI_BUYER_STORE_SLUG ?? "nova-electronics";
 
@@ -384,8 +401,113 @@ async function main() {
     foreignError
   );
 
+  // ----------------------------------------------------------- agent store
+  section("7. The agent database");
+
+  check(
+    "agent data has a database of its own",
+    hasDedicatedAgentDatabase,
+    process.env.AGENT_DATABASE_URL ??
+      "AGENT_DATABASE_URL unset — sharing the project database"
+  );
+
+  // The stream wrappers are what normally write these, so exercise the writers
+  // directly: they were the ones repointed at agentDb.
+  const [agentConversation] = await agentDb
+    .insert(conversations)
+    .values({
+      buyerIdentifier: ctx.actor.identifier,
+      buyerType: "human",
+      merchantId: merchant.id,
+    })
+    .returning();
+
+  if (!agentConversation) {
+    throw new Error("Could not open a conversation in the agent database");
+  }
+
+  const agentCtx: AgentContext = {
+    ...ctx,
+    conversationId: agentConversation.id,
+  };
+
+  await persistUserMessage(agentCtx, "verify: hello");
+  await persistAssistantMessage(agentCtx, "verify: hi", [{ toolName: "noop" }]);
+  await persistReasoningStep(agentCtx, {
+    actionTaken: "searchProducts",
+    confidence: 0.9,
+    stepNumber: 1,
+    thoughtSummary: "verify: looked for something",
+  });
+
+  const transcript = await getTranscript(agentConversation.id);
+  const reasoning = await getReasoningChain(agentConversation.id);
+
+  check(
+    "conversation messages persist",
+    transcript.length === 2,
+    `${transcript.length} row(s)`
+  );
+  check(
+    "reasoning steps persist",
+    reasoning.length === 1,
+    `${reasoning.length} row(s)`
+  );
+  check(
+    "tool calls are stored on the assistant message",
+    Boolean(transcript.find((row) => row.role === "assistant")?.toolCalls)
+  );
+
+  await rememberMemory(agentCtx, {
+    importanceScore: 0.8,
+    memoryKey: "verify_preferred_brand",
+    memoryValue: "Sony",
+  });
+
+  const memories = await recallMemories(agentCtx);
+
+  check(
+    "long-term memory round-trips",
+    memories.some((entry) => entry.memoryKey === "verify_preferred_brand"),
+    describeMemories(memories).slice(0, 80)
+  );
+
+  // The audit trail is written by @workspace/payments and must land in the
+  // agent database too, not beside the orders it describes.
+  const auditBefore = await agentDb
+    .select({ total: count() })
+    .from(auditLogs)
+    .where(eq(auditLogs.merchantId, merchant.id));
+
+  await recordAudit({
+    action: "VERIFY_PROBE",
+    actorId: ctx.actor.identifier,
+    actorType: "system",
+    explanation: "Verification script probing the audit trail",
+    merchantId: merchant.id,
+  });
+
+  const auditAfter = await agentDb
+    .select({ total: count() })
+    .from(auditLogs)
+    .where(eq(auditLogs.merchantId, merchant.id));
+
+  check(
+    "audit entries land in the agent database",
+    Number(auditAfter[0]?.total ?? 0) === Number(auditBefore[0]?.total ?? 0) + 1
+  );
+
+  // Clean up after the probe so repeated runs do not accrete.
+  await agentDb
+    .delete(conversations)
+    .where(eq(conversations.id, agentConversation.id));
+  await agentDb
+    .delete(agentMemoryLong)
+    .where(eq(agentMemoryLong.memoryKey, "verify_preferred_brand"));
+  await agentDb.delete(auditLogs).where(eq(auditLogs.action, "VERIFY_PROBE"));
+
   // ------------------------------------------------------------ embeddings
-  section("7. Embedding backfill is idempotent");
+  section("8. Embedding backfill is idempotent");
 
   const again = await backfillEmbeddings();
 

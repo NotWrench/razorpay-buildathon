@@ -1,4 +1,4 @@
-import { auditLogs, db, failures } from "@workspace/db";
+import { agentDb, auditLogs, failures } from "@workspace/db";
 import { getOrderSummary, PaymentError } from "@workspace/payments";
 import { asc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
@@ -37,13 +37,15 @@ export async function GET(
       );
     }
 
+    // getOrderSummary already established the order exists and the caller may
+    // see it; the trail for it lives in the agent database.
     const [trail, failureRows] = await Promise.all([
-      db
+      agentDb
         .select()
         .from(auditLogs)
         .where(eq(auditLogs.orderId, orderId))
         .orderBy(asc(auditLogs.createdAt)),
-      db.select().from(failures).where(eq(failures.orderId, orderId)),
+      agentDb.select().from(failures).where(eq(failures.orderId, orderId)),
     ]);
 
     return ok({

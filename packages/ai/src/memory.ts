@@ -1,4 +1,4 @@
-import { agentMemoryLong, db } from "@workspace/db";
+import { agentDb, agentMemoryLong } from "@workspace/db";
 import { and, desc, eq } from "drizzle-orm";
 import type { AgentContext } from "./context";
 
@@ -22,7 +22,7 @@ const MAX_RECALLED = 20;
 export async function recallMemories(
   ctx: AgentContext
 ): Promise<MemoryEntry[]> {
-  const rows = await db
+  const rows = await agentDb
     .select({
       importanceScore: agentMemoryLong.importanceScore,
       memoryKey: agentMemoryLong.memoryKey,
@@ -34,7 +34,7 @@ export async function recallMemories(
     .limit(MAX_RECALLED);
 
   if (rows.length > 0) {
-    await db
+    await agentDb
       .update(agentMemoryLong)
       .set({ lastAccessed: new Date() })
       .where(eq(agentMemoryLong.buyerIdentifier, ctx.actor.identifier));
@@ -48,7 +48,7 @@ export async function rememberMemory(
   ctx: AgentContext,
   entry: MemoryEntry
 ): Promise<void> {
-  const existing = await db.query.agentMemoryLong.findFirst({
+  const existing = await agentDb.query.agentMemoryLong.findFirst({
     where: and(
       eq(agentMemoryLong.buyerIdentifier, ctx.actor.identifier),
       eq(agentMemoryLong.memoryKey, entry.memoryKey)
@@ -56,7 +56,7 @@ export async function rememberMemory(
   });
 
   if (existing) {
-    await db
+    await agentDb
       .update(agentMemoryLong)
       .set({
         importanceScore: entry.importanceScore,
@@ -68,7 +68,7 @@ export async function rememberMemory(
     return;
   }
 
-  await db.insert(agentMemoryLong).values({
+  await agentDb.insert(agentMemoryLong).values({
     buyerIdentifier: ctx.actor.identifier,
     importanceScore: entry.importanceScore,
     memoryKey: entry.memoryKey,

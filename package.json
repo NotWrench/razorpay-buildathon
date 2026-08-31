@@ -41,6 +41,7 @@
     "db:migrate": "bun --filter @workspace/db db:migrate",
     "db:push": "bun --filter @workspace/db db:push",
     "db:studio": "bun --filter @workspace/db db:studio",
+    "db:studio:agent": "bun --filter @workspace/db db:studio:agent",
     "db:up": "docker compose up -d",
     "dev": "turbo dev",
     "embed": "bun run scripts/embed.ts",

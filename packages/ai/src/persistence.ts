@@ -1,7 +1,7 @@
 import {
+  agentDb,
   conversationMessages,
   conversations,
-  db,
   reasoningLogs,
 } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
@@ -28,7 +28,7 @@ export function persistUserMessage(
   content: string
 ): Promise<void> {
   return safely("user message", () =>
-    db.insert(conversationMessages).values({
+    agentDb.insert(conversationMessages).values({
       content,
       conversationId: ctx.conversationId,
       role: "user",
@@ -46,7 +46,7 @@ export function persistAssistantMessage(
   }
 
   return safely("assistant message", () =>
-    db.insert(conversationMessages).values({
+    agentDb.insert(conversationMessages).values({
       content,
       conversationId: ctx.conversationId,
       role: "assistant",
@@ -68,7 +68,7 @@ export function persistReasoningStep(
   step: ReasoningStep
 ): Promise<void> {
   return safely("reasoning step", () =>
-    db.insert(reasoningLogs).values({
+    agentDb.insert(reasoningLogs).values({
       actionTaken: step.actionTaken,
       confidence: step.confidence,
       conversationId: ctx.conversationId,
@@ -80,7 +80,7 @@ export function persistReasoningStep(
 
 export function touchConversation(ctx: AgentContext): Promise<void> {
   return safely("conversation timestamp", () =>
-    db
+    agentDb
       .update(conversations)
       .set({ updatedAt: new Date() })
       .where(eq(conversations.id, ctx.conversationId))
@@ -89,7 +89,7 @@ export function touchConversation(ctx: AgentContext): Promise<void> {
 
 /** Full stored transcript, for the audit view. */
 export function getTranscript(conversationId: string) {
-  return db
+  return agentDb
     .select()
     .from(conversationMessages)
     .where(eq(conversationMessages.conversationId, conversationId))
@@ -97,7 +97,7 @@ export function getTranscript(conversationId: string) {
 }
 
 export function getReasoningChain(conversationId: string) {
-  return db
+  return agentDb
     .select()
     .from(reasoningLogs)
     .where(eq(reasoningLogs.conversationId, conversationId))

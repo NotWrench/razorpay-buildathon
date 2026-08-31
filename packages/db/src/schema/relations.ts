@@ -1,12 +1,4 @@
 import { relations } from "drizzle-orm";
-import {
-  aiRecommendations,
-  auditLogs,
-  conversationMessages,
-  conversations,
-  failures,
-  reasoningLogs,
-} from "./ai";
 import { account, apikey, session, user } from "./auth";
 import {
   campaigns,
@@ -16,6 +8,15 @@ import {
   payments,
   products,
 } from "./business";
+
+/**
+ * Relations inside the project database.
+ *
+ * The agent tables used to appear here — merchants had `conversations` and
+ * `auditLogs`, orders had `failures`. Those links now cross a database
+ * boundary and live in `agent-relations.ts` where they still make sense, or
+ * are resolved with a second query where they do not.
+ */
 
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
@@ -47,9 +48,7 @@ export const apikeyRelations = relations(apikey, ({ one }) => ({
 }));
 
 export const merchantsRelations = relations(merchants, ({ one, many }) => ({
-  auditLogs: many(auditLogs),
   campaigns: many(campaigns),
-  conversations: many(conversations),
   orders: many(orders),
   products: many(products),
   user: one(user, {
@@ -59,7 +58,6 @@ export const merchantsRelations = relations(merchants, ({ one, many }) => ({
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
-  aiRecommendations: many(aiRecommendations),
   merchant: one(merchants, {
     fields: [products.merchantId],
     references: [merchants.id],
@@ -68,8 +66,6 @@ export const productsRelations = relations(products, ({ one, many }) => ({
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
-  auditLogs: many(auditLogs),
-  failures: many(failures),
   items: many(orderItems),
   merchant: one(merchants, {
     fields: [orders.merchantId],
@@ -104,67 +100,5 @@ export const campaignsRelations = relations(campaigns, ({ one }) => ({
   merchant: one(merchants, {
     fields: [campaigns.merchantId],
     references: [merchants.id],
-  }),
-}));
-
-export const conversationsRelations = relations(
-  conversations,
-  ({ one, many }) => ({
-    merchant: one(merchants, {
-      fields: [conversations.merchantId],
-      references: [merchants.id],
-    }),
-    messages: many(conversationMessages),
-    reasoningLogs: many(reasoningLogs),
-    recommendations: many(aiRecommendations),
-  })
-);
-
-export const conversationMessagesRelations = relations(
-  conversationMessages,
-  ({ one }) => ({
-    conversation: one(conversations, {
-      fields: [conversationMessages.conversationId],
-      references: [conversations.id],
-    }),
-  })
-);
-
-export const aiRecommendationsRelations = relations(
-  aiRecommendations,
-  ({ one }) => ({
-    conversation: one(conversations, {
-      fields: [aiRecommendations.conversationId],
-      references: [conversations.id],
-    }),
-    product: one(products, {
-      fields: [aiRecommendations.productId],
-      references: [products.id],
-    }),
-  })
-);
-
-export const reasoningLogsRelations = relations(reasoningLogs, ({ one }) => ({
-  conversation: one(conversations, {
-    fields: [reasoningLogs.conversationId],
-    references: [conversations.id],
-  }),
-}));
-
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
-  merchant: one(merchants, {
-    fields: [auditLogs.merchantId],
-    references: [merchants.id],
-  }),
-  order: one(orders, {
-    fields: [auditLogs.orderId],
-    references: [orders.id],
-  }),
-}));
-
-export const failuresRelations = relations(failures, ({ one }) => ({
-  order: one(orders, {
-    fields: [failures.orderId],
-    references: [orders.id],
   }),
 }));

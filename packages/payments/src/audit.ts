@@ -1,4 +1,4 @@
-import { auditLogs, db, failures } from "@workspace/db";
+import { agentDb, auditLogs, failures } from "@workspace/db";
 
 export type AuditActorType =
   | "human_buyer"
@@ -21,7 +21,7 @@ export async function recordAudit(entry: {
   orderId?: string | null;
 }): Promise<void> {
   try {
-    await db.insert(auditLogs).values({
+    await agentDb.insert(auditLogs).values({
       action: entry.action,
       actorId: entry.actorId,
       actorType: entry.actorType,
@@ -43,7 +43,7 @@ export async function recordFailure(entry: {
   recoveryAction?: string | null;
 }): Promise<void> {
   try {
-    await db.insert(failures).values({
+    await agentDb.insert(failures).values({
       errorMessage: entry.errorMessage,
       errorType: entry.errorType,
       orderId: entry.orderId ?? null,
