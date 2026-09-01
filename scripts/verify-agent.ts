@@ -1,5 +1,5 @@
 /**
- * Runs the real agent loop against Gemini and checks what it actually does.
+ * Runs the real agent loop against a live model and checks what it does.
  *
  * This is the test that matters: the tools can be perfect and the agent still
  * useless if the model never calls them, invents a price, or walks past the
@@ -12,14 +12,15 @@ import {
   type AgentContext,
   activeToolsFor,
   chatModel,
+  chatPaceMs,
   describeProvider,
   formatPaise,
   getMerchantBySlug,
   hasModelCredentials,
-  isLocalChatProvider,
   merchantApproval,
   merchantPrompt,
   merchantToolSet,
+  missingCredentialHint,
   storefrontApproval,
   storefrontPrompt,
   storefrontToolSet,
@@ -42,18 +43,15 @@ function check(label: string, condition: boolean, detail?: string) {
 }
 
 /**
- * The Gemini free tier allows 5 requests per minute and every agent step is one
- * request, so scenarios are spaced out rather than run back to back.
+ * Gemini's free tier allows 5 requests per minute and every agent step is one
+ * request, so on that provider scenarios are spaced out rather than run back
+ * to back. Providers without that constraint wait not at all, and the suite
+ * does not spend ten minutes asleep for nothing.
  *
- * A local model has no quota to respect, so there is no wait at all — the
- * suite would otherwise spend ten minutes asleep for nothing. The provider
- * module decides what counts as local, rather than this script re-reading
- * `AI_PROVIDER` and drifting from it.
- *
- * `AGENT_VERIFY_PACE_MS` overrides either way.
+ * The provider module owns the rule, rather than this script re-reading
+ * `AI_PROVIDER` and drifting from it. `AGENT_VERIFY_PACE_MS` overrides.
  */
-const DEFAULT_PACE_MS = isLocalChatProvider() ? 0 : 65_000;
-const PACE_MS = Number(process.env.AGENT_VERIFY_PACE_MS ?? DEFAULT_PACE_MS);
+const PACE_MS = Number(process.env.AGENT_VERIFY_PACE_MS ?? chatPaceMs());
 
 async function pace(next: string) {
   if (PACE_MS <= 0) {
@@ -65,6 +63,30 @@ async function pace(next: string) {
   );
   await new Promise((resolve) => setTimeout(resolve, PACE_MS));
 }
+
+/**
+ * Ways a model says "that is not mine to show you".
+ *
+ * The assertion is that it declines rather than inventing a status, so this
+ * matches the shape of a denial rather than one phrasing of it — "could not
+ * find", "no record of", "not seeing" and "unable to" are the same answer.
+ * Apostrophes are a class because models emit the typographic U+2019 as often
+ * as the ASCII one, and "couldn’t find it" is a pass.
+ */
+const DENIES_KNOWLEDGE =
+  /(?:not|n['’]t)\s+(?:find|locate|see|have|exist|appear|know|able)|no (?:order|record|access|matching)|cannot|unable|not authori[sz]ed/i;
+
+/**
+ * Step budget for one scenario.
+ *
+ * It has to cover the whole tool sequence *and* leave a step for the model to
+ * speak, because several checks read `text`. At 8 a legitimate run — capture,
+ * search, compare, recommend — spends the last step on a tool call and returns
+ * empty prose, so the assertions failed on a turn the agent got right. The
+ * budget is a runaway-loop guard, not a behaviour assertion; it should sit
+ * clear of what a correct answer costs.
+ */
+const MAX_STEPS = 12;
 
 /** Tool names called across every step, in order. */
 function toolsUsed(steps: { toolCalls?: readonly { toolName: string }[] }[]) {
@@ -83,7 +105,7 @@ function toolOutputs(
 
 async function main() {
   if (!hasModelCredentials()) {
-    console.error("GEMINI_API_KEY is not set.");
+    console.error(missingCredentialHint());
     process.exit(1);
   }
 
@@ -138,7 +160,7 @@ async function main() {
       },
     ],
     model: chatModel(),
-    stopWhen: isStepCount(8),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
   });
@@ -195,7 +217,7 @@ async function main() {
     instructions: shopInstructions,
     messages: history,
     model: chatModel(),
-    stopWhen: isStepCount(8),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
   });
@@ -256,7 +278,7 @@ async function main() {
       { content: "Yes, order it. Go ahead.", role: "user" },
     ],
     model: chatModel(),
-    stopWhen: isStepCount(8),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
   });
@@ -330,7 +352,7 @@ async function main() {
       },
     ],
     model: chatModel(),
-    stopWhen: isStepCount(10),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: merchantApproval(merchantCtx),
     tools: merchantToolSet(merchantCtx),
   });
@@ -402,7 +424,7 @@ async function main() {
       },
     ],
     model: chatModel(),
-    stopWhen: isStepCount(8),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
   });
@@ -449,7 +471,7 @@ async function main() {
       },
     ],
     model: chatModel(),
-    stopWhen: isStepCount(8),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
   });
@@ -509,7 +531,7 @@ async function main() {
       },
     ],
     model: chatModel(),
-    stopWhen: isStepCount(6),
+    stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
   });
@@ -523,7 +545,7 @@ async function main() {
   );
   check(
     "says it cannot find it rather than inventing a status",
-    /not find|no order|cannot|couldn't|don't have|unable/i.test(isolation.text),
+    DENIES_KNOWLEDGE.test(isolation.text),
     isolation.text.slice(0, 90)
   );
 

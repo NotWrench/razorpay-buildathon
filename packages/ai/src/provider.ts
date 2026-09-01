@@ -9,12 +9,16 @@ import type { EmbeddingModel, LanguageModel } from "ai";
  * `embeddingModel()`, so which provider answers is decided here and nowhere
  * else.
  *
- * Two providers are supported, selected by `AI_PROVIDER`:
+ * Three providers are supported, selected by `AI_PROVIDER`:
  *
  *   `google`  (default) Gemini, the deployment target.
+ *   `nvidia`            A hosted open model through NVIDIA NIM's
+ *                       OpenAI-compatible API. This is what the agent suite
+ *                       runs on: Gemini's free tier is 20 requests a day and
+ *                       one suite run is roughly forty.
  *   `ollama`            A local model over Ollama's OpenAI-compatible API.
- *                       Useful when Gemini's free tier is exhausted, and the
- *                       only way to run the agent suite offline.
+ *                       The offline option, and viable only on a machine that
+ *                       can hold the whole prompt in VRAM — see below.
  *
  * Chat and embeddings are chosen separately on purpose. Ollama does not
  * necessarily have an embedding model pulled, and `products.embedding` is a
@@ -30,10 +34,21 @@ const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 const DEFAULT_OLLAMA_URL = "http://localhost:11434/v1";
 const DEFAULT_OLLAMA_MODEL = "qwen2.5:3b-instruct";
 
-type Provider = "google" | "ollama";
+const DEFAULT_NVIDIA_URL = "https://integrate.api.nvidia.com/v1";
+const DEFAULT_NVIDIA_MODEL = "openai/gpt-oss-120b";
+
+type Provider = "google" | "nvidia" | "ollama";
 
 function chatProvider(): Provider {
-  return process.env.AI_PROVIDER === "ollama" ? "ollama" : "google";
+  if (process.env.AI_PROVIDER === "ollama") {
+    return "ollama";
+  }
+
+  if (process.env.AI_PROVIDER === "nvidia") {
+    return "nvidia";
+  }
+
+  return "google";
 }
 
 /**
@@ -61,9 +76,53 @@ function ollama() {
  * name is provider-specific, and an `AI_CHAT_MODEL=gemini-…` left in `.env`
  * would otherwise be sent to Ollama, which fails with a confusing "model not
  * found" for a model nobody asked it to load.
+ *
+ * Context length is the trap here, and it fails silently. The storefront
+ * instructions plus 25 tool schemas are roughly 8k tokens before the
+ * conversation starts, and Ollama defaults every model to a 4096-token
+ * context — so the prompt is quietly truncated and the model loops on one
+ * tool or emits malformed arguments, which reads as "the small model is not
+ * capable" rather than "it never saw the tools". `num_ctx` cannot be raised
+ * over the OpenAI-compatible endpoint: the `options` field is ignored there.
+ * Raise it on the server with `OLLAMA_CONTEXT_LENGTH`, or bake it into a
+ * derived model with a Modelfile `PARAMETER num_ctx 16384`.
+ *
+ * Which leaves VRAM. A 3B at 16k context is ~2.9GB and will not fit a 4GB card
+ * alongside a desktop; once it spills to CPU, prompt processing of an 8k
+ * prompt takes minutes per step and a single scenario outruns the HTTP
+ * timeout. Ollama is the offline option, not the fast one.
  */
 function ollamaChat() {
   return ollama().chat(process.env.OLLAMA_CHAT_MODEL ?? DEFAULT_OLLAMA_MODEL);
+}
+
+/**
+ * NVIDIA NIM, through its OpenAI-compatible endpoint.
+ *
+ * `.chat()` for the same reason as Ollama: `@ai-sdk/openai` v4 targets
+ * OpenAI's Responses API, which NIM does not implement.
+ *
+ * The model name comes from `NVIDIA_CHAT_MODEL` rather than `AI_CHAT_MODEL`,
+ * so a `gemini-…` left in `.env` is not sent to a provider that has never
+ * heard of it.
+ *
+ * The default is `openai/gpt-oss-120b`. NIM does not serve any Qwen model, and
+ * of the models it does serve this is the one that reliably emits well-formed
+ * calls against the 25-tool storefront set — several others 500 or ignore the
+ * `tools` parameter outright.
+ */
+function nvidiaChat() {
+  const apiKey = process.env.NVIDIA_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("NVIDIA_API_KEY is required when AI_PROVIDER=nvidia");
+  }
+
+  return createOpenAI({
+    apiKey,
+    baseURL: process.env.NVIDIA_BASE_URL ?? DEFAULT_NVIDIA_URL,
+    name: "nvidia",
+  }).chat(process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL);
 }
 
 /**
@@ -93,21 +152,28 @@ function google() {
 }
 
 export function chatModel(): LanguageModel {
-  if (chatProvider() === "ollama") {
-    return ollamaChat();
+  switch (chatProvider()) {
+    case "ollama":
+      return ollamaChat();
+    case "nvidia":
+      return nvidiaChat();
+    default:
+      return google()(process.env.AI_CHAT_MODEL ?? DEFAULT_CHAT_MODEL);
   }
-
-  return google()(process.env.AI_CHAT_MODEL ?? DEFAULT_CHAT_MODEL);
 }
 
 /** Cheaper model for classification and summarisation side-quests. */
 export function fastModel(): LanguageModel {
-  if (chatProvider() === "ollama") {
-    // One local model serves both roles; there is no cheaper tier to drop to.
-    return ollamaChat();
+  switch (chatProvider()) {
+    // One model serves both roles off Gemini; neither alternative provider is
+    // billed per tier, so there is nothing cheaper to drop to.
+    case "ollama":
+      return ollamaChat();
+    case "nvidia":
+      return nvidiaChat();
+    default:
+      return google()(process.env.AI_FAST_MODEL ?? DEFAULT_FAST_MODEL);
   }
-
-  return google()(process.env.AI_FAST_MODEL ?? DEFAULT_FAST_MODEL);
 }
 
 export function embeddingModel(): EmbeddingModel {
@@ -129,7 +195,21 @@ export function embeddingProviderOptions() {
  * better signal than pretending the agent is unconfigured.
  */
 export function hasModelCredentials(): boolean {
-  return chatProvider() === "ollama" || Boolean(googleKey());
+  switch (chatProvider()) {
+    case "ollama":
+      return true;
+    case "nvidia":
+      return Boolean(process.env.NVIDIA_API_KEY);
+    default:
+      return Boolean(googleKey());
+  }
+}
+
+/** Names the credential the configured chat provider is missing. */
+export function missingCredentialHint(): string {
+  return chatProvider() === "nvidia"
+    ? "NVIDIA_API_KEY is not set."
+    : "GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY) is not set.";
 }
 
 /**
@@ -155,16 +235,31 @@ export function chatProviderName(): Provider {
   return chatProvider();
 }
 
-/** True when chat is served by a local model, so no rate limit applies. */
-export function isLocalChatProvider(): boolean {
-  return chatProvider() === "ollama";
+/**
+ * How long a batch caller should wait between requests, in milliseconds.
+ *
+ * Only Gemini needs this: its free tier allows 5 requests per minute and every
+ * agent step is one request, so the agent suite would otherwise fail on quota
+ * rather than on behaviour. A local model has no quota at all, and NIM's
+ * per-minute allowance is far above what one scenario issues.
+ *
+ * Returned from here rather than decided by each caller, so the rule lives
+ * next to the provider selection it depends on.
+ */
+export function chatPaceMs(): number {
+  return chatProvider() === "google" ? 65_000 : 0;
 }
 
 /** Which provider is answering chat, for logs and verification output. */
 export function describeProvider(): string {
-  return chatProvider() === "ollama"
-    ? `ollama:${process.env.OLLAMA_CHAT_MODEL ?? DEFAULT_OLLAMA_MODEL}`
-    : `google:${process.env.AI_CHAT_MODEL ?? DEFAULT_CHAT_MODEL}`;
+  switch (chatProvider()) {
+    case "ollama":
+      return `ollama:${process.env.OLLAMA_CHAT_MODEL ?? DEFAULT_OLLAMA_MODEL}`;
+    case "nvidia":
+      return `nvidia:${process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL}`;
+    default:
+      return `google:${process.env.AI_CHAT_MODEL ?? DEFAULT_CHAT_MODEL}`;
+  }
 }
 
 /**

@@ -248,7 +248,11 @@ export function builderTools(ctx: AgentContext) {
     }),
 
     removeFromCart: tool({
-      description: "Take a product out of the cart, or reduce its quantity.",
+      description:
+        "Take a product out of the cart, or reduce its quantity. Pass the " +
+        "buildId exactly as getCart reports it for that line — a part added " +
+        "with a build belongs to it, and omitting the buildId will not find " +
+        "it.",
       execute: async ({ buildId, productId, quantity }) => {
         const cart = await removeFromCart(owner, {
           buildId,
@@ -263,7 +267,13 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z.uuid().optional(),
+        buildId: z
+          .uuid()
+          .optional()
+          .describe(
+            "The buildId getCart shows against this line. Omit it only for a " +
+              "line whose buildId is null."
+          ),
         productId: z.uuid(),
         quantity: z
           .number()

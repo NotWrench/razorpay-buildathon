@@ -351,7 +351,18 @@ export function shoppingTools(ctx: AgentContext) {
           .positive()
           .optional()
           .describe("Upper price limit in paise. ₹5,000 is 500000."),
-        category: z.string().max(80).optional(),
+        category: z
+          .string()
+          .max(80)
+          .optional()
+          .describe(
+            "Narrow to one catalog category. This store uses short trade " +
+              "names — gpu, cpu, motherboard, ram, storage, psu, cooler, " +
+              "case, fan, monitor, peripheral — though common English names " +
+              'such as "graphics card" are understood too. Omit it unless ' +
+              "the buyer clearly wants one kind of part; the query alone " +
+              "already searches every category."
+          ),
         limit: z.number().int().min(1).max(12).default(6),
         query: z
           .string()
