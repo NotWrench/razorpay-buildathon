@@ -1,7 +1,6 @@
 import type { Merchant } from "@workspace/db";
-import { Button } from "@workspace/ui/components/button";
 import { ExternalLinkIcon } from "lucide-react";
-import Link from "next/link";
+import { ButtonLink } from "@/components/common/button-link";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { formatPaise } from "@/lib/format";
@@ -44,14 +43,10 @@ export function DashboardHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            render={<Link href={routes.home} />}
-            size="sm"
-            variant="outline"
-          >
+          <ButtonLink href={routes.home} size="sm" variant="outline">
             <ExternalLinkIcon />
             Storefront
-          </Button>
+          </ButtonLink>
           <ThemeToggle />
           <AccountMenu
             email={email}

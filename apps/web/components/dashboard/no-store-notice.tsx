@@ -1,5 +1,4 @@
-import { Button } from "@workspace/ui/components/button";
-import Link from "next/link";
+import { ButtonLink } from "@/components/common/button-link";
 
 /**
  * What to do when the dashboard has nothing to show.
@@ -22,9 +21,9 @@ export function NoStoreNotice({ signedIn }: { signedIn: boolean }) {
       </p>
 
       {signedIn ? null : (
-        <Button className="mt-4" render={<Link href="/sign-in" />}>
+        <ButtonLink className="mt-4" href="/sign-in">
           Sign in
-        </Button>
+        </ButtonLink>
       )}
     </div>
   );

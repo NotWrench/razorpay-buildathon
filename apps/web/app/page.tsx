@@ -1,8 +1,8 @@
 import { db, merchants } from "@workspace/db";
-import { Button } from "@workspace/ui/components/button";
 import { asc } from "drizzle-orm";
 import { ArrowRightIcon, StoreIcon } from "lucide-react";
 import Link from "next/link";
+import { ButtonLink } from "@/components/common/button-link";
 import { EmptyState } from "@/components/common/empty-state";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
@@ -33,13 +33,9 @@ export default async function HomePage() {
         <span className="font-heading font-semibold">Agentic PC Commerce</span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button
-            render={<Link href="/dashboard" />}
-            size="sm"
-            variant="outline"
-          >
+          <ButtonLink href="/dashboard" size="sm" variant="outline">
             Merchant dashboard
-          </Button>
+          </ButtonLink>
         </div>
       </header>
 

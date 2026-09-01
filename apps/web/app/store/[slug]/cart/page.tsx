@@ -1,13 +1,13 @@
-import { Button } from "@workspace/ui/components/button";
 import { ShoppingCartIcon } from "lucide-react";
-import Link from "next/link";
 import { AssistantDock } from "@/components/assistant/assistant-dock";
 import { IssueList } from "@/components/build/issue-list";
 import { CartLineRow } from "@/components/cart/cart-line-row";
 import { CheckoutPanel } from "@/components/cart/checkout-panel";
+import { ButtonLink } from "@/components/common/button-link";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
 import { loadCartView } from "@/lib/queries/cart";
+import { storeRoutes } from "@/lib/routes";
 import { currentBuyer } from "@/lib/store/buyer";
 import { requireStore } from "@/lib/store/context";
 
@@ -53,9 +53,9 @@ export default async function CartPage({
         {cart.lines.length === 0 || !cart.cartId ? (
           <EmptyState
             action={
-              <Button render={<Link href={`/store/${slug}/products`} />}>
+              <ButtonLink href={storeRoutes(slug).products}>
                 Browse parts
-              </Button>
+              </ButtonLink>
             }
             description="Add a part, or build a whole machine and put it in as one group."
             icon={ShoppingCartIcon}

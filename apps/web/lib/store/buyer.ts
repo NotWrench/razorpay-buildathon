@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { currentUser } from "@/lib/session";
+import {
+  GUEST_COOKIE,
+  GUEST_COOKIE_MAX_AGE,
+  isGuestIdentifier,
+  newGuestIdentifier,
+} from "./guest";
 
 /**
  * Who the cart, the build and the order belong to.
@@ -11,9 +17,6 @@ import { currentUser } from "@/lib/session";
  * because the identifier is the only key the commerce layer filters on, a
  * guest can never reach a signed-in shopper's cart.
  */
-
-const GUEST_COOKIE = "buyer_id";
-const GUEST_COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
 
 export interface Buyer {
   identifier: string;
@@ -37,11 +40,11 @@ export const currentBuyer = cache(async (): Promise<Buyer> => {
   const store = await cookies();
   const existing = store.get(GUEST_COOKIE)?.value;
 
-  if (existing) {
+  // A malformed or hand-edited cookie is replaced rather than trusted; see the
+  // note in ./guest.ts about why the format is the check that matters.
+  if (isGuestIdentifier(existing)) {
     return { identifier: existing, isGuest: true, name: null, userId: null };
   }
-
-  const identifier = `guest:${crypto.randomUUID()}`;
 
   /*
    * A server component cannot write a cookie, so the id is minted here and
@@ -49,7 +52,12 @@ export const currentBuyer = cache(async (): Promise<Buyer> => {
    * guest gets a fresh cart per request, which is the correct behaviour for
    * someone who has not yet touched anything.
    */
-  return { identifier, isGuest: true, name: null, userId: null };
+  return {
+    identifier: newGuestIdentifier(),
+    isGuest: true,
+    name: null,
+    userId: null,
+  };
 });
 
 /** Persists a guest identity. Callable only from a server action or route. */

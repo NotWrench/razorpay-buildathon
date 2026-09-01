@@ -12,6 +12,7 @@ import { UserIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ButtonLink } from "@/components/common/button-link";
 import { signOut } from "@/lib/auth-client";
 
 /**
@@ -31,9 +32,9 @@ export function AccountMenu({
 
   if (!email) {
     return (
-      <Button render={<Link href="/sign-in" />} size="sm" variant="outline">
+      <ButtonLink href="/sign-in" size="sm" variant="outline">
         Sign in
-      </Button>
+      </ButtonLink>
     );
   }
 
@@ -49,7 +50,11 @@ export function AccountMenu({
         <div className="px-2 py-1.5 text-muted-foreground text-xs">{email}</div>
         <DropdownMenuSeparator />
         {links.map((link) => (
-          <DropdownMenuItem key={link.href} render={<Link href={link.href} />}>
+          <DropdownMenuItem
+            key={link.href}
+            nativeButton={false}
+            render={<Link href={link.href} />}
+          >
             {link.label}
           </DropdownMenuItem>
         ))}

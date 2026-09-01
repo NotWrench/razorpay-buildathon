@@ -1,7 +1,6 @@
 import type { Merchant } from "@workspace/db";
-import { Button } from "@workspace/ui/components/button";
 import { CpuIcon, SparklesIcon } from "lucide-react";
-import Link from "next/link";
+import { ButtonLink } from "@/components/common/button-link";
 import { storeRoutes } from "@/lib/routes";
 
 /**
@@ -38,17 +37,17 @@ export function StoreHero({
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <Button render={<Link href={routes.build} />}>
+          <ButtonLink href={routes.build}>
             <CpuIcon />
             Start a build
-          </Button>
-          <Button render={<Link href={routes.products} />} variant="outline">
+          </ButtonLink>
+          <ButtonLink href={routes.products} variant="outline">
             Browse parts
-          </Button>
-          <Button render={<Link href={routes.assistant} />} variant="outline">
+          </ButtonLink>
+          <ButtonLink href={routes.assistant} variant="outline">
             <SparklesIcon />
             Ask the assistant
-          </Button>
+          </ButtonLink>
         </div>
       </div>
     </section>
