@@ -84,6 +84,25 @@ function summariseOutput(output: unknown): Record<string, unknown> | null {
   };
 }
 
+/**
+ * Rounds a measurement to the integer its column stores.
+ *
+ * `toolExecutionMs` comes from a high-resolution clock, so a fast tool reports
+ * something like 8.684300000000803 — which Postgres rejects outright for an
+ * `integer` column, and the write is best-effort, so the rejection was silent
+ * apart from a console line. Milliseconds are the unit the column is in and
+ * sub-millisecond precision buys nothing for "what is the median latency",
+ * so it is rounded here, at the one boundary every caller passes through.
+ *
+ * Null stays null: "not measured" and "measured at under half a millisecond"
+ * are different facts and both are worth keeping.
+ */
+function toInteger(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.round(value)
+    : null;
+}
+
 export interface ToolCallRecord {
   agentType: AgentType;
   errorText?: string | null;
@@ -107,12 +126,12 @@ export async function recordToolCall(
       conversationId: ctx.conversationId,
       errorText: record.errorText ?? null,
       input: trimInput(record.input),
-      latencyMs: record.latencyMs ?? null,
+      latencyMs: toInteger(record.latencyMs),
       mode: record.mode ?? null,
       outputSummary:
         record.status === "ok" ? summariseOutput(record.output) : null,
       status: record.status,
-      stepNumber: record.stepNumber ?? null,
+      stepNumber: toInteger(record.stepNumber),
       toolCallId: record.toolCallId ?? null,
       toolName: record.toolName,
     });

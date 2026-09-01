@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./tools": "./src/tools/index.ts",
     "./agents": "./src/agents/index.ts",
+    "./modes": "./src/agents/modes.ts",
     "./catalog": "./src/catalog.ts",
     "./analytics": "./src/analytics.ts"
   },

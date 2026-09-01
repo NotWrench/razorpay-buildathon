@@ -1,49 +1,57 @@
-import { getPendingAgentOrders, getSalesSummary } from "@workspace/ai";
+import {
+  getInventorySummary,
+  getPaymentHealth,
+  getPendingAgentOrders,
+  getProductPerformance,
+  getSalesSummary,
+  getSlowMovers,
+} from "@workspace/ai";
 import { campaigns, db, orderItems, products } from "@workspace/db";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card";
 import { desc, eq, inArray } from "drizzle-orm";
-import Link from "next/link";
-import { MerchantChat } from "@/components/chat/merchant-chat";
+import { PageHeader } from "@/components/common/page-header";
+import { StatTile } from "@/components/common/stat-tile";
 import { ApprovalQueue } from "@/components/dashboard/approval-queue";
 import { CampaignInbox } from "@/components/dashboard/campaign-inbox";
+import { PerformanceTable } from "@/components/dashboard/performance-table";
 import { formatPaise } from "@/lib/format";
-import { currentMerchant, currentUser } from "@/lib/session";
+import { currentMerchant } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The merchant dashboard.
+ * The operational overview.
  *
- * Two halves that mirror the two goals: the assistant that grows revenue, and
- * the queues where a human stays in the loop on everything that moves money.
+ * Numbers first, then the two queues where a human stays in the loop on
+ * everything that moves money: agent orders waiting for approval, and campaigns
+ * the assistant drafted but has not been allowed to activate.
  */
 export default async function DashboardPage() {
-  const user = await currentUser();
-  const merchant = user ? await currentMerchant() : null;
+  const merchant = await currentMerchant();
 
-  // No sign-in or onboarding page exists yet, so say what is missing rather
-  // than redirecting into a 404.
-  if (!(user && merchant)) {
-    return (
-      <div className="mx-auto max-w-md p-8 text-sm">
-        <h1 className="mb-2 font-semibold text-lg">Dashboard unavailable</h1>
-        <p className="text-muted-foreground">
-          {user
-            ? "This account does not own a store yet. Create one with POST /api/merchants, or run bun run seed."
-            : "Sign in as a merchant to see this page. The seed script creates merchant@example.com."}
-        </p>
-      </div>
-    );
+  if (!merchant) {
+    return null;
   }
 
-  const [summary, pending, campaignRows] = await Promise.all([
-    getSalesSummary(merchant.id, 30),
-    getPendingAgentOrders(merchant.id),
-    db
-      .select()
-      .from(campaigns)
-      .where(eq(campaigns.merchantId, merchant.id))
-      .orderBy(desc(campaigns.createdAt)),
-  ]);
+  const [summary, inventory, health, pending, performance, slow, campaignRows] =
+    await Promise.all([
+      getSalesSummary(merchant.id, 30),
+      getInventorySummary(merchant.id),
+      getPaymentHealth(merchant.id),
+      getPendingAgentOrders(merchant.id),
+      getProductPerformance(merchant.id, 30),
+      getSlowMovers(merchant.id, 30, 5),
+      db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.merchantId, merchant.id))
+        .orderBy(desc(campaigns.createdAt)),
+    ]);
 
   const items =
     pending.length > 0
@@ -75,47 +83,74 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="mx-auto flex h-svh max-w-7xl flex-col">
-      <header className="flex items-baseline justify-between border-border border-b px-4 py-3">
-        <div>
-          <h1 className="font-semibold text-lg">{merchant.businessName}</h1>
-          <p className="text-muted-foreground text-xs">
-            {formatPaise(summary.revenuePaise)} in 30 days ·{" "}
-            {summary.paidOrders} paid · {summary.failedOrders} failed
-            {merchant.razorpayKeyId
-              ? " · Razorpay connected"
-              : " · platform keys"}
-          </p>
-        </div>
-        <nav className="flex gap-4 text-xs">
-          <Link
-            className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
-            href={`/store/${merchant.storeSlug}`}
-          >
-            View storefront
-          </Link>
-        </nav>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        description={`Sales, stock and the decisions waiting on you — last ${summary.windowDays} days.`}
+        title="Overview"
+      />
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_380px]">
-        <main className="min-h-0 border-border lg:border-r">
-          <MerchantChat merchantId={merchant.id} />
-        </main>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile
+          hint={`${summary.paidOrders} paid orders`}
+          label="Revenue"
+          value={formatPaise(summary.revenuePaise, merchant.currency)}
+        />
+        <StatTile
+          hint={`${summary.unitsSold} units sold`}
+          label="Average order"
+          value={formatPaise(summary.averageOrderValuePaise, merchant.currency)}
+        />
+        <StatTile
+          hint={`${health.failed} failed · ${health.refunded} refunded`}
+          label="Payments captured"
+          tone={health.failed > health.captured ? "danger" : "default"}
+          value={health.captured}
+        />
+        <StatTile
+          hint={`${inventory.outOfStock} out of stock · ${inventory.unconfiguredProducts} without a threshold`}
+          label="Below threshold"
+          tone={inventory.belowThreshold > 0 ? "warning" : "default"}
+          value={inventory.belowThreshold}
+        />
+      </div>
 
-        <aside className="min-h-0 space-y-6 overflow-y-auto p-4">
-          <ApprovalQueue orders={queue} />
-          <CampaignInbox
-            campaigns={campaignRows.map((campaign) => ({
-              approvedByMerchant: campaign.approvedByMerchant,
-              discountType: campaign.discountType,
-              discountValue: campaign.discountValue,
-              id: campaign.id,
-              reason: campaign.aiGeneratedReason,
-              status: campaign.status,
-              title: campaign.title,
-            }))}
-          />
-        </aside>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ApprovalQueue orders={queue} />
+
+        <CampaignInbox
+          campaigns={campaignRows.map((campaign) => ({
+            approvedByMerchant: campaign.approvedByMerchant,
+            discountType: campaign.discountType,
+            discountValue: campaign.discountValue,
+            id: campaign.id,
+            reason: campaign.aiGeneratedReason,
+            status: campaign.status,
+            title: campaign.title,
+          }))}
+        />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Selling well</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PerformanceTable
+              rows={performance.slice(0, 5)}
+              slug={merchant.storeSlug}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Not moving</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PerformanceTable rows={slow} slug={merchant.storeSlug} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

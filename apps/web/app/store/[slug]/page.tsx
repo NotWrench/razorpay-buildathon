@@ -1,16 +1,17 @@
-import { getMerchantBySlug, listActiveProducts } from "@workspace/ai";
-import { notFound } from "next/navigation";
-import { StorefrontChat } from "@/components/chat/storefront-chat";
-import { formatPaise } from "@/lib/format";
+import { AssistantDock } from "@/components/assistant/assistant-dock";
+import { StoreHero } from "@/components/layout/store-hero";
+import { CategoryRail } from "@/components/product/category-rail";
+import { listCategories, listFeaturedByCategory } from "@/lib/queries/catalog";
+import { requireStore } from "@/lib/store/context";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The storefront.
+ * The shop front.
  *
- * Chat is the primary surface, with the catalog beside it as evidence: the
- * assistant's claims should be checkable against a visible shelf, not taken on
- * trust.
+ * Rails per category rather than one undifferentiated grid: a PC store's
+ * catalog is a taxonomy, and a shopper arrives knowing which slot they are
+ * filling far more often than they arrive knowing a product name.
  */
 export default async function StorePage({
   params,
@@ -18,75 +19,48 @@ export default async function StorePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const merchant = await requireStore(slug);
 
-  let merchant: Awaited<ReturnType<typeof getMerchantBySlug>>;
+  const categories = await listCategories(merchant.id);
 
-  try {
-    merchant = await getMerchantBySlug(slug);
-  } catch {
-    notFound();
-  }
+  const stocked = categories.filter((category) => category.productCount > 0);
 
-  const products = await listActiveProducts(merchant.id, { limit: 60 });
+  const rails = await listFeaturedByCategory(
+    merchant.id,
+    stocked.map((category) => category.slug),
+    4
+  );
 
-  const categories = [
-    ...new Set(
-      products
-        .map((product) => product.category)
-        .filter((category): category is string => Boolean(category))
-    ),
-  ];
+  const productCount = stocked.reduce(
+    (sum, category) => sum + category.productCount,
+    0
+  );
 
   return (
-    <div className="mx-auto flex h-svh max-w-6xl flex-col">
-      <header className="flex items-baseline justify-between border-border border-b px-4 py-3">
-        <div>
-          <h1 className="font-semibold text-lg">{merchant.businessName}</h1>
-          <p className="text-muted-foreground text-xs">
-            {products.length} products · {categories.join(" · ")}
-          </p>
-        </div>
-        <a
-          className="text-muted-foreground text-xs underline underline-offset-4 hover:text-foreground"
-          href={`/store/${slug}/catalog.json`}
-          rel="noreferrer"
-          target="_blank"
-        >
-          catalog.json
-        </a>
-      </header>
+    <>
+      <StoreHero
+        categoryCount={stocked.length}
+        merchant={merchant}
+        productCount={productCount}
+      />
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_320px]">
-        <main className="min-h-0 border-border lg:border-r">
-          <StorefrontChat slug={slug} storeName={merchant.businessName} />
-        </main>
+      <main className="mx-auto max-w-7xl space-y-10 px-4 py-8">
+        {rails.map((rail) => (
+          <CategoryRail
+            category={rail.category}
+            currency={merchant.currency}
+            key={rail.category}
+            products={rail.products}
+            slug={slug}
+          />
+        ))}
+      </main>
 
-        <aside className="hidden min-h-0 overflow-y-auto p-4 lg:block">
-          <h2 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
-            In the shop
-          </h2>
-          <ul className="space-y-2">
-            {products.map((product) => (
-              <li
-                className="rounded-sm border border-border/60 p-2 text-sm"
-                key={product.id}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="leading-tight">{product.name}</span>
-                  <span className="whitespace-nowrap tabular-nums">
-                    {formatPaise(product.price, merchant.currency)}
-                  </span>
-                </div>
-                <p className="mt-0.5 text-muted-foreground text-xs">
-                  {product.stock > 0
-                    ? `${product.stock} in stock`
-                    : "Out of stock"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      </div>
-    </div>
+      <AssistantDock
+        context={{ page: "home" }}
+        slug={slug}
+        storeName={merchant.businessName}
+      />
+    </>
   );
 }

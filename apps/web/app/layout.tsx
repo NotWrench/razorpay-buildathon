@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 
 import "@workspace/ui/globals.css";
+import { Toaster } from "@workspace/ui/components/sonner";
 import { cn } from "@workspace/ui/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -12,6 +14,15 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 });
+
+export const metadata: Metadata = {
+  description:
+    "A PC parts store with a grounded shopping agent and a deterministic compatibility engine.",
+  title: {
+    default: "Agentic PC Commerce",
+    template: "%s · Agentic PC Commerce",
+  },
+};
 
 export default function RootLayout({
   children,
@@ -31,7 +42,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster position="bottom-center" />
+        </ThemeProvider>
       </body>
     </html>
   );

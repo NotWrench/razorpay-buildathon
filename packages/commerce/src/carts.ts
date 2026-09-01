@@ -211,9 +211,25 @@ export async function removeFromCart(
   });
 
   if (!existing) {
+    /*
+     * A build's parts are stored against that build, so a bare productId
+     * matches only loose lines. Saying "not in the cart" when the buyer can
+     * plainly see it there sends a caller into a retry loop — it re-reads the
+     * cart, sees the product, asks again, and is refused again. Name the
+     * buildId it needs instead.
+     */
+    const underBuild = await db.query.cartItems.findFirst({
+      where: and(
+        eq(cartItems.cartId, cart.id),
+        eq(cartItems.productId, input.productId)
+      ),
+    });
+
     throw new CartError(
       "LINE_NOT_FOUND",
-      `Product ${input.productId} is not in the cart`
+      underBuild?.buildId
+        ? `Product ${input.productId} is in the cart as part of build ${underBuild.buildId}. Pass that buildId to remove it, or remove the whole build.`
+        : `Product ${input.productId} is not in the cart`
     );
   }
 
