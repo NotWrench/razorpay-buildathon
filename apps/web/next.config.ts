@@ -13,7 +13,7 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 loadEnv({ path: resolve(workspaceRoot, ".env"), quiet: true });
 
 const nextConfig = {
-  transpilePackages: ["@workspace/ai", "@workspace/ui"],
+  transpilePackages: ["@workspace/ai", "@workspace/commerce", "@workspace/ui"],
   typedRoutes: true,
 } satisfies NextConfig;
 
