@@ -54,9 +54,7 @@ export function StorefrontToolOutput({
     case "tool-searchProducts":
       return (
         <ProductGrid
-          note={
-            output.strategy === "lexical" ? "Matched on keywords." : undefined
-          }
+          note={searchNote(output)}
           products={output.products ?? []}
           title="From the catalog"
         />
@@ -72,10 +70,15 @@ export function StorefrontToolOutput({
       );
 
     case "tool-recommendProducts":
-      // The reasons and confidences live on the tool's input, not its output —
-      // the output only confirms how many were written to the record.
+      // Both halves are needed, and which half owns what is the point: the
+      // reasons and confidences are the model's and live on the input, while
+      // the names, prices and the upgrade's extra spend are the server's and
+      // live on the output.
       return (
-        <RecommendationCard recommendations={input?.recommendations ?? []} />
+        <RecommendationCard
+          echo={output ?? {}}
+          recommendations={input?.recommendations ?? []}
+        />
       );
 
     case "tool-compareProducts":
@@ -152,6 +155,26 @@ export function StorefrontToolOutput({
     default:
       return null;
   }
+}
+
+/**
+ * The line under a search result.
+ *
+ * An empty result is the interesting case: the grid would otherwise say
+ * "nothing matched" in the abstract, when the tool knows exactly what the
+ * store does sell. Naming the categories turns a dead end into the start of
+ * the next question, and it matches what the agent is about to say in prose.
+ */
+function searchNote(output: Output): string | undefined {
+  const sells: { category: string }[] = output?.storeSells ?? [];
+
+  if ((output?.products?.length ?? 0) === 0) {
+    return sells.length > 0
+      ? `Nothing in this store matches that. It stocks ${sells.map((row) => row.category).join(", ")}.`
+      : "Nothing in this store matches that.";
+  }
+
+  return output.strategy === "lexical" ? "Matched on keywords." : undefined;
 }
 
 /** Attribute-by-attribute, as the compare tool returns it. */

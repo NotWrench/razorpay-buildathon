@@ -3,7 +3,7 @@
   "compilerOptions": {
     "declaration": false,
     "declarationMap": false,
-    "types": ["node"]
+    "types": ["bun", "node"]
   },
   "include": ["."],
   "exclude": ["node_modules", "dist"]

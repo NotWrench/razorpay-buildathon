@@ -23,8 +23,14 @@ const SUGGESTIONS = [
 ] as const;
 
 export function MerchantAssistant({ merchantId }: { merchantId: string }) {
-  const { addToolApprovalResponse, busy, messages, sendMessage } =
-    useMerchantAssistant({ merchantId });
+  const {
+    addToolApprovalResponse,
+    busy,
+    error,
+    messages,
+    regenerate,
+    sendMessage,
+  } = useMerchantAssistant({ merchantId });
 
   return (
     <ChatShell
@@ -40,6 +46,8 @@ export function MerchantAssistant({ merchantId }: { merchantId: string }) {
       <MessageThread
         busy={busy}
         deniedNote="You declined that, so nothing changed."
+        error={error}
+        onRetry={regenerate}
         empty={
           <div className="space-y-3 py-6">
             <p className="text-muted-foreground text-sm">

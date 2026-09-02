@@ -35,6 +35,7 @@
   "scripts": {
     "ai-buyer": "bun run scripts/ai-buyer.ts",
     "build": "turbo build",
+    "calibrate:search": "bun run scripts/calibrate-search.ts",
     "check": "ultracite check",
     "db:down": "docker compose down",
     "db:generate": "bun --filter @workspace/db db:generate",

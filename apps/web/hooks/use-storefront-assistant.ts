@@ -11,6 +11,7 @@ import {
   lastAssistantMessageIsCompleteWithApprovalResponses,
 } from "ai";
 import { useRef, useState } from "react";
+import { useTurnInterruption } from "./use-turn-interruption";
 
 /**
  * The shopping agent, wired to the page it was opened from.
@@ -45,7 +46,10 @@ export function useStorefrontAssistant({
   modeRef.current = mode;
   contextRef.current = context;
 
+  const { clear, interruption, noteFinish } = useTurnInterruption();
+
   const chat = useChat<StorefrontMessage>({
+    onFinish: noteFinish,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport: new DefaultChatTransport({
       api: "/api/agent/chat",
@@ -76,7 +80,15 @@ export function useStorefrontAssistant({
   return {
     ...chat,
     busy: chat.status === "streaming" || chat.status === "submitted",
+    // A refused turn and an abandoned one are the same thing to a buyer: the
+    // answer did not arrive, and they need to be told so.
+    error: chat.error ?? interruption,
     mode,
+    sendMessage: (...args: Parameters<typeof chat.sendMessage>) => {
+      clear();
+
+      return chat.sendMessage(...args);
+    },
     setMode,
   };
 }

@@ -23,8 +23,10 @@ import { campaignTools } from "../tools/campaigns";
 import { explainTools } from "../tools/explain";
 import { merchantTools } from "../tools/merchant";
 import { merchantApproval } from "./approval";
+import { repairHarmonyToolName } from "./repair";
 import { merchantPrompt } from "./prompts";
 import { summariseStep } from "./steps";
+import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
 export function merchantToolSet(ctx: AgentContext) {
   return {
@@ -42,6 +44,8 @@ const MAX_STEPS = 10;
 
 /** Runs one turn of the merchant assistant and returns a UI message stream. */
 export async function streamMerchantTurn(params: {
+  /** The request's signal, so closing the tab stops the model. */
+  abortSignal?: AbortSignal;
   ctx: AgentContext;
   messages: MerchantMessage[];
 }): Promise<Response> {
@@ -65,12 +69,26 @@ export async function streamMerchantTurn(params: {
   }
 
   const result = streamText({
+    // A turn that never ends is indistinguishable from one still working. See
+    // `agents/turn.ts`.
+    abortSignal: turnSignal(params.abortSignal),
     experimental_toolApprovalSecret: approvalSigningSecret(),
     instructions: merchantPrompt({
       storeName: merchant?.businessName ?? "your store",
     }),
     messages: await convertToModelMessages(messages),
     model: chatModel(),
+    onAbort: async ({ steps }) => {
+      // `onFinish` does not run on an abort, so without this a turn stopped by
+      // the deadline vanishes from the transcript and the audit trail — the
+      // §24 record would be missing exactly the turns worth investigating.
+      await persistAssistantMessage(
+        ctx,
+        "",
+        steps.flatMap((step) => step.toolCalls ?? [])
+      );
+      await touchConversation(ctx);
+    },
     onFinish: async ({ text, steps }) => {
       await persistAssistantMessage(
         ctx,
@@ -83,6 +101,7 @@ export async function streamMerchantTurn(params: {
       await persistReasoningStep(ctx, summariseStep(step));
     },
     onToolExecutionEnd: toolCallRecorder({ agentType: "admin", ctx }),
+    repairToolCall: repairHarmonyToolName<ReturnType<typeof merchantToolSet>>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: merchantApproval(ctx),
     tools: merchantToolSet(ctx),
@@ -90,6 +109,15 @@ export async function streamMerchantTurn(params: {
 
   return createUIMessageStreamResponse({
     headers: { "x-conversation-id": ctx.conversationId },
-    stream: toUIMessageStream({ stream: result.stream }),
+    stream: reportAbortAsError(
+      toUIMessageStream({
+        onError: (error) => {
+          console.error("Merchant turn failed", error);
+
+          return describeTurnFailure(error);
+        },
+        stream: result.stream,
+      })
+    ),
   });
 }
