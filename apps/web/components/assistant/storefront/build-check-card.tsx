@@ -8,6 +8,7 @@ import Link from "next/link";
 import { CompatibilityStatusBadge } from "@/components/build/compatibility-status";
 import { IssueList } from "@/components/build/issue-list";
 import { PowerSummary } from "@/components/build/power-summary";
+import { storeRoutes } from "@/lib/routes";
 import { ToolCard } from "../primitives";
 
 /**
@@ -65,7 +66,7 @@ export function BuildCheckCard({
       {slug && validation.buildId ? (
         <Link
           className="mt-3 inline-block font-medium text-primary text-xs underline underline-offset-4"
-          href={`/store/${slug}/build?buildId=${validation.buildId}`}
+          href={storeRoutes(slug).buildWith(validation.buildId)}
         >
           Open in the builder
         </Link>

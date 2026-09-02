@@ -86,7 +86,7 @@ export function ProductToolbar({ total }: { total: number }) {
         />
       </div>
 
-      <Label className="flex items-center gap-2 pb-2 text-sm">
+      <Label as="label" className="flex items-center gap-2 pb-2 text-sm">
         <Checkbox
           checked={get("inStock") === "1"}
           onCheckedChange={(checked) => set({ inStock: checked ? "1" : null })}

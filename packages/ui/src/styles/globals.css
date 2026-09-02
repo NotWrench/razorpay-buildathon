@@ -7,128 +7,111 @@
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2599 0.0604 251.3208);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2599 0.0604 251.3208);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2599 0.0604 251.3208);
-  --primary: oklch(0.6669 0.1806 253.7155);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.3043 0.0881 256.6314);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.9744 0.0042 236.4963);
-  --muted-foreground: oklch(0.5029 0.0441 252.2186);
-  --accent: oklch(0.956 0.0217 250.2129);
-  --accent-foreground: oklch(0.6669 0.1806 253.7155);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --border: oklch(0.9288 0.0126 255.5078);
-  --input: oklch(0.9288 0.0126 255.5078);
-  --ring: oklch(0.6669 0.1806 253.7155);
-  --chart-1: oklch(0.6669 0.1806 253.7155);
-  --chart-2: oklch(0.3043 0.0881 256.6314);
-  --chart-3: oklch(0.4882 0.2172 264.3763);
-  --chart-4: oklch(0.7137 0.1434 254.624);
-  --chart-5: oklch(0.8091 0.0956 251.8128);
-  --radius: 0.375rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.2599 0.0604 251.3208);
-  --sidebar-primary: oklch(0.6669 0.1806 253.7155);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.9744 0.0042 236.4963);
-  --sidebar-accent-foreground: oklch(0.6669 0.1806 253.7155);
-  --sidebar-border: oklch(0.9288 0.0126 255.5078);
-  --sidebar-ring: oklch(0.6669 0.1806 253.7155);
-  --destructive-foreground: oklch(1 0 0);
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: JetBrains Mono, monospace;
-  --shadow-color: #000000;
-  --shadow-opacity: 0.05;
-  --shadow-blur: 10px;
-  --shadow-spread: 0px;
-  --shadow-offset-x: 0px;
-  --shadow-offset-y: 4px;
-  --letter-spacing: -0.01em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.03);
-  --shadow-xs: 0px 4px 10px 0px hsl(0 0% 0% / 0.03);
-  --shadow-sm:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
-  --shadow:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
-  --shadow-md:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
-  --shadow-lg:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
-  --shadow-xl:
-    0px 4px 10px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
-  --shadow-2xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.13);
-  --tracking-normal: -0.01em;
-}
+/*
+ * Ember v3 — dark only.
+ *
+ * The raw palette lives on :root and is repeated on .dark so nothing depends
+ * on the theme toggle. shadcn's semantic names are repointed at those raws,
+ * which keeps every existing component working while changing what it looks
+ * like.
+ *
+ * --riser is the depth mechanism: an image ground is always lighter than the
+ * card it sits inside, so a render separates from the page without a border.
+ */
 
+:root,
 .dark {
-  --background: oklch(0.2136 0.0483 257.951);
-  --foreground: oklch(0.9842 0.0034 247.8575);
-  --card: oklch(0.2465 0.0562 255.8787);
-  --card-foreground: oklch(0.9842 0.0034 247.8575);
-  --popover: oklch(0.2465 0.0562 255.8787);
-  --popover-foreground: oklch(0.9842 0.0034 247.8575);
-  --primary: oklch(0.6669 0.1806 253.7155);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.2835 0.0559 257.2958);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.2835 0.0559 257.2958);
-  --muted-foreground: oklch(0.7107 0.0351 256.7878);
-  --accent: oklch(0.3791 0.1378 265.5222);
-  --accent-foreground: oklch(0.6669 0.1806 253.7155);
-  --destructive: oklch(0.4437 0.1613 26.8994);
-  --border: oklch(0.2795 0.0368 260.031);
-  --input: oklch(0.2795 0.0368 260.031);
-  --ring: oklch(0.6669 0.1806 253.7155);
-  --chart-1: oklch(0.6669 0.1806 253.7155);
-  --chart-2: oklch(0.6231 0.188 259.8145);
-  --chart-3: oklch(0.7137 0.1434 254.624);
-  --chart-4: oklch(0.8091 0.0956 251.8128);
-  --chart-5: oklch(0.8823 0.0571 254.1284);
-  --sidebar: oklch(0.2136 0.0483 257.951);
-  --sidebar-foreground: oklch(0.9842 0.0034 247.8575);
-  --sidebar-primary: oklch(0.6669 0.1806 253.7155);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.2835 0.0559 257.2958);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.2795 0.0368 260.031);
-  --sidebar-ring: oklch(0.6669 0.1806 253.7155);
-  --destructive-foreground: oklch(1 0 0);
-  --radius: 0.375rem;
-  --font-sans: Inter, system-ui, sans-serif;
+  --void: #060606;
+  --carbon: #0e0e0e;
+  --panel: #161616;
+  --riser: #1f1f1f;
+  --hairline: #2a2a2a;
+  --smoke: #8e8b87;
+  --bone: #f2f0ed;
+  --lacquer: #c8102e;
+  --ember: #e8253f;
+  --verdant: #6e8f6b;
+  --amber: #c9922e;
+
+  --background: var(--void);
+  --foreground: var(--bone);
+  --card: var(--panel);
+  --card-foreground: var(--bone);
+  --popover: var(--panel);
+  --popover-foreground: var(--bone);
+  --primary: var(--lacquer);
+  --primary-foreground: #ffffff;
+  --secondary: var(--carbon);
+  --secondary-foreground: var(--bone);
+  --muted: var(--carbon);
+  --muted-foreground: var(--smoke);
+  --accent: var(--riser);
+  --accent-foreground: var(--bone);
+  --destructive: var(--lacquer);
+  --destructive-foreground: #ffffff;
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--bone);
+
+  --chart-1: var(--lacquer);
+  --chart-2: var(--ember);
+  --chart-3: var(--amber);
+  --chart-4: var(--verdant);
+  --chart-5: var(--smoke);
+
+  --sidebar: var(--carbon);
+  --sidebar-foreground: var(--bone);
+  --sidebar-primary: var(--lacquer);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--riser);
+  --sidebar-accent-foreground: var(--bone);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--bone);
+
+  /* 20px cards. Image grounds are 16px, overlays 28px, buttons full pill. */
+  --radius: 1.25rem;
+
+  --font-display: var(--font-display-face, Archivo, system-ui, sans-serif);
+  --font-sans: var(--font-sans-face, "Inter Tight", system-ui, sans-serif);
   --font-serif: Georgia, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --font-mono: var(--font-mono-face, "JetBrains Mono", monospace);
+
+  --letter-spacing: 0em;
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  /* No glow, ever. Two shadows: cards at rest, and floating surfaces. */
   --shadow-color: #000000;
-  --shadow-opacity: 0.4;
-  --shadow-blur: 20px;
+  --shadow-opacity: 0.5;
+  --shadow-blur: 8px;
   --shadow-spread: 0px;
   --shadow-offset-x: 0px;
-  --shadow-offset-y: 8px;
-  --letter-spacing: -0.01em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0px 8px 20px 0px hsl(0 0% 0% / 0.2);
-  --shadow-xs: 0px 8px 20px 0px hsl(0 0% 0% / 0.2);
-  --shadow-sm:
-    0px 8px 20px 0px hsl(0 0% 0% / 0.4), 0px 1px 2px -1px hsl(0 0% 0% / 0.4);
-  --shadow:
-    0px 8px 20px 0px hsl(0 0% 0% / 0.4), 0px 1px 2px -1px hsl(0 0% 0% / 0.4);
-  --shadow-md:
-    0px 8px 20px 0px hsl(0 0% 0% / 0.4), 0px 2px 4px -1px hsl(0 0% 0% / 0.4);
-  --shadow-lg:
-    0px 8px 20px 0px hsl(0 0% 0% / 0.4), 0px 4px 6px -1px hsl(0 0% 0% / 0.4);
-  --shadow-xl:
-    0px 8px 20px 0px hsl(0 0% 0% / 0.4), 0px 8px 10px -1px hsl(0 0% 0% / 0.4);
-  --shadow-2xl: 0px 8px 20px 0px hsl(0 0% 0% / 1);
+  --shadow-offset-y: 2px;
+  --shadow-card: 0 2px 8px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 24px 60px -30px rgb(0 0 0 / 0.9);
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.45);
+  --shadow-sm: 0 2px 8px 0 rgb(0 0 0 / 0.5);
+  --shadow: 0 2px 8px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 2px 8px 0 rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 24px 60px -30px rgb(0 0 0 / 0.9);
+  --shadow-xl: 0 24px 60px -30px rgb(0 0 0 / 0.9);
+  --shadow-2xl: 0 24px 60px -30px rgb(0 0 0 / 0.9);
 }
 
 @theme inline {
+  --color-void: var(--void);
+  --color-carbon: var(--carbon);
+  --color-panel: var(--panel);
+  --color-riser: var(--riser);
+  --color-hairline: var(--hairline);
+  --color-smoke: var(--smoke);
+  --color-bone: var(--bone);
+  --color-lacquer: var(--lacquer);
+  --color-ember: var(--ember);
+  --color-verdant: var(--verdant);
+  --color-amber: var(--amber);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -144,6 +127,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -152,13 +136,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -167,25 +144,53 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-heading: var(--font-heading);
-  --font-mono: JetBrains Mono, monospace;
-  --font-serif: Georgia, serif;
-  --radius: 0.375rem;
-  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
-  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
-  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
-  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
-  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
-  --tracking-normal: var(--tracking-normal);
-  --shadow-2xl: var(--shadow-2xl);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-md: var(--shadow-md);
-  --shadow: var(--shadow);
-  --shadow-sm: var(--shadow-sm);
-  --shadow-xs: var(--shadow-xs);
+  --color-shadow-color: var(--shadow-color);
+
+  --radius: 1.25rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-ground: 1rem;
+  --radius-overlay: 1.75rem;
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-display);
+
+  /* 11 · 13 · 15 · 17 · 21 · 28 · 40 · 56 · 76 */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.5rem;
+  --text-3xl: 3.5rem;
+  --text-4xl: 4.75rem;
+
+  --tracking-tighter: -0.03em;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+  --tracking-widest: 0.14em;
+
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
   --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
   --spacing: var(--spacing);
   --letter-spacing: var(--letter-spacing);
   --shadow-offset-y: var(--shadow-offset-y);
@@ -193,20 +198,447 @@
   --shadow-spread: var(--shadow-spread);
   --shadow-blur: var(--shadow-blur);
   --shadow-opacity: var(--shadow-opacity);
-  --color-shadow-color: var(--shadow-color);
-  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
   body {
     letter-spacing: var(--tracking-normal);
     @apply bg-background text-foreground;
   }
+
+  /* Focus is a 1px bone ring at 3px offset — never a lacquer outline. */
+  :focus-visible {
+    outline: 1px solid var(--bone);
+    outline-offset: 3px;
+  }
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* Numbers never jitter. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/*
+ * The route transition. CSS rather than a motion timeline because it gates
+ * the opacity of a whole page: a stalled frame loop must never be able to
+ * leave a route half-transparent with nothing to recover it.
+ */
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Opacity only, and deliberately so.
+ *
+ * This element wraps every page, and an element with a `transform` becomes the
+ * containing block for every `position: fixed` descendant inside it — which
+ * silently anchored the assistant dock and the scroll progress bar to the top
+ * of the document instead of the viewport. A rise would have to be paid for
+ * with that, and the per-band `<Reveal>` already supplies the movement. Opacity
+ * creates a stacking context, not a containing block, so nothing is trapped.
+ */
+.route-fade {
+  animation: route-fade-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fade {
+    animation: none;
+  }
+}
+
+/*
+ * <Reveal>. The settled state is the default; the hidden state only exists
+ * once JavaScript has armed the element, so a page without a working script
+ * shows its content rather than a column of empty bands.
+ */
+.reveal[data-armed="true"] {
+  opacity: 0;
+  transform: translateY(var(--reveal-distance, 16px));
+}
+
+.reveal[data-armed="true"][data-revealed="true"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal[data-armed="true"] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/*
+ * The search overlay.
+ *
+ * The panel never leaves the DOM — the mask needs something to open — so its
+ * whole timeline is CSS driven off one `data-open` attribute. Entry and exit
+ * carry different durations and curves, which is the point: leaving is faster
+ * than arriving.
+ */
+.search-scrim {
+  opacity: 0;
+  transition: opacity 280ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.search-scrim[data-open="true"] {
+  opacity: 1;
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * The centre mask — one reveal, used by the search overlay and the assistant
+ * dock. A band at the vertical middle growing to both edges, with the content
+ * settling the last 1.5% of its scale so the two read as one movement.
+ */
+.centre-mask {
+  clip-path: inset(50% 0% 50% 0%);
+  transition: clip-path 280ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.centre-mask[data-open="true"] {
+  clip-path: inset(0% 0% 0% 0%);
+  transition: clip-path 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.centre-mask-inner {
+  transform: scale(0.985);
+  transition: transform 280ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.centre-mask[data-open="true"] .centre-mask-inner {
+  transform: scale(1);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.search-panel {
+  background-color: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: blur(28px) saturate(115%);
+}
+
+/* Give up the transparency, never the contrast. */
+/*
+ * The two surfaces that blur what is behind them — the search panel and the
+ * dock — raise their alpha instead where the filter is unsupported. Nothing
+ * that scrolls carries a backdrop-filter at all: paying for a blur on every
+ * frame of a scroll is the one place this effect is genuinely expensive.
+ */
+@supports not (backdrop-filter: blur(1px)) {
+  .search-panel,
+  .dock-surface {
+    background-color: color-mix(in srgb, var(--panel) 97%, transparent);
+  }
+}
+
+/* The field's underline arrives 0.12s late, so it lands with the panel. */
+.search-rule {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 280ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.search-panel[data-open="true"] .search-rule {
+  transform: scaleX(1);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
+}
+
+.search-rise {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 280ms cubic-bezier(0.65, 0, 0.35, 1),
+    transform 280ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.search-panel[data-open="true"] .search-rise {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--rise-delay, 180ms),
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1) var(--rise-delay, 180ms);
+}
+
+/*
+ * Both panes stay mounted in one grid cell, so the column is always as tall as
+ * the taller of the two and nothing reflows when they trade places.
+ */
+.search-pane {
+  visibility: hidden;
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 180ms;
+}
+
+/*
+ * The field keeps type="search" for its semantics but not the native clear
+ * affordance — there is a labelled "Clear" pill beside it, and two of them at
+ * 56px is one too many.
+ */
+.search-field::-webkit-search-cancel-button,
+.search-field::-webkit-search-decoration {
+  appearance: none;
+  display: none;
+}
+
+.search-pane[data-shown="true"] {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .centre-mask,
+  .centre-mask-inner,
+  .search-scrim,
+  .search-panel,
+  .search-rule,
+  .search-rise,
+  .search-pane {
+    transition: none !important;
+  }
+}
+
+/*
+ * The power bar on a model page. Settled by default and only wound back when
+ * a <Reveal> has armed it, so a page without JavaScript shows the real ratio
+ * rather than an empty track.
+ */
+.power-bar {
+  transform-origin: left;
+  transform: scaleX(var(--power-ratio, 1));
+  transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal[data-armed="true"]:not([data-revealed="true"]) .power-bar {
+  transform: scaleX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .power-bar {
+    transition: none;
+  }
+}
+
+/*
+ * Streamed text arrives a word at a time, each one fading in. Per character is
+ * a typewriter; per word reads as thinking. Under reduced motion the words are
+ * simply there.
+ */
+.stream-word {
+  animation: stream-word-in 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes stream-word-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* A caret that breathes rather than blinks. */
+.stream-caret {
+  animation: stream-caret 900ms ease-in-out infinite;
+}
+
+@keyframes stream-caret {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-word,
+  .stream-caret {
+    animation: none;
+  }
+}
+
+/*
+ * A turn arriving in the thread, and an answered question collapsing to its
+ * quiet row. Both are opacity and transform only — the collapse never touches
+ * height, so the thread above it does not jump while it plays.
+ */
+.chat-turn {
+  animation: chat-turn-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes chat-turn-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.answered-row {
+  animation: answered-in 280ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes answered-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-turn,
+  .answered-row {
+    animation: none;
+  }
+}
+
+/* Build sheet rows, arriving once the morph is most of the way settled. */
+.build-row {
+  animation: chat-turn-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* The checkbox mark, which appears rather than fades. */
+.check-in {
+  animation: check-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * A finding's evidence, arriving when it is asked for. Opacity and a short
+ * rise: the rows beneath are moved by the layout, never by a timeline.
+ */
+.evidence {
+  animation: order-lines 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * An order's lines, arriving when the row is opened. The rows below are moved
+ * by the layout, not by a timeline — animating the height of a table is how a
+ * list ends up sliding away from the cursor trying to click it.
+ */
+.order-lines {
+  animation: order-lines 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes order-lines {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evidence,
+  .order-lines {
+    animation: none;
+  }
+}
+
+/*
+ * Sign in and sign up are one screen, so the column that differs between them
+ * crossfades rather than navigating. Opacity and a short rise only — the two
+ * forms are different heights and animating that would make the page breathe.
+ */
+.auth-swap {
+  animation: auth-swap 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes auth-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-swap {
+    animation: none;
+  }
+}
+
+/*
+ * The footer's verdict, flashing once when it has been re-computed.
+ *
+ * A status line that changes silently is a status line nobody reads. It is
+ * keyed on the verdict, so it plays exactly once per new answer — opacity
+ * only, so nothing moves under the eye that just looked down at it.
+ */
+.status-flash {
+  animation: status-flash 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes status-flash {
+  from {
+    opacity: 0.2;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .build-row,
+  .check-in,
+  .status-flash {
+    animation: none;
   }
 }
