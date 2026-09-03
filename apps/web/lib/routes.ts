@@ -41,3 +41,50 @@ export const dashboardRoutes = {
   overview: route("/dashboard"),
   products: route("/dashboard/products"),
 };
+
+/**
+ * The manager side.
+ *
+ * `/manager` IS the assistant — there is no separate dashboard, because a
+ * dashboard would only repeat, worse, what the summary already says. The other
+ * four are editing surfaces.
+ */
+export const managerRoutes = {
+  account: route("/manager/account"),
+  assistant: route("/manager"),
+  assistantWith: (rangeId: string) => route(`/manager?range=${rangeId}`),
+  orders: route("/manager/orders"),
+  products: route("/manager/products"),
+  restock: route("/manager/restock"),
+};
+
+/**
+ * The v3 storefront's routes.
+ *
+ * Most of these are still a prompt away from existing, so they go through
+ * `route()` — the nav is written once, here, and the day a page lands the
+ * literal already matches.
+ */
+export const shellRoutes = {
+  account: route("/account"),
+  accountSettings: route("/account/settings"),
+  assistant: route("/assistant"),
+  assistantWith: (query: string) =>
+    route(`/assistant?q=${encodeURIComponent(query)}`),
+  byUse: (useCase: string) => route(`/shop?use=${encodeURIComponent(useCase)}`),
+  cart: route("/cart"),
+  checkout: route("/checkout"),
+  /** Checkout for a build the assistant assembled, rather than the cart. */
+  checkoutWith: (productIds: string[]) =>
+    route(`/checkout?parts=${encodeURIComponent(productIds.join(","))}`),
+  components: route("/shop"),
+  home: route("/"),
+  login: route("/login"),
+  prebuilt: (slug: string) => route(`/prebuilts/${slug}`),
+  prebuilts: route("/prebuilts"),
+  preview: route("/preview"),
+  product: (id: string) => route(`/product/${id}`),
+  search: (query: string) => route(`/shop?q=${encodeURIComponent(query)}`),
+  shopCategory: (category: string) => route(`/shop/${category}`),
+  signup: route("/signup"),
+};

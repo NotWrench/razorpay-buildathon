@@ -1,14 +1,8 @@
-/** Client-safe money formatting. Amounts are always integer paise. */
-export function formatPaise(paise: number, currency = "INR"): string {
-  const rupees = paise / 100;
-
-  return new Intl.NumberFormat("en-IN", {
-    currency,
-    maximumFractionDigits: Number.isInteger(rupees) ? 0 : 2,
-    minimumFractionDigits: 0,
-    style: "currency",
-  }).format(rupees);
-}
+/**
+ * Money formatting lives in the UI package so components there can reach it
+ * too. Re-exported here so existing call sites keep their import path.
+ */
+export { formatPaise } from "@workspace/ui/lib/money";
 
 export function formatDateTime(value: Date | string): string {
   return new Date(value).toLocaleString("en-IN", {
