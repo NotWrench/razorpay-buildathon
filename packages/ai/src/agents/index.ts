@@ -22,3 +22,10 @@ export {
   storefrontToolSet,
   streamStorefrontTurn,
 } from "./storefront";
+export { cleanToolName, repairHarmonyToolName } from "./repair";
+export {
+  describeTurnFailure,
+  reportAbortAsError,
+  turnBudgetMs,
+  turnSignal,
+} from "./turn";

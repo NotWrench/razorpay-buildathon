@@ -51,6 +51,22 @@ export function ToolStatus({ children }: { children: ReactNode }) {
 }
 
 export function ConfidenceBadge({ value }: { value: number }) {
+  // A confidence that is not a number means the tool's shape and this card's
+  // reading of it have drifted apart. Rendering "NaN% confident" is the worst
+  // of both: it looks like a number, so it survives review, and it tells the
+  // buyer nothing. Say there is no score instead — and say nothing about how
+  // good the match is, because we no longer know.
+  if (!Number.isFinite(value)) {
+    return (
+      <span
+        className="rounded-sm bg-muted px-1.5 py-0.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider"
+        title="No confidence score was reported for this match"
+      >
+        no score
+      </span>
+    );
+  }
+
   const percent = Math.round(value * 100);
 
   return (

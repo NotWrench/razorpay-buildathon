@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getFrequentlyBoughtWith } from "../analytics";
 import { AuditAction, auditActorType, recordAudit } from "../audit";
 import {
+  describeCatalogScope,
   getProductById,
   getProductsByIds,
   searchCatalog,
@@ -219,6 +220,16 @@ export function shoppingTools(ctx: AgentContext) {
         });
 
         return {
+          // Every product this recommendation refers to, named and priced from
+          // the catalog. The reasons and confidences are the model's and stay
+          // on the tool input; a name and a price are facts, and the card that
+          // renders this must read them from here rather than from anything
+          // the model retyped.
+          products: [...found.values()].map((product) => ({
+            name: product.name,
+            pricePaise: product.price,
+            productId: product.id,
+          })),
           recorded: stored.length,
           // Echoed back so the model quotes the server's arithmetic rather
           // than restating its own guess at the gap.
@@ -313,7 +324,11 @@ export function shoppingTools(ctx: AgentContext) {
     searchProducts: tool({
       description:
         "Search this store's catalog. Use it before recommending anything — " +
-        "never invent products, prices or stock levels.",
+        "never invent products, prices or stock levels. An empty result is a " +
+        "real answer: it means this store does not sell that, and the reply " +
+        "returns what it does sell so you can say so and offer something " +
+        "genuinely relevant. Do not retry the same search hoping for a " +
+        "different list.",
       execute: async ({ budgetMaxPaise, category, limit, query }) => {
         const result = await searchCatalog(ctx.merchantId, {
           budgetMaxPaise,
@@ -336,10 +351,29 @@ export function shoppingTools(ctx: AgentContext) {
           },
         });
 
+        if (result.products.length > 0) {
+          return {
+            products: result.products.map((row) => ({
+              ...toModelProduct(row.product),
+              matchScore: Number(row.score.toFixed(3)),
+            })),
+            strategy: result.strategy,
+          };
+        }
+
+        // Nothing matched, so hand back the shape of the store rather than an
+        // empty list. Without this the model has no grounded way to answer,
+        // and either apologises and stops or reaches for what it remembers
+        // about shops in general — both of which §19 forbids.
+        const scope = await describeCatalogScope(ctx.merchantId);
+
         return {
-          products: result.products.map((row) => ({
-            ...toModelProduct(row.product),
-            matchScore: Number(row.score.toFixed(3)),
+          note: `No product in this store matches "${query}"${budgetMaxPaise ? ` under ${formatPaise(budgetMaxPaise)}` : ""}. Tell the buyer plainly that this store does not sell it, name what it does sell, and offer the nearest thing that genuinely serves what they asked for. Do not search again for the same thing.`,
+          products: [],
+          storeSells: scope.categories.map((row) => ({
+            category: row.category,
+            fromPaise: row.fromPaise,
+            products: row.count,
           })),
           strategy: result.strategy,
         };

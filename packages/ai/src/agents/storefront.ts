@@ -25,9 +25,11 @@ import { explainTools } from "../tools/explain";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
 import { storefrontApproval } from "./approval";
+import { repairHarmonyToolName } from "./repair";
 import { activeToolsFor, type ChatMode, modeInstructions } from "./modes";
 import { storefrontPrompt } from "./prompts";
 import { summariseStep } from "./steps";
+import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
 /** Every tool the buyer-facing agent can reach. */
 export function storefrontToolSet(ctx: AgentContext) {
@@ -60,6 +62,8 @@ const MAX_STEPS = 12;
  * breaks the stream.
  */
 export async function streamStorefrontTurn(params: {
+  /** The request's signal, so closing the tab stops the model. */
+  abortSignal?: AbortSignal;
   context?: PageContextInput;
   ctx: AgentContext;
   messages: StorefrontMessage[];
@@ -87,6 +91,10 @@ export async function streamStorefrontTurn(params: {
   const tools = storefrontToolSet(ctx);
 
   const result = streamText({
+    // Without this the turn has no end. A hosted model that queues the request
+    // holds the connection open, the stream stays empty, and the client shows
+    // "Thinking…" forever — see `agents/turn.ts`.
+    abortSignal: turnSignal(params.abortSignal),
     activeTools: activeToolsFor(mode) as (keyof typeof tools)[] | undefined,
     experimental_toolApprovalSecret: approvalSigningSecret(),
     instructions: storefrontPrompt({
@@ -97,6 +105,17 @@ export async function streamStorefrontTurn(params: {
     }),
     messages: await convertToModelMessages(messages),
     model: chatModel(),
+    onAbort: async ({ steps }) => {
+      // `onFinish` does not run on an abort, so without this a turn stopped by
+      // the deadline vanishes from the transcript and the audit trail — the
+      // §24 record would be missing exactly the turns worth investigating.
+      await persistAssistantMessage(
+        ctx,
+        "",
+        steps.flatMap((step) => step.toolCalls ?? [])
+      );
+      await touchConversation(ctx);
+    },
     onFinish: async ({ text, steps }) => {
       await persistAssistantMessage(
         ctx,
@@ -115,6 +134,9 @@ export async function streamStorefrontTurn(params: {
       ctx,
       mode,
     }),
+    // A tool name arriving with the model's own control tokens stuck to it
+    // should cost one repaired call, not the whole turn. See `repair.ts`.
+    repairToolCall: repairHarmonyToolName<typeof tools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools,
@@ -124,6 +146,17 @@ export async function streamStorefrontTurn(params: {
     // The client echoes this back on the next turn so one shopping session is
     // one conversation in the audit trail, rather than a new row per message.
     headers: { "x-conversation-id": ctx.conversationId },
-    stream: toUIMessageStream({ stream: result.stream }),
+    stream: reportAbortAsError(
+      toUIMessageStream({
+        // The SDK masks errors out of the stream unless this is supplied,
+        // which is why a failed turn used to reach the buyer as silence.
+        onError: (error) => {
+          console.error("Storefront turn failed", error);
+
+          return describeTurnFailure(error);
+        },
+        stream: result.stream,
+      })
+    ),
   });
 }

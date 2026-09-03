@@ -42,8 +42,10 @@ export function StorefrontAssistant({
   const {
     addToolApprovalResponse,
     busy,
+    error,
     messages,
     mode,
+    regenerate,
     sendMessage,
     setMode,
   } = useStorefrontAssistant({ context, initialMode, slug });
@@ -67,6 +69,8 @@ export function StorefrontAssistant({
       <MessageThread
         busy={busy}
         deniedNote="You declined that, so nothing happened."
+        error={error}
+        onRetry={regenerate}
         empty={
           <div className="space-y-3 py-6">
             <p className="text-muted-foreground text-sm">

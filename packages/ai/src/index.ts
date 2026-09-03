@@ -22,6 +22,8 @@ export {
 } from "./audit";
 export {
   type CatalogEntry,
+  type CatalogScope,
+  describeCatalogScope,
   getProductById,
   listActiveProducts,
   type ProductSearchInput,
@@ -45,7 +47,21 @@ export {
   getMerchantBySlug,
   spendCapPaise,
 } from "./context";
-export { backfillEmbeddings, embeddableText, embedQuery } from "./embeddings";
+export {
+  cachedEmbedding,
+  cacheKey,
+  embeddingQuotaCooldownRemainingMs,
+  embeddingQuotaExhausted,
+  isQuotaError,
+  noteEmbeddingFailure,
+  rememberEmbedding,
+  resetEmbeddingBudget,
+} from "./embedding-budget";
+export {
+  backfillEmbeddings,
+  embeddableText,
+  embedQuery,
+} from "./embeddings";
 export {
   assertCartShape,
   assertWithinSpendCap,
@@ -99,14 +115,18 @@ export {
   chatModel,
   chatPaceMs,
   chatProviderName,
+  describeEmbeddingProvider,
   describeProvider,
   EMBEDDING_DIMENSIONS,
+  type EmbeddingTask,
   embeddingModel,
+  embeddingModelId,
   embeddingProviderOptions,
   fastModel,
   hasEmbeddingCredentials,
   hasModelCredentials,
   missingCredentialHint,
+  toColumnVector,
 } from "./provider";
 export {
   type AppliedCampaign,
@@ -134,6 +154,11 @@ export {
   missingFields as missingRequirementFields,
   type RequirementInput,
 } from "./requirements";
+export {
+  canonicalCategory,
+  namesOnlyACategory,
+  queryTerms,
+} from "./search-terms";
 export {
   closeTask,
   type FeedbackInput,

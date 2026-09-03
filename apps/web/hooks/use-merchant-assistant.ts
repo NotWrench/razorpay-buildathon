@@ -7,6 +7,7 @@ import {
   lastAssistantMessageIsCompleteWithApprovalResponses,
 } from "ai";
 import { useRef } from "react";
+import { useTurnInterruption } from "./use-turn-interruption";
 
 /**
  * The operations agent.
@@ -19,7 +20,10 @@ import { useRef } from "react";
 export function useMerchantAssistant({ merchantId }: { merchantId: string }) {
   const conversationId = useRef<string | undefined>(undefined);
 
+  const { clear, interruption, noteFinish } = useTurnInterruption();
+
   const chat = useChat<MerchantMessage>({
+    onFinish: noteFinish,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport: new DefaultChatTransport({
       api: "/api/agent/merchant",
@@ -46,5 +50,11 @@ export function useMerchantAssistant({ merchantId }: { merchantId: string }) {
   return {
     ...chat,
     busy: chat.status === "streaming" || chat.status === "submitted",
+    error: chat.error ?? interruption,
+    sendMessage: (...args: Parameters<typeof chat.sendMessage>) => {
+      clear();
+
+      return chat.sendMessage(...args);
+    },
   };
 }

@@ -60,6 +60,17 @@ export const products = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     description: text("description"),
     embedding: vector("embedding", { dimensions: 1536 }),
+    /**
+     * Which embedding model wrote `embedding`, as `provider:model:dims:regime`.
+     *
+     * Vectors from two different models are incomparable rather than merely
+     * different, so a mixed column silently poisons semantic search instead of
+     * failing. Recording the producer turns that into something checkable:
+     * search only compares rows written by the model that is embedding the
+     * query, and the backfill re-embeds everything that does not match. A null
+     * is a row from before this column existed — also a re-embed.
+     */
+    embeddingModel: text("embedding_model"),
     id: uuid("id").defaultRandom().primaryKey(),
     imageUrl: text("image_url"),
     isActive: boolean("is_active").default(true).notNull(),

@@ -11,7 +11,22 @@ import { toAgentActor } from "@/lib/api/agent";
 import { assertMerchantOwner } from "@/lib/api/merchant";
 import { fail, handleRouteError, unauthorized } from "@/lib/api/respond";
 
-export const maxDuration = 30;
+/**
+ * How long the platform will let one turn run.
+ *
+ * A shopping turn is a dozen model round trips and as many tool calls; measured
+ * against the free NIM tier one took 59s, and the same request later took 101s.
+ * The old 30 seconds killed real turns partway through with no message to show
+ * for it. `AGENT_TURN_BUDGET_MS` must stay comfortably below this — the agent
+ * gives up first, on purpose, so the buyer is told what happened instead of
+ * watching the connection die. The margin covers the abort's own overshoot; see
+ * `packages/ai/src/agents/turn.ts`.
+ *
+ * Note that Vercel's Hobby plan caps this at 60s, which no measured turn on the
+ * free NIM tier fits inside. Deploying there needs a faster model provider, not
+ * a smaller number here.
+ */
+export const maxDuration = 180;
 
 const bodySchema = z.object({
   conversationId: z.uuid().optional(),
@@ -52,6 +67,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
 
     return await streamMerchantTurn({
+      abortSignal: request.signal,
       ctx,
       messages: body.messages as MerchantMessage[],
     });
