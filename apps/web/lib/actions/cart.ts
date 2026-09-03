@@ -66,7 +66,13 @@ function revalidateStore(slug: string) {
 export async function addToCartAction(
   input: z.input<typeof addSchema>
 ): Promise<ActionResult> {
-  const parsed = addSchema.parse(input);
+  const check = addSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That is not something this store sells.");
+  }
+
+  const parsed = check.data;
   const { owner } = await scopeFor(parsed.slug);
 
   try {
@@ -91,7 +97,13 @@ export async function addToCartAction(
 export async function removeFromCartAction(
   input: z.input<typeof removeSchema>
 ): Promise<ActionResult> {
-  const parsed = removeSchema.parse(input);
+  const check = removeSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That line could not be updated.");
+  }
+
+  const parsed = check.data;
   const { owner } = await scopeFor(parsed.slug);
 
   try {
@@ -115,7 +127,13 @@ export async function removeFromCartAction(
 export async function addBuildToCartAction(
   input: z.input<typeof buildSchema>
 ): Promise<ActionResult> {
-  const parsed = buildSchema.parse(input);
+  const check = buildSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That build could not be added to the cart.");
+  }
+
+  const parsed = check.data;
   const { owner } = await scopeFor(parsed.slug);
 
   try {

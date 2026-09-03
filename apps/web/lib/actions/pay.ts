@@ -30,7 +30,13 @@ const schema = z.object({
 export async function resumePaymentAction(
   input: z.input<typeof schema>
 ): Promise<ActionResult<CheckoutHandoff>> {
-  const parsed = schema.parse(input);
+  const check = schema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That order could not be found.");
+  }
+
+  const parsed = check.data;
   const merchant = await requireStore(parsed.slug);
   const buyer = await currentBuyer();
 

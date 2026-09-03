@@ -74,7 +74,13 @@ function revalidateBuild(slug: string) {
 export async function setBuildPartAction(
   input: z.input<typeof slotSchema>
 ): Promise<ActionResult<{ buildId: string }>> {
-  const parsed = slotSchema.parse(input);
+  const check = slotSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That part could not be placed in the build.");
+  }
+
+  const parsed = check.data;
   const scope = await scopeFor(parsed.slug);
 
   const product = await db.query.products.findFirst({
@@ -157,7 +163,13 @@ export async function setBuildPartAction(
 export async function removeBuildPartAction(
   input: z.input<typeof itemSchema>
 ): Promise<ActionResult> {
-  const parsed = itemSchema.parse(input);
+  const check = itemSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That part could not be removed from the build.");
+  }
+
+  const parsed = check.data;
   const scope = await scopeFor(parsed.slug);
 
   try {
@@ -196,7 +208,13 @@ export async function removeBuildPartAction(
 export async function validateBuildAction(
   input: z.input<typeof buildOnlySchema>
 ): Promise<ActionResult<{ canCheckout: boolean }>> {
-  const parsed = buildOnlySchema.parse(input);
+  const check = buildOnlySchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That build could not be checked.");
+  }
+
+  const parsed = check.data;
   const scope = await scopeFor(parsed.slug);
 
   try {
@@ -224,7 +242,13 @@ const startSchema = z.object({
 export async function startBuildAction(
   input: z.input<typeof startSchema>
 ): Promise<ActionResult<{ buildId: string }>> {
-  const parsed = startSchema.parse(input);
+  const check = startSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That build could not be started.");
+  }
+
+  const parsed = check.data;
   const scope = await scopeFor(parsed.slug);
 
   const { build } = await createBuild({
