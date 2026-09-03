@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { searchIdle, searchQuery } from "@/lib/mock";
-import type { SearchOverlayData } from "@/lib/mock/types";
+import { searchIdleAction, searchQueryAction } from "@/lib/actions/search";
+import type { SearchOverlayData } from "@/lib/data/types";
 
 /** Long enough that a fast typist makes one request, not eight. */
 const FETCH_MS = 200;
@@ -33,7 +33,7 @@ function useSearchData(open: boolean, term: string) {
 
     let cancelled = false;
 
-    searchIdle().then((data) => {
+    searchIdleAction().then((data) => {
       if (!cancelled) {
         setIdle(data);
       }
@@ -54,7 +54,7 @@ function useSearchData(open: boolean, term: string) {
 
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const response = await searchQuery(term);
+      const response = await searchQueryAction(term);
 
       if (!cancelled) {
         setResults(response);

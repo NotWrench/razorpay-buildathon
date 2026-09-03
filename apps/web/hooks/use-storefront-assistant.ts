@@ -84,10 +84,26 @@ export function useStorefrontAssistant({
     // answer did not arrive, and they need to be told so.
     error: chat.error ?? interruption,
     mode,
-    sendMessage: (...args: Parameters<typeof chat.sendMessage>) => {
+    /**
+     * `options.mode` sends this one turn as a different task.
+     *
+     * A surface where the task is picked *by* the message — a starter row that
+     * says "Compare two parts" — sets the mode and sends in the same tick, and
+     * the ref above is only refreshed on the next render. Writing it here
+     * means the turn goes out as the mode it was sent as rather than as the
+     * one before it; the state update the caller also makes then catches up.
+     */
+    sendMessage: (
+      message: Parameters<typeof chat.sendMessage>[0],
+      options?: { mode?: ChatMode }
+    ) => {
       clear();
 
-      return chat.sendMessage(...args);
+      if (options?.mode) {
+        modeRef.current = options.mode;
+      }
+
+      return chat.sendMessage(message);
     },
     setMode,
   };

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SettingsScreen } from "@/components/account/settings-screen";
-import { getAccount } from "@/lib/mock";
+import { getAccount } from "@/lib/data";
 
 /**
  * Settings. Read on the server, edited in local state — nothing here writes

@@ -10,7 +10,7 @@ import { ComponentCard } from "@/components/product/component-card";
 import type { ActiveFilter } from "@/components/shop/category-band";
 import { CategoryBand } from "@/components/shop/category-band";
 import { FilterSheet } from "@/components/shop/filter-sheet";
-import type { CatalogPage, ProductSort } from "@/lib/mock/catalog";
+import type { CatalogPage, ProductSort } from "@/lib/data/types";
 import { route } from "@/lib/routes";
 import type { ShopParams } from "@/lib/shop-params";
 import { countActiveFilters } from "@/lib/shop-params";

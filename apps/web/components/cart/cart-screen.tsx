@@ -5,22 +5,38 @@ import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { toast } from "sonner";
 import { CartRow } from "@/components/cart/cart-row";
 import { CartSummary } from "@/components/cart/cart-summary";
 import { EXIT_MS, useFlip } from "@/components/cart/use-flip";
 import { PillLink } from "@/components/common/pill-link";
 import { AssistantDock } from "@/components/dock/assistant-dock";
-import type { Cart, CartLine } from "@/lib/mock/types";
+import { setCartQuantityAction } from "@/lib/actions/storefront";
+import type { Cart, CartLine } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**
  * The cart.
  *
- * Everything here is local state over the mock. The shapes are chosen to match
- * `lib/actions/cart.ts`, which identifies a line by `productId` plus an
- * optional `buildId` — so wiring the real actions later is replacing the
- * bodies of `onRemove` and `onQuantity`, not rewriting the screen.
+ * The rows are held in local state so a removal can animate and be undone
+ * without a round trip, and every change is also sent to
+ * `setCartQuantityAction`, which is the row of record. The two are reconciled
+ * by `router.refresh()` — the server's answer wins, so a line the store
+ * cannot actually supply snaps back rather than staying wrong until the next
+ * navigation.
+ *
+ * Totals come from the server and are recomputed here the same way the money
+ * path prices them: `subtotal − discount`, with no tax or shipping line. See
+ * `lib/data/cart.ts`.
  */
 
 /** How long the undo toast stays up. */
@@ -37,9 +53,20 @@ interface Removed {
 
 function CartScreen({ cart }: { cart: Cart }) {
   const [lines, setLines] = useState(cart.lines);
+  const serverLines = useRef(cart.lines);
+
+  /* A refresh brings a new server answer; adopt it, because it knows about
+     stock and this component does not. */
+  if (serverLines.current !== cart.lines) {
+    serverLines.current = cart.lines;
+    setLines(cart.lines);
+  }
+
   const [exiting, setExiting] = useState<string | null>(null);
   const [removed, setRemoved] = useState<Removed | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
+  const [, startTransition] = useTransition();
 
   const { capture, register } = useFlip(lines);
 
@@ -53,13 +80,48 @@ function CartScreen({ cart }: { cart: Cart }) {
     []
   );
 
-  const onQuantity = useCallback((key: string, quantity: number) => {
-    setLines((current) =>
-      current.map((line) =>
-        keyFor(line) === key ? { ...line, quantity } : line
-      )
-    );
-  }, []);
+  /**
+   * Writes one line's quantity through, then re-reads.
+   *
+   * The optimistic update lands first so the stepper does not lag the press;
+   * the refresh is what makes the number true, because the server clamps to
+   * what is on the shelf and this component has no business guessing at that.
+   */
+  const persist = useCallback(
+    (line: CartLine, quantity: number) => {
+      startTransition(async () => {
+        const result = await setCartQuantityAction({
+          buildId: line.buildId,
+          productId: line.product.id,
+          quantity,
+        });
+
+        if (!result.ok) {
+          toast.error(result.message);
+        }
+
+        router.refresh();
+      });
+    },
+    [router]
+  );
+
+  const onQuantity = useCallback(
+    (key: string, quantity: number) => {
+      setLines((current) => {
+        const line = current.find((entry) => keyFor(entry) === key);
+
+        if (line) {
+          persist(line, quantity);
+        }
+
+        return current.map((entry) =>
+          keyFor(entry) === key ? { ...entry, quantity } : entry
+        );
+      });
+    },
+    [persist]
+  );
 
   /**
    * The row fades where it stands, then the list closes over it with a FLIP.
@@ -78,6 +140,7 @@ function CartScreen({ cart }: { cart: Cart }) {
 
           if (gone) {
             setRemoved({ at: Date.now(), index, line: gone });
+            persist(gone, 0);
           }
 
           return current.filter((entry) => keyFor(entry) !== key);
@@ -85,7 +148,7 @@ function CartScreen({ cart }: { cart: Cart }) {
         setExiting(null);
       }, EXIT_MS);
     },
-    [capture]
+    [capture, persist]
   );
 
   const onUndo = useCallback(() => {
@@ -101,8 +164,9 @@ function CartScreen({ cart }: { cart: Cart }) {
 
       return next;
     });
+    persist(removed.line, removed.line.quantity);
     setRemoved(null);
-  }, [capture, removed]);
+  }, [capture, persist, removed]);
 
   /* The toast is live for five seconds, then the removal is just a removal. */
   useEffect(() => {
@@ -120,17 +184,19 @@ function CartScreen({ cart }: { cart: Cart }) {
       (total, line) => total + line.product.pricePaise * line.quantity,
       0
     );
-    const discountPaise = subtotalPaise > 0 ? cart.discountPaise : 0;
-    const taxPaise = Math.round((subtotalPaise - discountPaise) * 0.18);
+    const discountPaise = Math.min(
+      subtotalPaise > 0 ? cart.discountPaise : 0,
+      subtotalPaise
+    );
 
     return {
       discountPaise,
       shippingPaise: cart.shippingPaise,
       subtotalPaise,
-      taxPaise,
-      totalPaise: subtotalPaise - discountPaise + cart.shippingPaise + taxPaise,
+      taxPaise: cart.taxPaise,
+      totalPaise: subtotalPaise - discountPaise + cart.shippingPaise,
     };
-  }, [cart.discountPaise, cart.shippingPaise, lines]);
+  }, [cart.discountPaise, cart.shippingPaise, cart.taxPaise, lines]);
 
   const groups = useMemo(
     () =>

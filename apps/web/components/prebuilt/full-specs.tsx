@@ -4,7 +4,7 @@ import { Label } from "@workspace/ui/components/label";
 import { SpecList } from "@workspace/ui/components/spec-list";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useId, useState } from "react";
-import type { PrebuiltDetail } from "@/lib/mock/types";
+import type { PrebuiltDetail } from "@/lib/data/types";
 
 /**
  * The exhaustive table, closed by default, at the very bottom — marketing

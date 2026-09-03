@@ -45,7 +45,13 @@ export interface CheckoutBlocked {
 export async function startCheckoutAction(
   input: z.input<typeof checkoutSchema>
 ): Promise<ActionResult<CheckoutStarted> | CheckoutBlocked> {
-  const parsed = checkoutSchema.parse(input);
+  const check = checkoutSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("Checkout could not be started. Nothing has been charged.");
+  }
+
+  const parsed = check.data;
   const merchant = await requireStore(parsed.slug);
   const buyer = await currentBuyer();
 
@@ -92,7 +98,13 @@ const verifySchema = z.object({
 export async function refreshAfterPaymentAction(
   input: z.input<typeof verifySchema>
 ): Promise<ActionResult> {
-  const parsed = verifySchema.parse(input);
+  const check = verifySchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("Those pages could not be refreshed.");
+  }
+
+  const parsed = check.data;
 
   revalidatePath(`/store/${parsed.slug}`, "layout");
   revalidatePath(`/store/${parsed.slug}/orders/${parsed.orderId}`);

@@ -8,7 +8,7 @@ import { formatPaise } from "@workspace/ui/lib/money";
 import { ImagePlus } from "lucide-react";
 import { useId } from "react";
 import { ProductRender } from "@/components/common/product-render";
-import type { ManagerProduct } from "@/lib/mock/types";
+import type { ManagerProduct } from "@/lib/data/types";
 
 /**
  * Adding a product and editing one are the same sheet.

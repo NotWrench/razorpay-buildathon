@@ -1,5 +1,6 @@
 import {
   db,
+  isUuid,
   type Order,
   orderItems,
   orders,
@@ -100,6 +101,12 @@ export async function getBuyerOrder(params: {
   merchantId: string;
   orderId: string;
 }): Promise<OrderDetail | null> {
+  /* Same reason as `getCatalogProduct`: a malformed id is a 404, and handing
+     it to Postgres as a uuid would make it a 500. */
+  if (!isUuid(params.orderId)) {
+    return null;
+  }
+
   const order = await db.query.orders.findFirst({
     where: and(
       eq(orders.id, params.orderId),

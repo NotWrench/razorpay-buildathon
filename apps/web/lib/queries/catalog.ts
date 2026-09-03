@@ -1,5 +1,6 @@
 import {
   db,
+  isUuid,
   type Product,
   type ProductSpec,
   productCategories,
@@ -188,6 +189,13 @@ export const getCatalogProduct = cache(
     merchantId: string,
     productId: string
   ): Promise<CatalogProduct | null> => {
+    /* A product id off a URL can be anything. Postgres rejects a malformed
+       uuid with a driver error, so the shape is checked before the query and
+       a bad one is simply not a product. */
+    if (!isUuid(productId)) {
+      return null;
+    }
+
     const [row] = await db
       .select({ product: products, specs: productSpecs })
       .from(products)

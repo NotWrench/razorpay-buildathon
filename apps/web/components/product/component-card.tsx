@@ -6,7 +6,7 @@ import { SpecList } from "@workspace/ui/components/spec-list";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import Link from "next/link";
 import { ProductRender } from "@/components/common/product-render";
-import type { ProductSummary } from "@/lib/mock/types";
+import type { ProductSummary } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -40,6 +40,8 @@ function ComponentCard({ product }: { product: ProductSummary }) {
           alt={product.name}
           category={product.category}
           className="transition-transform duration-[420ms] group-hover:scale-[1.03]"
+          sizes="(min-width: 1280px) 380px, (min-width: 768px) 45vw, 90vw"
+          src={product.imageUrl || undefined}
         />
       </ImageGround>
 

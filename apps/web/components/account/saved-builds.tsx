@@ -1,7 +1,7 @@
 import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { PillLink } from "@/components/common/pill-link";
-import type { SavedBuild } from "@/lib/mock/types";
+import type { SavedBuild } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**

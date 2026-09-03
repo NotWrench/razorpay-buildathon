@@ -4,7 +4,7 @@ import { AccountFiguresRow } from "@/components/account/account-figures";
 import { AddressList } from "@/components/account/address-list";
 import { OrderTable } from "@/components/account/order-table";
 import { SavedBuilds } from "@/components/account/saved-builds";
-import { getAccount } from "@/lib/mock";
+import { getAccount } from "@/lib/data";
 
 /**
  * The profile.

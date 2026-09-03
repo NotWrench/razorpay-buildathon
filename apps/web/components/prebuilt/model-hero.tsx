@@ -4,7 +4,7 @@ import { KenBurns } from "@workspace/ui/components/motion/ken-burns";
 import { Pill } from "@workspace/ui/components/pill";
 import { PriceBlock } from "@workspace/ui/components/price-block";
 import { ProductRender } from "@/components/common/product-render";
-import type { PrebuiltDetail } from "@/lib/mock/types";
+import type { PrebuiltDetail } from "@/lib/data/types";
 
 /**
  * Band 1. The machine, its one line of positioning, and the only solid red

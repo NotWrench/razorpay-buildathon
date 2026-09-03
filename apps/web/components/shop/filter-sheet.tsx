@@ -6,8 +6,7 @@ import { Pill } from "@workspace/ui/components/pill";
 import { cn } from "@workspace/ui/lib/utils";
 import { useCallback } from "react";
 import { PriceRange } from "@/components/shop/price-range";
-import type { CatalogPage, Facet } from "@/lib/mock/catalog";
-import { MOCK_BUILD } from "@/lib/mock/catalog";
+import type { CatalogPage, Facet } from "@/lib/data/types";
 import type { ShopParams } from "@/lib/shop-params";
 
 /**
@@ -179,19 +178,24 @@ function FilterSheet({
           </div>
 
           <div className="flex-1 overflow-y-auto px-7 pb-6">
-            <div className="border-hairline border-b pb-8">
-              <Toggle
-                checked={Boolean(params.compatibleOnly)}
-                label="Compatible with my build"
-                onToggle={onBuild}
-              />
-              <p className="mt-3 text-[13px] text-smoke">{MOCK_BUILD.name}</p>
-              {params.compatibleOnly ? (
-                <p className="mt-2 font-mono text-[13px] text-smoke tabular-nums">
-                  {page.total} of {page.buildCompatible}
-                </p>
-              ) : null}
-            </div>
+            {/* The toggle only appears when there is a build to filter
+                against. A control that silently matches everything is worse
+                than one that is not offered. */}
+            {page.buildName ? (
+              <div className="border-hairline border-b pb-8">
+                <Toggle
+                  checked={Boolean(params.compatibleOnly)}
+                  label="Compatible with my build"
+                  onToggle={onBuild}
+                />
+                <p className="mt-3 text-[13px] text-smoke">{page.buildName}</p>
+                {params.compatibleOnly ? (
+                  <p className="mt-2 font-mono text-[13px] text-smoke tabular-nums">
+                    {page.total} of {page.buildCompatible}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="mt-8">
               <PriceRange

@@ -2,7 +2,7 @@ import type { CategorySlug } from "@workspace/db/taxonomy";
 import { ImageGround } from "@workspace/ui/components/image-ground";
 import { cn } from "@workspace/ui/lib/utils";
 import { ProductRender } from "@/components/common/product-render";
-import type { PrebuiltDetail } from "@/lib/mock/types";
+import type { PrebuiltDetail } from "@/lib/data/types";
 
 /**
  * One named feature, full-bleed, image on alternating sides.

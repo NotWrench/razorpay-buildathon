@@ -3,7 +3,7 @@
 import { Label } from "@workspace/ui/components/label";
 import { CountUp } from "@workspace/ui/components/motion/count-up";
 import { formatPaise } from "@workspace/ui/lib/money";
-import type { AccountFigures } from "@/lib/mock/types";
+import type { AccountFigures } from "@/lib/data/types";
 
 /**
  * Four numbers, and nothing around them.

@@ -6,7 +6,7 @@ import { FullSpecs } from "@/components/prebuilt/full-specs";
 import { ManifestTable } from "@/components/prebuilt/manifest-table";
 import { ModelGallery } from "@/components/prebuilt/model-gallery";
 import { ModelHero } from "@/components/prebuilt/model-hero";
-import { getPrebuilt } from "@/lib/mock";
+import { getPrebuilt } from "@/lib/data";
 
 /**
  * One machine, the NEURON pattern: hero, named feature sections, gallery,

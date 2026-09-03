@@ -68,6 +68,44 @@ const HEADLINE: Record<string, (keyof ProductSpec)[]> = {
 
 const CAMEL_BOUNDARY = /([A-Z])/g;
 const FIRST_CHARACTER = /^./;
+const WORDS = /\S+/g;
+
+/**
+ * Attribute keys that are acronyms rather than words.
+ *
+ * `attributes` is free-form JSON, so its keys arrive as whatever was typed —
+ * `vram`, `igpu`, `vrm`. Title-casing those blindly produces "Vram", which
+ * reads as a typo on a spec table sitting next to "TDP" and "PSU".
+ */
+const ACRONYMS = new Set([
+  "cpu",
+  "gpu",
+  "hdd",
+  "igpu",
+  "led",
+  "nvme",
+  "pcie",
+  "psu",
+  "rgb",
+  "ram",
+  "rpm",
+  "sata",
+  "ssd",
+  "tdp",
+  "usb",
+  "vram",
+  "vrm",
+]);
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(CAMEL_BOUNDARY, " $1")
+    .replace(WORDS, (word) =>
+      ACRONYMS.has(word.toLowerCase())
+        ? word.toUpperCase()
+        : word.replace(FIRST_CHARACTER, (character) => character.toUpperCase())
+    );
+}
 
 const HIDDEN = new Set([
   "categorySlug",
@@ -99,6 +137,58 @@ function render(field: string, value: unknown): string | null {
   const unit = UNITS[field];
 
   return unit ? `${value} ${unit}` : String(value);
+}
+
+/**
+ * The label/value pairs a card shows, padded to `limit`.
+ *
+ * `headlineSpecs` renders the same fields as bare strings, which is right for
+ * a one-line summary and wrong for a card that draws a label column. The
+ * padding comes from `products.attributes` — display-only data the engine
+ * ignores — because a card with one spec row and two empty ones reads as a
+ * product nobody finished entering, and the attributes are usually the two
+ * facts a buyer wanted anyway ("8GB GDDR6", "10C/16T").
+ */
+const MAX_SPEC_VALUE = 24;
+
+export function headlineSpecRows(
+  categorySlug: string | null,
+  specs: ProductSpec | null,
+  attributes: Record<string, unknown> | null,
+  limit = 3
+): SpecEntry[] {
+  const fields = HEADLINE[categorySlug ?? ""] ?? [];
+  const rows: SpecEntry[] = [];
+
+  for (const field of fields) {
+    const value = specs ? render(String(field), specs[field]) : null;
+
+    if (value !== null) {
+      rows.push({ label: LABELS[String(field)] ?? String(field), value });
+    }
+  }
+
+  if (rows.length >= limit) {
+    return rows.slice(0, limit);
+  }
+
+  const taken = new Set(rows.map((row) => row.label));
+
+  for (const entry of attributeEntries(attributes)) {
+    if (rows.length >= limit) {
+      break;
+    }
+
+    /* A spec row is one value in a narrow column. An attribute holding a
+       sentence — "the distributor publishes no dimensions" — is a real fact
+       and belongs in the description, not wrapped over four lines of a card. */
+    if (!taken.has(entry.label) && entry.value.length <= MAX_SPEC_VALUE) {
+      rows.push(entry);
+      taken.add(entry.label);
+    }
+  }
+
+  return rows;
 }
 
 /** Two or three fields for a card, chosen by category. */
@@ -152,9 +242,7 @@ export function attributeEntries(
 
   return Object.entries(attributes)
     .map(([label, value]) => ({
-      label: label
-        .replace(CAMEL_BOUNDARY, " $1")
-        .replace(FIRST_CHARACTER, (character) => character.toUpperCase()),
+      label: humanizeKey(label),
       value: Array.isArray(value) ? value.join(", ") : String(value),
     }))
     .filter((entry) => entry.value !== "" && entry.value !== "null");

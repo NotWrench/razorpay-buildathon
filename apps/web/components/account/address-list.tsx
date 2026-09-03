@@ -1,6 +1,6 @@
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
-import type { SavedAddress } from "@/lib/mock/types";
+import type { SavedAddress } from "@/lib/data/types";
 
 /**
  * The rail names five sections and this is the fifth.

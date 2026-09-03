@@ -5,7 +5,7 @@ import { Pill } from "@workspace/ui/components/pill";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
-import type { Finding } from "@/lib/mock/types";
+import type { Finding } from "@/lib/data/types";
 
 /**
  * What I'd do — at most three, ranked, and nothing if there is nothing.

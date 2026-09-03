@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu } from "@base-ui/react/menu";
+import type { ChatMode } from "@workspace/ai";
 import { cn } from "@workspace/ui/lib/utils";
 import { ArrowUp, ChevronDown, Square } from "lucide-react";
 import type { ChangeEvent, KeyboardEvent } from "react";
@@ -20,9 +21,16 @@ const MODES = [
   { id: "recommend", label: "Recommend" },
   { id: "about", label: "About" },
   { id: "orders", label: "Orders" },
-] as const;
+] as const satisfies readonly { id: ChatMode; label: string }[];
 
-export type ChatModeId = (typeof MODES)[number]["id"];
+/**
+ * The same five tasks §6 defines, not a second list that looks like them.
+ *
+ * The mode travels with every turn and decides which tools the agent may
+ * reach, so a label here that the server has never heard of is a mode that
+ * silently narrows to nothing.
+ */
+export type ChatModeId = ChatMode;
 
 interface ChatComposerProps {
   mode: ChatModeId;

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
 import { TypedConfirmDialog } from "@/components/manager/manager-dialogs";
-import type { StoreSettings } from "@/lib/mock/types";
+import type { StoreSettings } from "@/lib/data/types";
 
 /**
  * The store's own settings. No cards, no analysis, no numbers worth counting.

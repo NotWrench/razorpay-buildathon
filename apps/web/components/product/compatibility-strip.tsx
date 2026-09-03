@@ -3,9 +3,7 @@ import { StatusLine } from "@workspace/ui/components/status-line";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PillLink } from "@/components/common/pill-link";
-import { MOCK_BUILD } from "@/lib/mock/catalog";
-import { MOCK_PRODUCTS_BY_ID } from "@/lib/mock/products";
-import type { CompatibilityCheck, CompatibilityReport } from "@/lib/mock/types";
+import type { CompatibilityCheck, CompatibilityReport } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -31,9 +29,7 @@ const HEADLINE = {
  * work out which name goes with which clause.
  */
 function linkifyParts(check: CompatibilityCheck): ReactNode {
-  const names = (check.relatedProductIds ?? [])
-    .map((id) => MOCK_PRODUCTS_BY_ID.get(id))
-    .filter((product) => product !== undefined);
+  const names = check.relatedProducts ?? [];
 
   let remaining = check.message;
   const nodes: ReactNode[] = [];
@@ -88,7 +84,9 @@ function CompatibilityStrip({ report }: { report?: CompatibilityReport }) {
     <div className="border-hairline border-t border-b py-6">
       <div className="flex items-baseline justify-between gap-4">
         <Label>Compatibility</Label>
-        <span className="text-[13px] text-smoke">{MOCK_BUILD.name}</span>
+        {report.buildName ? (
+          <span className="text-[13px] text-smoke">{report.buildName}</span>
+        ) : null}
       </div>
 
       <p className="mt-3 text-[15px] text-bone">{HEADLINE[report.overall]}</p>

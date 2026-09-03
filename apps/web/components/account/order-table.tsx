@@ -3,7 +3,7 @@
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
 import { useCallback, useId, useState } from "react";
-import type { AccountOrder } from "@/lib/mock/types";
+import type { AccountOrder } from "@/lib/data/types";
 
 /**
  * Orders, on hairlines.

@@ -6,7 +6,7 @@ import { StatusLine } from "@workspace/ui/components/status-line";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { PillLink } from "@/components/common/pill-link";
 import { ProductRender } from "@/components/common/product-render";
-import type { PrebuiltDetail, ProductSummary } from "@/lib/mock/types";
+import type { PrebuiltDetail, ProductSummary } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**

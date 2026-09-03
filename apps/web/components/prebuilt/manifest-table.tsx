@@ -3,7 +3,7 @@ import { StatusLine } from "@workspace/ui/components/status-line";
 import { formatPaise } from "@workspace/ui/lib/money";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import type { PrebuiltDetail } from "@/lib/mock/types";
+import type { PrebuiltDetail } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**

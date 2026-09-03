@@ -1,24 +1,47 @@
 import { Label } from "@workspace/ui/components/label";
-import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import type { Metadata } from "next";
-import { getCart } from "@/lib/mock";
-import { MOCK_PRODUCTS_BY_ID } from "@/lib/mock/products";
+import { PayButton } from "@/components/checkout/pay-button";
+import { getCart, getProductsByIds, requireDefaultStore } from "@/lib/data";
 
 /**
- * A stub, and honest about it.
- *
- * The order summary is real; the button does nothing and says so. A checkout
- * that looks finished and silently fails is worse than one that admits it is
- * not wired yet.
+ * Checkout.
  *
  * Two ways in. `?parts=` carries a selection the assistant assembled, and the
  * page prices exactly those lines — arriving here from the build sheet and
  * being shown the cart's total instead would be the app losing the thing you
  * just spent five minutes choosing. Without it, the cart.
+ *
+ * Both totals are what the gateway will actually take. `createCheckoutOrder`
+ * charges `subtotal − discount`; there is no tax or shipping line, because
+ * the catalogue is GST-inclusive Indian retail and the platform does not
+ * charge for delivery. A summary that added either would be quoting a number
+ * nobody is going to collect.
  */
 
 export const metadata: Metadata = { title: "Checkout" };
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-6 py-2.5">
+      <Label>{label}</Label>
+      <span className="font-mono text-[15px] text-bone tabular-nums">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function Total({ paise }: { paise: number }) {
+  return (
+    <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
+      <Label>Total</Label>
+      <span className="font-mono text-[32px] text-bone tabular-nums">
+        {formatPaise(paise)}
+      </span>
+    </div>
+  );
+}
 
 export default async function CheckoutPage({
   searchParams,
@@ -26,11 +49,10 @@ export default async function CheckoutPage({
   searchParams: Promise<{ parts?: string }>;
 }) {
   const { parts } = await searchParams;
-  const build = (parts ?? "")
-    .split(",")
-    .filter(Boolean)
-    .map((id) => MOCK_PRODUCTS_BY_ID.get(id))
-    .filter((part) => part !== undefined);
+  const merchant = await requireDefaultStore();
+
+  const wanted = (parts ?? "").split(",").filter(Boolean);
+  const build = wanted.length > 0 ? await getProductsByIds(wanted) : [];
 
   if (build.length > 0) {
     const total = build.reduce((sum, part) => sum + part.pricePaise, 0);
@@ -65,20 +87,13 @@ export default async function CheckoutPage({
             ))}
           </ul>
 
-          <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
-            <Label>Total</Label>
-            <span className="font-mono text-[32px] text-bone tabular-nums">
-              {formatPaise(total)}
-            </span>
-          </div>
+          <Total paise={total} />
 
-          <Pill className="mt-7 w-full justify-center" disabled>
-            Pay {formatPaise(total)}
-          </Pill>
-
-          <p className="mt-4 text-[13px] text-smoke">
-            Payment wiring is the next step.
-          </p>
+          <PayButton
+            parts={build.map((part) => part.id)}
+            storeName={merchant.businessName}
+            totalPaise={total}
+          />
         </div>
       </div>
     );
@@ -94,45 +109,30 @@ export default async function CheckoutPage({
       </h1>
 
       <div className="mt-12 rounded-[20px] bg-panel p-7 shadow-card">
-        <div className="flex items-baseline justify-between gap-6 py-2.5">
-          <Label>Items</Label>
-          <span className="font-mono text-[15px] text-bone tabular-nums">
-            {items}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-6 py-2.5">
-          <Label>Subtotal</Label>
-          <span className="font-mono text-[15px] text-bone tabular-nums">
-            {formatPaise(cart.subtotalPaise)}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-6 py-2.5">
-          <Label>Discount</Label>
-          <span className="font-mono text-[15px] text-lacquer tabular-nums">
-            −{formatPaise(cart.discountPaise)}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-6 py-2.5">
-          <Label>Tax</Label>
-          <span className="font-mono text-[15px] text-bone tabular-nums">
-            {formatPaise(cart.taxPaise)}
-          </span>
-        </div>
+        <Row label="Items" value={String(items)} />
+        <Row label="Subtotal" value={formatPaise(cart.subtotalPaise)} />
 
-        <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
-          <Label>Total</Label>
-          <span className="font-mono text-[32px] text-bone tabular-nums">
-            {formatPaise(cart.totalPaise)}
-          </span>
-        </div>
+        {cart.discountPaise > 0 ? (
+          <div className="flex items-baseline justify-between gap-6 py-2.5">
+            <Label>Discount</Label>
+            <span className="font-mono text-[15px] text-lacquer tabular-nums">
+              −{formatPaise(cart.discountPaise)}
+            </span>
+          </div>
+        ) : null}
 
-        <Pill className="mt-7 w-full justify-center" disabled>
-          Pay {formatPaise(cart.totalPaise)}
-        </Pill>
+        <Total paise={cart.totalPaise} />
 
-        <p className="mt-4 text-[13px] text-smoke">
-          Payment wiring is the next step.
-        </p>
+        {items === 0 ? (
+          <p className="mt-7 text-[15px] text-smoke">
+            There is nothing in your cart to pay for yet.
+          </p>
+        ) : (
+          <PayButton
+            storeName={merchant.businessName}
+            totalPaise={cart.totalPaise}
+          />
+        )}
       </div>
     </div>
   );

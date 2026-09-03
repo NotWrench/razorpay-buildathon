@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { useWordStream } from "@/components/chat/use-word-stream";
 import { FindingsList } from "@/components/manager/findings-list";
 import { ManagerComposer } from "@/components/manager/manager-composer";
@@ -14,8 +15,8 @@ import {
   SeenNotBought,
   SellingWell,
 } from "@/components/manager/summary-blocks";
-import { managerReply } from "@/lib/mock/manager-chat";
-import type { ManagerRange, ManagerSummary } from "@/lib/mock/types";
+import { managerReplyAction } from "@/lib/actions/manager";
+import type { ManagerRange, ManagerSummary } from "@/lib/data/types";
 
 /**
  * The manager's page, which is the assistant.
@@ -27,13 +28,13 @@ import type { ManagerRange, ManagerSummary } from "@/lib/mock/types";
  * interrogate them.
  */
 
-/** The greeting is the whole page header. No title, no breadcrumb. */
-const OPERATOR = "Shadow";
-
 function ManagerScreen({
+  operator,
   ranges,
   summary,
 }: {
+  /** Whoever the store belongs to. The greeting is the whole page header. */
+  operator: string;
   ranges: ManagerRange[];
   summary: ManagerSummary;
 }) {
@@ -41,16 +42,17 @@ function ManagerScreen({
   const [turns, setTurns] = useState<ManagerTurn[]>([]);
   const stream = useWordStream();
 
-  const onSend = useCallback(() => {
+  const onSend = useCallback(async () => {
     const question = draft.trim();
 
     if (question.length === 0) {
       return;
     }
 
-    const reply = managerReply(question, summary.range.id);
-
     setDraft("");
+
+    const reply = await managerReplyAction(question, summary.range.id);
+
     setTurns((current) => [
       ...current,
       {
@@ -63,11 +65,17 @@ function ManagerScreen({
     stream.start(reply.text.split(" ").length);
   }, [draft, stream, summary.range.id]);
 
+  const send = useCallback(() => {
+    onSend().catch(() =>
+      toast.error("The store's numbers could not be read just now.")
+    );
+  }, [onSend]);
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[820px] flex-col px-5 pt-16 pb-10 sm:px-8">
       <header>
         <h1 className="font-display font-semibold text-[32px] text-bone leading-none tracking-[-0.02em]">
-          Here&rsquo;s where the store stands, {OPERATOR}.
+          Here&rsquo;s where the store stands, {operator}.
         </h1>
         <div className="mt-3">
           <RangeMenu current={summary.range} ranges={ranges} />
@@ -96,7 +104,7 @@ function ManagerScreen({
 
       <div className="mt-14 pt-2">
         <ManagerComposer
-          onSend={onSend}
+          onSend={send}
           onStop={stream.stop}
           onValueChange={setDraft}
           streaming={stream.streaming}

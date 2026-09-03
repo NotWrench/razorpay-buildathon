@@ -44,3 +44,4 @@ export const hasDedicatedAgentDatabase = agentDatabaseUrl !== databaseUrl;
 
 export * from "./schema/index";
 export * from "./taxonomy";
+export { isUuid } from "./uuid";

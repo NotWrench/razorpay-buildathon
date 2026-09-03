@@ -75,6 +75,13 @@ export interface SeedProduct {
   brand: string;
   categorySlug: CategorySlug;
   description: string;
+  /**
+   * A photograph of the part, hotlinked from the retail listing it was taken
+   * from. Null for the handful of parts that no longer have a listing
+   * anywhere — a missing photo has to reach the storefront as an absent
+   * image and not as a broken one.
+   */
+  imageUrl?: string;
   inventory?: SeedInventory;
   name: string;
   /** Rupees; converted to paise on insert. */
@@ -92,6 +99,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Six-core Zen 4 processor on AM5, 65W, with a bundled cooler and basic integrated graphics. The sensible centre of a 1440p gaming build.",
+    imageUrl: "https://m.media-amazon.com/images/I/61h39mKsSBL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 9,
       lowStockThreshold: 6,
@@ -115,6 +123,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Eight-core AM5 processor with stacked 3D V-Cache. The fastest gaming CPU at its power draw, and unremarkable at everything else.",
+    imageUrl: "https://m.media-amazon.com/images/I/51HqC0rU9HL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 4,
@@ -138,6 +147,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Twelve-core AM5 processor for rendering, compilation and heavy multitasking. Draws 170W sustained and wants real cooling.",
+    imageUrl: "https://m.media-amazon.com/images/I/51OEiWrUtqL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 14,
       lowStockThreshold: 3,
@@ -161,6 +171,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "AM5 processor with integrated Radeon graphics strong enough for 1080p esports without a discrete card. The starting point for a GPU-less build.",
+    imageUrl: "https://m.media-amazon.com/images/I/615TPN-DayL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 11,
       lowStockThreshold: 4,
@@ -184,6 +195,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Six-core AM4 processor on the older DDR4 platform. Still the cheapest honest route to 1080p gaming, with no upgrade path beyond AM4.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/09/AMD-Ryzen-5-5600-AM4-Desktop-Processor-6-Cores-12-Threads-100-100000927BOX.jpg",
     inventory: {
       lastRestockedDaysAgo: 25,
       lowStockThreshold: 5,
@@ -207,6 +220,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Ten-core LGA1700 processor without integrated graphics, so it needs a discrete card. Strong value for mixed gaming and productivity.",
+    imageUrl: "https://m.media-amazon.com/images/I/51wQQ9WWa7L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 8,
       lowStockThreshold: 5,
@@ -230,6 +244,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Unlocked fourteen-core LGA1700 processor. Fast, and hot enough that the cooler choice stops being optional.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Intel-Core-i5-14600K-3.5-GHz-14-Core-LGA-1700-Processor-BX8071514600K-20231025-070657.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 4,
@@ -253,6 +269,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Twenty-core LGA1700 flagship. Peaks at 253W, which drives the cooler and power-supply choice more than any other part in the build.",
+    imageUrl: "https://m.media-amazon.com/images/I/61aAAg73uLL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 17,
       lowStockThreshold: 3,
@@ -278,6 +295,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "Full-size AM5 board with a heavy VRM, three M.2 slots and Wi-Fi 6E. The default choice for an ATX Ryzen build.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/MSI-MAG-B650-Tomahawk-WIFI-Motherboard.png",
     inventory: {
       lastRestockedDaysAgo: 7,
       lowStockThreshold: 4,
@@ -307,6 +326,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "Micro-ATX AM5 board with four DIMM slots and two M.2 slots. Everything a mid-range Ryzen build needs and nothing it does not.",
+    imageUrl: "https://m.media-amazon.com/images/I/81W4GFPKkyL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 6,
@@ -336,6 +356,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "High-end AM5 board with PCIe 5.0 graphics and storage, four M.2 slots and enough VRM for a 170W processor at sustained load.",
+    imageUrl: "https://m.media-amazon.com/images/I/71ubTinPcOL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 20,
       lowStockThreshold: 3,
@@ -394,6 +415,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "ATX AM4 board on the DDR4 platform. Pairs with the Ryzen 5 5600 for the cheapest complete build in the store.",
+    imageUrl: "https://m.media-amazon.com/images/I/81WSM868b8S._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 30,
       lowStockThreshold: 4,
@@ -423,6 +445,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "Micro-ATX LGA1700 board with DDR5 and Wi-Fi 6. Sized for a locked Intel processor rather than an overclocked one.",
+    imageUrl: "https://m.media-amazon.com/images/I/91FJ2stRN+L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 5,
@@ -452,6 +475,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "ATX LGA1700 board with the VRM and memory tuning an unlocked Core i7 actually needs. Four M.2 slots.",
+    imageUrl: "https://m.media-amazon.com/images/I/81rX0VhoStL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 13,
       lowStockThreshold: 3,
@@ -481,6 +505,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "ATX LGA1700 board with three M.2 slots at a mid-range price. A full-size alternative to the micro-ATX B760 boards.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Gigabyte-B760-GAMING-X-AX-DDR5-Intel-LGA-1700-Motherboard-20231025-090426.jpg",
     inventory: {
       lastRestockedDaysAgo: 10,
       lowStockThreshold: 4,
@@ -512,6 +538,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "32GB DDR5-6000 CL30 kit with EXPO timings. The sweet spot for Ryzen 7000, and comfortable headroom for gaming with a browser open.",
+    imageUrl: "https://m.media-amazon.com/images/I/61m8xvVXvvL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 8,
@@ -536,6 +563,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "32GB DDR5-6400 kit with an aluminium heatspreader. Marginally faster than the 6000 kit and mainly worth it on Intel.",
+    imageUrl: "https://m.media-amazon.com/images/I/61bc6zvEIIL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 8,
       lowStockThreshold: 5,
@@ -560,6 +588,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "16GB DDR5-5600 kit, no heatspreader. Enough for gaming today, and the first thing worth upgrading in a year.",
+    imageUrl: "https://m.media-amazon.com/images/I/611n3F+AQJL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 3,
       lowStockThreshold: 10,
@@ -584,6 +613,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "64GB DDR5-6000 kit in two sticks, so it still fits a two-slot ITX board. Aimed at video editing and large local models.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/11/CORSAIR-Vengeance-64GB-2-x-32GB-288-Pin-PC-RAM-DDR5-6000-PC5-48000-Desktop-Memory-Model-CMK64GX5M2D6000C40.jpg",
     inventory: {
       lastRestockedDaysAgo: 19,
       lowStockThreshold: 3,
@@ -608,6 +639,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "32GB DDR4-3600 kit for AM4 and older Intel boards. DDR4 and DDR5 are not interchangeable — this will not seat in a DDR5 board.",
+    imageUrl: "https://m.media-amazon.com/images/I/61uWHA2E5eL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 34,
       lowStockThreshold: 6,
@@ -632,6 +664,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "16GB DDR4-3200 kit, the plain option for a budget AM4 build. Also DDR4, and also not compatible with a DDR5 board.",
+    imageUrl: "https://m.media-amazon.com/images/I/41c+sFrJk1L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 28,
       lowStockThreshold: 8,
@@ -658,6 +691,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "gpu",
     description:
       "Compact RTX 4060 with 8GB of VRAM and DLSS 3. Comfortable at 1080p, and workable at 1440p with upscaling on.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Zotac-Gaming-GeForce-RTX-4060-8GB-Twin-Edge-OC-Black-Graphic-card-ZT-D40600H-10M-1.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 5,
@@ -733,6 +768,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "gpu",
     description:
       "RTX 4070 Ti SUPER in a triple-fan 336mm shroud. Fast at 1440p and entry-level 4K — measure the case before ordering.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/GV-N407TSGAMING-OC-16GD.jpg",
     inventory: {
       lastRestockedDaysAgo: 15,
       lowStockThreshold: 2,
@@ -783,6 +820,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "gpu",
     description:
       "Radeon RX 7600 at 204mm — the shortest card in the store, and the one that fits a small case without measuring.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Sapphire-PULSE-AMD-Radeon-RX-7600-8GB-Graphic-Card-11324-01-20G.jpg",
     inventory: {
       lastRestockedDaysAgo: 9,
       lowStockThreshold: 5,
@@ -836,6 +875,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "gpu",
     description:
       "Arc A750, imported. The distributor lists no board length and no power-connector layout, so case fit and PSU cabling cannot be confirmed from the datasheet.",
+    imageUrl: "https://m.media-amazon.com/images/I/81K0ZRZsQmL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 41,
       lowStockThreshold: 2,
@@ -859,6 +899,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "storage",
     description:
       "1TB PCIe 4.0 NVMe drive with a DRAM cache and a five-year warranty. Fast enough that the next bottleneck is elsewhere.",
+    imageUrl: "https://m.media-amazon.com/images/I/71XHEQZZW+L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 3,
       lowStockThreshold: 8,
@@ -881,6 +922,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "storage",
     description:
       "2TB PCIe 4.0 NVMe drive. The right size when a game library outgrows a terabyte, which it does faster than expected.",
+    imageUrl: "https://m.media-amazon.com/images/I/71ByVZ1x2vL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 5,
@@ -925,6 +967,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "storage",
     description:
       "2TB PCIe 4.0 NVMe drive at the lowest cost per terabyte in the store. Bulk storage that still boots quickly.",
+    imageUrl: "https://m.media-amazon.com/images/I/51xZaoS+Q1L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 31,
       lowStockThreshold: 6,
@@ -947,6 +990,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "storage",
     description:
       "1TB 2.5-inch SATA SSD. Uses a SATA port rather than an M.2 slot, which is the point once the board has run out of M.2 slots.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Crucial-MX500-1TB-SATA-III-3D-NAND-SSD-CT1000MX500SSD1.jpg",
     inventory: {
       lastRestockedDaysAgo: 24,
       lowStockThreshold: 6,
@@ -969,6 +1014,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "storage",
     description:
       "2TB 7200rpm mechanical drive on SATA. Slow to boot from, and still the cheapest place to keep recordings and archives.",
+    imageUrl: "https://m.media-amazon.com/images/I/71bT6WoeYHL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 45,
       lowStockThreshold: 5,
@@ -993,6 +1039,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "psu",
     description:
       "750W fully modular 80+ Gold supply with four 8-pin PCIe connectors and a ten-year warranty. Enough for anything short of a 4080.",
+    imageUrl: "https://m.media-amazon.com/images/I/61qrDDfNbNL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 5,
@@ -1017,6 +1064,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "psu",
     description:
       "850W fully modular 80+ Gold supply with six 8-pin PCIe connectors. The right size for a 4070 Ti SUPER or an unlocked Core i7.",
+    imageUrl: "https://m.media-amazon.com/images/I/61eKAbgBZRL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 8,
       lowStockThreshold: 4,
@@ -1041,6 +1089,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "psu",
     description:
       "1000W fully modular 80+ Gold supply. Overkill for most builds here, and the only unit with headroom for a 4080 SUPER beside a 14700K.",
+    imageUrl: "https://m.media-amazon.com/images/I/81i7j8lF5sL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 21,
       lowStockThreshold: 2,
@@ -1065,6 +1114,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "psu",
     description:
       "650W 80+ Bronze supply with two 8-pin PCIe connectors. Sized for a mid-range build with a single-connector card.",
+    imageUrl: "https://m.media-amazon.com/images/I/71pU8A2UE9L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 8,
@@ -1089,6 +1139,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "psu",
     description:
       "550W 80+ Bronze supply with two 8-pin PCIe connectors. Fine behind a 4060 or an RX 7600, and out of its depth above that.",
+    imageUrl: "https://m.media-amazon.com/images/I/81JVYq2gyjL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 16,
       lowStockThreshold: 6,
@@ -1137,6 +1188,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "psu",
     description:
       "750W SFX supply for small-form-factor builds. Only fits a case that takes SFX — it will not bolt into an ATX bay.",
+    imageUrl: "https://m.media-amazon.com/images/I/716AZ6NQNuL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 18,
       lowStockThreshold: 2,
@@ -1163,6 +1215,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "Mid-tower ATX case with a mesh front and 365mm of card clearance. Takes all but the longest triple-fan cards.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/NZXT-H5-Flow-Compact-Mid-Tower-Airflow-Black-Cabinet-CC-H51FB-01.jpg",
     inventory: {
       lastRestockedDaysAgo: 7,
       lowStockThreshold: 4,
@@ -1189,6 +1243,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "Mid-tower ATX case with 392mm of card clearance and 180mm for a cooler — the only case here that takes every part in the store.",
+    imageUrl: "https://m.media-amazon.com/images/I/81+FXUfmNDL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 9,
       lowStockThreshold: 3,
@@ -1215,6 +1270,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "Mid-tower ATX case with tidy cable routing and 360mm of card clearance. The safe default for a first build.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Corsair-4000D-AIRFLOW-Tempered-Glass-Mid-Tower-ATX-Black-Cabinet-CC-9011200-WW.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 5,
@@ -1241,6 +1298,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "18-litre Mini-ITX case taking an SFX supply, a 330mm card and a 155mm cooler. Nothing larger goes in, in any dimension.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Cooler-Master-MasterBox-NR200P-Cabinet-Black.jpg",
     inventory: {
       lastRestockedDaysAgo: 23,
       lowStockThreshold: 2,
@@ -1267,6 +1326,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "Micro-ATX case with 320mm of card clearance. Fits a mid-range build and stops well short of the longer graphics cards.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/DeepCool-CH370-M-ATX-Mini-Tower-Cabinet-Black-R-CH370-BKNAM1-G-1.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 6,
@@ -1293,6 +1354,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "Mid-tower ATX case with a walnut front panel. Costs more than the airflow it buys, and looks like furniture rather than hardware.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Fractal-Design-North-Charcoal-Black-TG-Dark-Case-Cabinet-FD-C-NOR1C-02.jpg",
     inventory: {
       lastRestockedDaysAgo: 14,
       lowStockThreshold: 2,
@@ -1347,6 +1410,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "Single-tower air cooler rated to about 220W, 155mm tall. Handles a 7600 or a 13400F without noise complaints.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/DeepCool-AK400-High-Performance-CPU-Cooler-Black-R-AK400-BKNNMN-G-1.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 8,
@@ -1370,6 +1435,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "Dual-tower air cooler rated to about 265W at 155mm tall. The value benchmark — near-flagship cooling for the price of a fan.",
+    imageUrl: "https://m.media-amazon.com/images/I/71j6VKsz-fL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 3,
       lowStockThreshold: 10,
@@ -1393,6 +1459,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "Dual-tower air cooler, 165mm tall and rated to about 250W. Quiet under sustained load, and too tall for a small case.",
+    imageUrl: "https://m.media-amazon.com/images/I/91Hw1zcAIjL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 17,
       lowStockThreshold: 3,
@@ -1416,6 +1483,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "Single-tower air cooler, 159mm tall. The mounting kit covers AM4 and LGA1700 only — there is no AM5 bracket in the box.",
+    imageUrl: "https://m.media-amazon.com/images/I/81o-F9OX7fL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 33,
       lowStockThreshold: 6,
@@ -1439,6 +1507,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "360mm all-in-one liquid cooler rated beyond 350W. The only cooler here that keeps a 14700K at full boost, and it needs a case with a 360mm mount.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Arctic-Liquid-Freezer-III-360-Cpu-Liquid-Cooler-ACFRE00136A.jpg",
     inventory: {
       lastRestockedDaysAgo: 10,
       lowStockThreshold: 3,
@@ -1462,6 +1532,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "37mm low-profile cooler for Intel small-form-factor builds. Rated to about 95W, and mounts on LGA1700 and LGA1200 only.",
+    imageUrl: "https://m.media-amazon.com/images/I/71av9uxBMRL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 29,
       lowStockThreshold: 2,
@@ -1487,6 +1558,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "fan",
     description:
       "Five-pack of 120mm PWM fans that daisy-chain off one header. The cheapest way to fix a case with poor airflow.",
+    imageUrl: "https://m.media-amazon.com/images/I/61i9iqYEEbL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 8,
@@ -1506,6 +1578,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "fan",
     description:
       "A single 120mm fan that costs as much as five ordinary ones, and is genuinely quieter at the same airflow.",
+    imageUrl: "https://m.media-amazon.com/images/I/81Bh89Q9fcL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 20,
       lowStockThreshold: 5,
@@ -1525,6 +1598,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "fan",
     description:
       "Three interlocking 120mm RGB fans with a single controller. Bought for the look; the airflow is ordinary.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Lian-Li-UNI-Fan-SL120-V2-ARGB-Cabinet-Fan-With-Controller-White-Triple-Pack-G99-12SLV23W-IN.jpg",
     inventory: {
       lastRestockedDaysAgo: 44,
       lowStockThreshold: 4,
@@ -1550,6 +1625,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "monitor",
     description:
       "27-inch 1440p Nano IPS panel at 180Hz with G-Sync compatibility. The display the 1440p builds in this store are sized for.",
+    imageUrl: "https://m.media-amazon.com/images/I/61D+xHBpJTL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 8,
       lowStockThreshold: 3,
@@ -1573,6 +1649,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "monitor",
     description:
       "27-inch 1440p Fast IPS panel at 165Hz. Slightly slower than the LG and calibrated better out of the box.",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Dell-27-inch-S2721DGF-Gaming-Series-Monitor.jpg",
     inventory: {
       lastRestockedDaysAgo: 12,
       lowStockThreshold: 3,
@@ -1596,6 +1674,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "monitor",
     description:
       "32-inch curved 1440p VA panel at 165Hz. Deeper blacks than IPS, with visible smearing in dark scenes.",
+    imageUrl: "https://m.media-amazon.com/images/I/81eZywfxhML._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 19,
       lowStockThreshold: 3,
@@ -1636,6 +1715,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "peripheral",
     description:
       "Wired gaming mouse with eleven buttons and adjustable weights. Heavy by current standards, and durable.",
+    imageUrl: "https://m.media-amazon.com/images/I/61mpMH5TzkL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 7,
       lowStockThreshold: 8,
@@ -1654,6 +1734,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "peripheral",
     description:
       "Tenkeyless mechanical keyboard with hot-swappable switches and Bluetooth for three devices.",
+    imageUrl: "https://m.media-amazon.com/images/I/61s6j2TDiLL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 11,
       lowStockThreshold: 4,
@@ -1672,6 +1753,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "peripheral",
     description:
       "Wired over-ear headset with a detachable microphone. Comfortable for long sessions, unremarkable for music.",
+    imageUrl: "https://m.media-amazon.com/images/I/71AMEEP3HLL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 9,
       lowStockThreshold: 6,
@@ -1690,6 +1772,7 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "peripheral",
     description:
       "1080p webcam with autofocus and a stereo microphone. Ageing, and still the safe answer for calls and streaming.",
+    imageUrl: "https://m.media-amazon.com/images/I/71eGb1FcyiL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 40,
       lowStockThreshold: 5,

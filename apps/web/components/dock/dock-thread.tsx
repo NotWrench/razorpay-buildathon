@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { StreamedText } from "@/components/chat/streamed-text";
 import { PillLink } from "@/components/common/pill-link";
 import { DockResultView } from "@/components/dock/dock-results";
-import type { DockResult, DockTool } from "@/lib/mock/chat";
+import type { DockResult, DockTool } from "@/lib/data/dock";
 import { route } from "@/lib/routes";
 
 /**

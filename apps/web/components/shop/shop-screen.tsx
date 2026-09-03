@@ -1,6 +1,6 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
 import { ShopClient } from "@/components/shop/shop-client";
-import { getCatalog } from "@/lib/mock";
+import { getCatalog } from "@/lib/data";
 import { parseShopParams } from "@/lib/shop-params";
 
 /**

@@ -6,7 +6,7 @@ import { PriceBlock } from "@workspace/ui/components/price-block";
 import { SpecList } from "@workspace/ui/components/spec-list";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { ProductRender } from "@/components/common/product-render";
-import { MOCK_PRODUCTS } from "@/lib/mock";
+import type { ProductSummary } from "@/lib/data/types";
 
 /**
  * The foundation, on one screen.
@@ -44,9 +44,7 @@ function Bay({
   );
 }
 
-export function Primitives() {
-  const [product] = MOCK_PRODUCTS;
-
+export function Primitives({ product }: { product?: ProductSummary }) {
   return (
     <div className="border-hairline border-t">
       <Bay title="Pill — the only button shape">

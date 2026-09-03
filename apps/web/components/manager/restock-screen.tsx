@@ -13,7 +13,7 @@ import { ProductRender } from "@/components/common/product-render";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable } from "@/components/manager/manager-table";
-import type { RestockDraft, RestockRow } from "@/lib/mock/types";
+import type { RestockDraft, RestockRow } from "@/lib/data/types";
 
 /**
  * What is running out, and what to do about it.

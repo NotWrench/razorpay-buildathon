@@ -1,6 +1,6 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
-import type { CatalogQuery, ProductSort } from "@/lib/mock/catalog";
-import { PRODUCT_SORTS } from "@/lib/mock/catalog";
+import type { CatalogQuery, ProductSort } from "@/lib/data/types";
+import { PRODUCT_SORTS } from "@/lib/data/types";
 
 /**
  * The shop's query string.

@@ -15,7 +15,7 @@ import type {
   ProductSummary,
   SeenNotBoughtRow,
   SellingRow,
-} from "@/lib/mock/types";
+} from "@/lib/data/types";
 import { managerRoutes } from "@/lib/routes";
 
 /**
@@ -50,7 +50,12 @@ function Row({
   return (
     <div className="flex items-center gap-4 border-hairline border-b py-4">
       <ImageGround className="size-10 shrink-0 rounded-[12px] p-1.5">
-        <ProductRender alt="" category={product.category} />
+        <ProductRender
+          alt=""
+          category={product.category}
+          sizes="40px"
+          src={product.imageUrl || undefined}
+        />
       </ImageGround>
 
       <p className="min-w-0 flex-1 truncate text-[15px] text-bone">
@@ -139,17 +144,17 @@ function SellingWell({ rows }: { rows: SellingRow[] }) {
 
 function SeenNotBought({ rows }: { rows: SeenNotBoughtRow[] }) {
   return (
-    <Block title="Seen but not bought">
+    <Block title="Not selling">
       <div className="border-hairline border-t">
         {rows.map((row) => (
           <Row
             key={row.product.id}
             product={row.product}
             right={
-              /* The one number on this page a merchant cannot get anywhere
+              /* The one pairing on this page a merchant cannot get anywhere
                  else, so it is the one that gets colour. */
               <span className="font-mono text-[13px] text-amber tabular-nums">
-                {row.views} views · {row.sold} sold
+                {row.carted} carted · {row.sold} sold
               </span>
             }
           />
@@ -161,7 +166,7 @@ function SeenNotBought({ rows }: { rows: SeenNotBoughtRow[] }) {
 
 function NeverSeen({ rows }: { rows: NeverSeenRow[] }) {
   return (
-    <Block title="Never seen">
+    <Block title="Never ordered">
       <div className="border-hairline border-t">
         {rows.map((row) => (
           <Row
