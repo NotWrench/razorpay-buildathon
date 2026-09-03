@@ -188,6 +188,7 @@ async function main() {
           categoryId,
           createdAt: listedAt,
           description: item.description,
+          imageUrl: item.imageUrl,
           merchantId: merchant.id,
           name: item.name,
           price: item.priceRupees * 100,
