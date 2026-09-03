@@ -14,7 +14,7 @@ import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable, RowAction } from "@/components/manager/manager-table";
 import { ProductSheet } from "@/components/manager/product-sheet";
-import type { ManagerProduct } from "@/lib/mock/types";
+import type { ManagerProduct } from "@/lib/data/types";
 
 /**
  * The catalogue, as a list of things you can change.

@@ -5,7 +5,7 @@ import { SpecList } from "@workspace/ui/components/spec-list";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { cn } from "@workspace/ui/lib/utils";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import type { ProductDetail } from "@/lib/mock/types";
+import type { ProductDetail } from "@/lib/data/types";
 
 /**
  * Specifications · Compatibility · Reviews.

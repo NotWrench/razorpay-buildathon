@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CartScreen } from "@/components/cart/cart-screen";
-import { getCart } from "@/lib/mock";
+import { getCart } from "@/lib/data";
 
 /**
  * The cart. Fetched on the server, edited on the client — the shapes match

@@ -7,10 +7,11 @@ import { cn } from "@workspace/ui/lib/utils";
 import { ArrowUp, Sparkles, Square } from "lucide-react";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { toast } from "sonner";
 import { PillLink } from "@/components/common/pill-link";
 import type { DockTurn } from "@/components/dock/dock-thread";
 import { DockThread } from "@/components/dock/dock-thread";
-import { dockReply, dockStarters } from "@/lib/mock/chat";
+import { dockReplyAction, dockStartersAction } from "@/lib/actions/dock";
 import { route } from "@/lib/routes";
 
 /**
@@ -42,6 +43,11 @@ interface AssistantDockProps {
 
 let turnId = 0;
 
+/** A dock that cannot reach the store should say so, not go quiet. */
+function reportDockFailure() {
+  toast.error("The assistant could not reach the store just now.");
+}
+
 function AssistantDock({
   context,
   contextLabel,
@@ -52,13 +58,12 @@ function AssistantDock({
   const [turns, setTurns] = useState<DockTurn[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [draft, setDraft] = useState("");
+  const [starters, setStarters] = useState<DockStarter[]>([]);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const titleId = useId();
-
-  const starters = dockStarters(Boolean(context.productId));
 
   const stop = useCallback(() => {
     // biome-ignore lint/suspicious/noUnnecessaryConditions: the timer only exists while streaming
@@ -80,26 +85,31 @@ function AssistantDock({
   useEffect(() => () => stop(), [stop]);
 
   const send = useCallback(
-    (prompt: string) => {
+    async (prompt: string) => {
       const asked = prompt.trim();
 
       if (!asked || streaming) {
         return;
       }
 
-      const reply = dockReply(asked, context.productId);
+      turnId += 1;
+      const answerId = `a${turnId}`;
+      const askedId = `u${turnId}`;
+
+      setDraft("");
+      setTurns((current) => [
+        ...current,
+        { id: askedId, role: "user", shown: 0, text: asked },
+      ]);
+
+      const reply = await dockReplyAction(asked, context.productId);
       const words = reply.text.split(" ").length;
       const reduced = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
       ).matches;
 
-      turnId += 1;
-      const answerId = `a${turnId}`;
-
-      setDraft("");
       setTurns((current) => [
         ...current,
-        { id: `u${turnId}`, role: "user", shown: 0, text: asked },
         {
           beyond: reply.intent === "beyond",
           id: answerId,
@@ -142,13 +152,15 @@ function AssistantDock({
     [context.productId, streaming]
   );
 
-  const onSend = useCallback(() => send(draft), [draft, send]);
+  const onSend = useCallback(() => {
+    send(draft).catch(reportDockFailure);
+  }, [draft, send]);
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
-        send(draft);
+        send(draft).catch(reportDockFailure);
       }
     },
     [draft, send]
@@ -166,6 +178,28 @@ function AssistantDock({
 
   const toggle = useCallback(() => setOpen((current) => !current), []);
   const close = useCallback(() => setOpen(false), []);
+
+  /* The starter rows quote the basket's real total, so they are fetched when
+     the panel first opens rather than on every page render. */
+  useEffect(() => {
+    if (!open || starters.length > 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    dockStartersAction(Boolean(context.productId))
+      .then((rows) => {
+        if (!cancelled) {
+          setStarters(rows);
+        }
+      })
+      .catch(reportDockFailure);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [context.productId, open, starters.length]);
 
   /* Escape closes, and focus lands in the composer once the mask is done. */
   useEffect(() => {
@@ -303,6 +337,13 @@ function AssistantDock({
       </div>
     </>
   );
+}
+
+interface DockStarter {
+  id: string;
+  label: string;
+  meta?: string;
+  value: string;
 }
 
 function StarterRow({

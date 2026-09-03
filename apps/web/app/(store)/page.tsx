@@ -11,7 +11,7 @@ import { UseCaseBand } from "@/components/landing/use-case-band";
 import { WhyBand } from "@/components/landing/why-band";
 import { ScrollProgress } from "@/components/layout/scroll-progress";
 import { PrebuiltRows } from "@/components/product/prebuilt-row";
-import { getPrebuilt, getPrebuilts, getProduct, getProducts } from "@/lib/mock";
+import { getPrebuilt, getPrebuilts, getProduct, getProducts } from "@/lib/data";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -19,7 +19,7 @@ import { shellRoutes } from "@/lib/routes";
  * grid. Two contained grids never sit next to each other; that alternation is
  * what gives the page room without leaving it empty.
  *
- * Every count on this page is derived from the fixtures. Nothing is typed in.
+ * Every count on this page is derived from the catalogue. Nothing is typed in.
  */
 
 export const metadata: Metadata = {
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   title: "NEXUS — the store that checks the parts fit",
 };
 
-/** Which machines answer to which use case, read off the fixtures. */
+/** Which machines answer to which use case, read off the catalogue. */
 const USE_CASES = [
   {
     category: "gpu",
@@ -60,11 +60,24 @@ const USE_CASES = [
 const SECTION = "mt-16 md:mt-[88px] lg:mt-32";
 
 export default async function LandingPage() {
-  const [products, prebuilts, pick, meridian] = await Promise.all([
+  const [products, prebuilts] = await Promise.all([
     getProducts(),
     getPrebuilts(),
-    getProduct("gpu-1"),
-    getPrebuilt("meridian"),
+  ]);
+
+  /* The assistant band needs one real part to talk about, and the dearest
+     card in stock is the one a shopper is most likely to be weighing up.
+     Naming a fixed id here would break the day it sells out. */
+  const [headline] = [...products]
+    .filter(
+      (product) =>
+        product.category === "gpu" && product.stock !== "out_of_stock"
+    )
+    .sort((a, b) => b.pricePaise - a.pricePaise);
+
+  const [pick, machine] = await Promise.all([
+    headline ? getProduct(headline.id) : Promise.resolve(null),
+    getPrebuilt(prebuilts.at(-1)?.slug ?? ""),
   ]);
 
   const useCaseTiles = USE_CASES.map((useCase) => ({
@@ -98,9 +111,9 @@ export default async function LandingPage() {
         <UseCaseBand tiles={useCaseTiles} />
       </Reveal>
 
-      {meridian && pick ? (
+      {machine && pick ? (
         <Reveal className={SECTION}>
-          <AssistantBand machine={meridian} pick={pick} />
+          <AssistantBand machine={machine} pick={pick} />
         </Reveal>
       ) : null}
 
@@ -108,7 +121,7 @@ export default async function LandingPage() {
         <section className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
           <Label>The lineup</Label>
           <h2 className="mt-4 max-w-[24ch] font-display font-semibold text-[28px] text-bone tracking-[-0.02em]">
-            Four machines, each built for one kind of evening.
+            {prebuilts.length} machines, each built for one kind of evening.
           </h2>
 
           {/* No primary row here. The hero owns this page's one filled pill;

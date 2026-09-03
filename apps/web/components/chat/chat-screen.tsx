@@ -4,6 +4,7 @@ import { Pill } from "@workspace/ui/components/pill";
 import { cn } from "@workspace/ui/lib/utils";
 import { Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { BuildSurface } from "@/components/chat/build-surface";
 import type { ChatModeId } from "@/components/chat/chat-composer";
 import { ChatComposer } from "@/components/chat/chat-composer";
@@ -13,8 +14,9 @@ import {
 } from "@/components/chat/interview-question";
 import { StreamedText } from "@/components/chat/streamed-text";
 import { useWordStream } from "@/components/chat/use-word-stream";
+import { recommendBuildAction } from "@/lib/actions/recommend";
 import type { BuildSlotRow, RecommendedBuild } from "@/lib/assistant/build";
-import { recommendBuild, validateBuild } from "@/lib/assistant/build";
+import { validateBuild } from "@/lib/assistant/build";
 import type { InterviewQuestion } from "@/lib/assistant/interview";
 import {
   INTERVIEW,
@@ -47,12 +49,29 @@ const STARTERS = [
 const OPENING =
   "Right — a few questions and I can put something real in front of you.";
 
+/** Long enough that the opening line lands before the first question. */
+const OPENING_MS = 900;
+
 let seq = 0;
 
 function nextId(prefix: string) {
   seq += 1;
 
   return `${prefix}-${seq}`;
+}
+
+/**
+ * The interview's one server call can fail like any other request.
+ *
+ * Swallowing that leaves the thread sitting on the last question with no
+ * indication anything went wrong, which reads as the assistant ignoring you.
+ */
+function report(error: unknown) {
+  toast.error(
+    error instanceof Error
+      ? "The build could not be assembled just now."
+      : "Something went wrong assembling the build."
+  );
 }
 
 function ChatScreen() {
@@ -77,7 +96,7 @@ function ChatScreen() {
    * can infer and saying what it assumed.
    */
   const advance = useCallback(
-    (currentAnswers: Record<string, string>, currentSkips: string[]) => {
+    async (currentAnswers: Record<string, string>, currentSkips: string[]) => {
       let working = currentSkips;
       let question = nextQuestion(currentAnswers, working);
 
@@ -107,7 +126,21 @@ function ChatScreen() {
         return;
       }
 
-      const recommended = recommendBuild(currentAnswers);
+      const recommended = await recommendBuildAction(currentAnswers);
+
+      if (recommended.rows.length === 0) {
+        setEntries((current) => [
+          ...current,
+          {
+            id: nextId("a"),
+            kind: "assistant",
+            text: "I could not put a build together from what the store has in stock right now.",
+          },
+        ]);
+
+        return;
+      }
+
       const verdict = validateBuild(recommended.rows);
       const budget = Number(currentAnswers.budget || 0);
       const over = verdict.totalPaise / 100 - budget;
@@ -170,7 +203,7 @@ function ChatScreen() {
         { id: nextId("r"), kind: "answered", questionId, value },
       ]);
 
-      advance(nextAnswers, skipped);
+      advance(nextAnswers, skipped).catch(report);
     },
     [advance, answers, skipped]
   );
@@ -206,7 +239,7 @@ function ChatScreen() {
         )
       );
 
-      advance(nextAnswers, nextSkips);
+      advance(nextAnswers, nextSkips).catch(report);
     },
     [advance, answers, skipped]
   );
@@ -243,7 +276,10 @@ function ChatScreen() {
       ]);
       stream.start(OPENING.split(" ").length);
 
-      window.setTimeout(() => advance(answers, skipped), 900);
+      window.setTimeout(
+        () => advance(answers, skipped).catch(report),
+        OPENING_MS
+      );
     },
     [advance, answers, build, skipped, stream]
   );

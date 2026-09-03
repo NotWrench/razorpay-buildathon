@@ -1,10 +1,21 @@
 import type { ReactNode } from "react";
 import { StoreShell } from "@/components/layout/store-shell";
+import { countCart } from "@/lib/data";
 
 /**
- * The storefront. Every page prompts 02 onwards adds lives in this group and
- * inherits the header, the footer and the route transition.
+ * The storefront. Every page in this group inherits the header, the footer and
+ * the route transition.
+ *
+ * The badge count is the buyer's own open cart — read here rather than in the
+ * header so a guest whose identity is minted per request does not have a cart
+ * row created for them just by loading a page. See `lib/data/cart.ts`.
  */
-export default function StoreLayout({ children }: { children: ReactNode }) {
-  return <StoreShell cartCount={3}>{children}</StoreShell>;
+export default async function StoreLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const cartCount = await countCart();
+
+  return <StoreShell cartCount={cartCount}>{children}</StoreShell>;
 }

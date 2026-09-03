@@ -4,7 +4,7 @@ import { Label } from "@workspace/ui/components/label";
 import { cn } from "@workspace/ui/lib/utils";
 import { StreamedText } from "@/components/chat/streamed-text";
 import { FindingsList } from "@/components/manager/findings-list";
-import type { ManagerResult, ManagerTable } from "@/lib/mock/manager-chat";
+import type { ManagerResult, ManagerTable } from "@/lib/data/manager-chat";
 
 /**
  * The manager's thread — the storefront's, without the product cards.

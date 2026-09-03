@@ -1,17 +1,16 @@
 import { Label } from "@workspace/ui/components/label";
-import { Pill } from "@workspace/ui/components/pill";
 import { PriceBlock } from "@workspace/ui/components/price-block";
 import { Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PillLink } from "@/components/common/pill-link";
 import { AssistantDock } from "@/components/dock/assistant-dock";
+import { BuyControls } from "@/components/product/buy-controls";
 import { CompatibilityStrip } from "@/components/product/compatibility-strip";
 import { ComponentCard } from "@/components/product/component-card";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductTabs } from "@/components/product/product-tabs";
-import { QuantityStepper } from "@/components/product/quantity-stepper";
-import { getProduct } from "@/lib/mock";
+import { getProduct, openBuild } from "@/lib/data";
 import { route } from "@/lib/routes";
 
 /**
@@ -41,7 +40,7 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Params }) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const [product, build] = await Promise.all([getProduct(id), openBuild()]);
 
   if (!product) {
     notFound();
@@ -83,14 +82,13 @@ export default async function ProductPage({ params }: { params: Params }) {
             </div>
           ) : null}
 
-          <div className="mt-8">
-            <QuantityStepper />
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Pill disabled={product.stock === "out_of_stock"}>Add to cart</Pill>
-            <Pill variant="ghost">Add to build</Pill>
-          </div>
+          <BuyControls
+            buildId={build?.id}
+            buildName={build?.name}
+            onHand={product.onHand}
+            productId={product.id}
+            stock={product.stock}
+          />
 
           <div className="mt-8">
             <CompatibilityStrip report={product.compatibility} />

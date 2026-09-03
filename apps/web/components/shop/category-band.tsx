@@ -8,8 +8,8 @@ import { Pill } from "@workspace/ui/components/pill";
 import { ChevronDown, X } from "lucide-react";
 import { useCallback } from "react";
 import { ProductRender } from "@/components/common/product-render";
-import type { ProductSort } from "@/lib/mock/catalog";
-import { PRODUCT_SORTS, SORT_LABELS } from "@/lib/mock/catalog";
+import type { ProductSort } from "@/lib/data/types";
+import { PRODUCT_SORTS, SORT_LABELS } from "@/lib/data/types";
 
 /**
  * The head of a category page: a wide, low strip of that category's hardware

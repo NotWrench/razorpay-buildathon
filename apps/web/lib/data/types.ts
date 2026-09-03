@@ -1,9 +1,13 @@
 /**
  * The data contract every screen is built against — §13 of the design plan.
  *
- * These are the shapes the real endpoints will have to return. Building the
- * UI against them means the handoff is replacing the bodies of the functions
- * in ./index.ts, not touching a single component.
+ * These were the shapes the fixtures returned and they are now the shapes the
+ * queries in this directory return: building the UI against a contract meant
+ * the handoff was replacing the bodies of the reads, not the components.
+ *
+ * The file is also the client-safe half of the module. A component that only
+ * needs a type imports it from here; importing the same name from `./catalog`
+ * would drag `postgres` into the browser bundle, which the build refuses.
  */
 
 import type { CategorySlug } from "@workspace/db/taxonomy";
@@ -69,6 +73,11 @@ export interface ProductDetail extends ProductSummary {
   /** Two or three sentences, above the tabs. */
   description: string;
   images: string[];
+  /**
+   * Units on hand. `stock` is the word a card shows; this is the number the
+   * quantity stepper has to stop at, and only the detail page needs it.
+   */
+  onHand: number;
   reviews?: ProductReviews;
   sku: string;
   specGroups: { rows: SpecRow[]; title: string }[];
@@ -117,12 +126,18 @@ export interface PrebuiltDetail extends PrebuiltSummary {
 export interface CompatibilityCheck {
   label: string;
   message: string;
-  relatedProductIds?: string[];
+  /**
+   * The parts this check is about, named as the message names them, so a
+   * client can turn them into links without a second lookup.
+   */
+  relatedProducts?: { id: string; name: string }[];
   rule: string;
   state: CompatibilityState;
 }
 
 export interface CompatibilityReport {
+  /** The build the checks were run against. Absent for a standalone report. */
+  buildName?: string;
   checks: CompatibilityCheck[];
   estimatedWattage?: Money;
   overall: CompatibilityState;
@@ -177,12 +192,21 @@ export interface SellingRow {
   units: number;
 }
 
+/**
+ * A part holding stock that sold nothing in the window.
+ *
+ * The block this feeds used to ask "seen but not bought", which needs an
+ * impression log the platform does not keep. `carted` is the nearest thing it
+ * genuinely knows: how many baskets the part has reached. Two real numbers
+ * beat one invented one.
+ */
 export interface SeenNotBoughtRow {
+  carted: number;
   product: ProductSummary;
   sold: number;
-  views: number;
 }
 
+/** A part that has never appeared on an order, and how long it has been listed. */
 export interface NeverSeenRow {
   listedDaysAgo: number;
   product: ProductSummary;
@@ -340,4 +364,57 @@ export interface StoreSettings {
   razorpayKeyId: string;
   slug: string;
   team: TeamMember[];
+}
+
+/* ── The shop's query ───────────────────────────────────────────────────── */
+
+/**
+ * These live beside the rest of the contract rather than next to the query
+ * that serves them, because the filter sheet and the sort menu are client
+ * components. A constant imported from the module that opens a database
+ * connection drags `postgres` into the browser bundle, and the build says so.
+ */
+
+export const PRODUCT_SORTS = ["newest", "price_asc", "price_desc"] as const;
+
+export type ProductSort = (typeof PRODUCT_SORTS)[number];
+
+export const SORT_LABELS: Record<ProductSort, string> = {
+  newest: "Newest",
+  price_asc: "Price, low to high",
+  price_desc: "Price, high to low",
+};
+
+export interface CatalogQuery {
+  brands?: string[];
+  category?: CategorySlug;
+  compatibleOnly?: boolean;
+  inStockOnly?: boolean;
+  /** Rupees, as they appear in the URL. */
+  maxRupees?: number;
+  minRupees?: number;
+  query?: string;
+  sort?: ProductSort;
+  /** Entries shaped "Label:Value". Same label ORs, different labels AND. */
+  specs?: string[];
+  take?: number;
+}
+
+export interface Facet {
+  count: number;
+  value: string;
+}
+
+export interface CatalogPage {
+  brands: Facet[];
+  /** How many of the unfiltered category the build filter would leave. */
+  buildCompatible: number;
+  /** The build those counts were taken against, or null when none is open. */
+  buildName: string | null;
+  items: ProductSummary[];
+  /** The widest price in the category, in rupees, for the slider's ends. */
+  priceCeilingRupees: number;
+  priceFloorRupees: number;
+  specs: { label: string; values: Facet[] }[];
+  total: number;
 }

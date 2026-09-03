@@ -10,7 +10,7 @@ import { Minus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback } from "react";
 import { ProductRender } from "@/components/common/product-render";
-import type { CartLine } from "@/lib/mock/types";
+import type { CartLine } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -64,7 +64,12 @@ function CartRow({
     >
       <div className="flex flex-wrap items-center gap-5">
         <ImageGround className="size-[72px] shrink-0 rounded-[12px] p-3">
-          <ProductRender alt="" category={line.product.category} />
+          <ProductRender
+            alt=""
+            category={line.product.category}
+            sizes="72px"
+            src={line.product.imageUrl || undefined}
+          />
         </ImageGround>
 
         <div className="min-w-0 flex-1">

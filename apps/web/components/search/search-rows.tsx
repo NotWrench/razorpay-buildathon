@@ -7,7 +7,7 @@ import { Sparkles } from "lucide-react";
 import { useCallback } from "react";
 import { ProductRender } from "@/components/common/product-render";
 import type { Row } from "@/components/search/rows";
-import type { ProductSummary } from "@/lib/mock/types";
+import type { ProductSummary } from "@/lib/data/types";
 
 /**
  * The rows the overlay is made of.

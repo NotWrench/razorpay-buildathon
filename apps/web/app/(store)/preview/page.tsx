@@ -2,6 +2,7 @@ import { Label } from "@workspace/ui/components/label";
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { ScrollProgress } from "@/components/layout/scroll-progress";
+import { getProducts } from "@/lib/data";
 import { route } from "@/lib/routes";
 import { Primitives } from "./primitives";
 
@@ -228,7 +229,9 @@ function RouteRow({ entry }: { entry: PreviewRoute }) {
   );
 }
 
-export default function PreviewIndexPage() {
+export default async function PreviewIndexPage() {
+  const [specimen] = await getProducts({ limit: 1 });
+
   return (
     <main className="mx-auto w-full max-w-[1000px] px-5 py-20 sm:px-8">
       <ScrollProgress />
@@ -265,7 +268,7 @@ export default function PreviewIndexPage() {
         Every primitive the rest of the build is made from. Nothing below ships
         as a page — it is here to be judged before anything is built on it.
       </p>
-      <Primitives />
+      <Primitives product={specimen} />
     </main>
   );
 }

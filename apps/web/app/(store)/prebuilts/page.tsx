@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { ProductRender } from "@/components/common/product-render";
 import { UseCaseFilter } from "@/components/prebuilt/use-case-filter";
 import { PrebuiltRow } from "@/components/product/prebuilt-row";
-import { getPrebuilts } from "@/lib/mock";
+import { getPrebuilts } from "@/lib/data";
 
 /**
  * The four machines, one per row, at ORIGIN's density: two and a bit fill a

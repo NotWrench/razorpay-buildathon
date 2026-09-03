@@ -18,9 +18,15 @@ import { ProductRender } from "@/components/common/product-render";
 interface ProductGalleryProps {
   alt: string;
   category: CategorySlug;
-  /** One entry per view. Placeholder renders until photography exists. */
+  /**
+   * One entry per view — a photograph's URL, or a placeholder key for a
+   * product that has none. The line render stands in for the second kind.
+   */
   views: string[];
 }
+
+/** A view is a photograph when it is a URL and a placeholder key otherwise. */
+const isPhoto = (view: string) => view.startsWith("http");
 
 function Thumbnail({
   active,
@@ -28,12 +34,14 @@ function Thumbnail({
   category,
   index,
   onSelect,
+  view,
 }: {
   active: boolean;
   alt: string;
   category: CategorySlug;
   index: number;
   onSelect: (index: number) => void;
+  view: string;
 }) {
   const handleClick = useCallback(() => onSelect(index), [index, onSelect]);
 
@@ -49,7 +57,12 @@ function Thumbnail({
       type="button"
     >
       <ImageGround className="h-full w-full rounded-[15px] p-3">
-        <ProductRender alt="" category={category} />
+        <ProductRender
+          alt=""
+          category={category}
+          sizes="72px"
+          src={isPhoto(view) ? view : undefined}
+        />
       </ImageGround>
     </button>
   );
@@ -70,6 +83,8 @@ function ProductGallery({ alt, category, views }: ProductGalleryProps) {
             <ProductRender
               alt={index === active ? alt : ""}
               category={category}
+              sizes="(min-width: 1024px) 640px, 90vw"
+              src={isPhoto(view) ? view : undefined}
             />
           </div>
         ))}
@@ -85,6 +100,7 @@ function ProductGallery({ alt, category, views }: ProductGalleryProps) {
               index={index}
               key={view}
               onSelect={setActive}
+              view={view}
             />
           ))}
         </div>

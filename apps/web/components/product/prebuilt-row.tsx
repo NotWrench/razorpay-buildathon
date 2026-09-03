@@ -6,7 +6,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import Link from "next/link";
 import { PillLink } from "@/components/common/pill-link";
 import { ProductRender } from "@/components/common/product-render";
-import type { PrebuiltSummary } from "@/lib/mock/types";
+import type { PrebuiltSummary } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**

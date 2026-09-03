@@ -4,7 +4,7 @@ import { Menu } from "@base-ui/react/menu";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
-import type { ManagerRange } from "@/lib/mock/types";
+import type { ManagerRange } from "@/lib/data/types";
 import { managerRoutes } from "@/lib/routes";
 
 /**

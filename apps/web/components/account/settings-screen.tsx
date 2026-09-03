@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { DeleteDialog } from "@/components/account/delete-dialog";
 import { ThemeSwatches } from "@/components/account/theme-swatches";
 import { ToggleRow } from "@/components/account/toggle-row";
-import type { Account } from "@/lib/mock/types";
+import type { Account } from "@/lib/data/types";
 
 /**
  * Settings, with no cards at all.

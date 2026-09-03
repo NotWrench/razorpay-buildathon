@@ -1,13 +1,19 @@
-import { managerSummaryFor } from "./manager";
+import { formatPaise } from "@workspace/ui/lib/money";
+import { getManagerSummary } from "./manager";
 import type { Finding } from "./types";
 
 /**
- * A local, canned chat for the manager.
+ * The manager's follow-up, answered from the store's own numbers.
  *
- * It answers with the same material the summary is made of — a table or a
- * finding row — because an operations agent that replies in prose to "how did
- * storage do" is asking to be re-read rather than read. Anything it cannot
- * answer from the numbers it already has, it says so in one line.
+ * It replies with the material the summary is made of — a table or a finding
+ * row — because an operations agent that answers "how did storage do" in
+ * prose is asking to be re-read rather than read.
+ *
+ * And it answers from queries rather than from a model, for the reason §10
+ * gives: an operational claim a merchant cannot check is one they will learn
+ * to ignore. Every cell below is a figure the summary above it already shows.
+ * Open-ended reasoning is `/api/agent/merchant`, which the merchant assistant
+ * on `/dashboard/assistant` streams.
  *
  * Nothing here writes. Actions produce drafts, and the refusal says which.
  */
@@ -37,8 +43,11 @@ const ASKS_ABOUT_SALES = /(sales|selling|revenue|earnings|units|best)/i;
 const ASKS_ABOUT_STOCK = /(stock|restock|reorder|inventory|out of)/i;
 const ASKS_WHAT_TO_DO = /(what should|what would|recommend|advice|priorit)/i;
 
-export function managerReply(question: string, rangeId?: string): ManagerReply {
-  const summary = managerSummaryFor(rangeId);
+export async function managerReply(
+  question: string,
+  rangeId?: string
+): Promise<ManagerReply> {
+  const summary = await getManagerSummary(rangeId);
 
   if (ASKS_TO_EXECUTE.test(question)) {
     return {
@@ -48,6 +57,13 @@ export function managerReply(question: string, rangeId?: string): ManagerReply {
   }
 
   if (ASKS_ABOUT_SALES.test(question)) {
+    if (summary.sellingWell.length === 0) {
+      return {
+        result: { kind: "none" },
+        text: `Nothing sold in ${summary.range.label}, so there is no ranking to show.`,
+      };
+    }
+
     return {
       result: {
         kind: "table",
@@ -57,12 +73,12 @@ export function managerReply(question: string, rangeId?: string): ManagerReply {
           rows: summary.sellingWell.map((row) => [
             row.product.name,
             String(row.units),
-            `₹${((row.units * row.product.pricePaise) / 100).toLocaleString("en-IN")}`,
+            formatPaise(row.units * row.product.pricePaise),
           ]),
           title: `Top sellers · ${summary.range.label}`,
         },
       },
-      text: "Three products carried the window. Here they are with what they brought in.",
+      text: `${summary.sellingWell.length} products carried the window. Here they are with what they brought in.`,
     };
   }
 
@@ -80,7 +96,10 @@ export function managerReply(question: string, rangeId?: string): ManagerReply {
 
     return {
       result: { findings: stockFindings, kind: "findings" },
-      text: "One line is close enough to matter.",
+      text:
+        stockFindings.length === 1
+          ? "One line is close enough to matter."
+          : `${stockFindings.length} lines are close enough to matter.`,
     };
   }
 

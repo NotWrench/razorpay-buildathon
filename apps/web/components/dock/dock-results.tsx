@@ -4,7 +4,7 @@ import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
 import { PillLink } from "@/components/common/pill-link";
 import { ProductRender } from "@/components/common/product-render";
-import type { DockResult } from "@/lib/mock/chat";
+import type { DockResult } from "@/lib/data/dock";
 import { route } from "@/lib/routes";
 
 /**
@@ -23,7 +23,12 @@ function ProductRow({
   return (
     <div className="mt-4 flex items-center gap-4 border-hairline border-t border-b py-4">
       <ImageGround className="size-12 shrink-0 rounded-[12px] p-2">
-        <ProductRender alt="" category={product.product.category} />
+        <ProductRender
+          alt=""
+          category={product.product.category}
+          sizes="48px"
+          src={product.product.imageUrl || undefined}
+        />
       </ImageGround>
       <span className="min-w-0 flex-1 truncate text-[13px] text-bone">
         {product.product.name}
@@ -96,7 +101,12 @@ function ListResult({ list }: { list: DockResult & { kind: "list" } }) {
           key={line.product.id}
         >
           <ImageGround className="size-9 shrink-0 rounded-[10px] p-1.5">
-            <ProductRender alt="" category={line.product.category} />
+            <ProductRender
+              alt=""
+              category={line.product.category}
+              sizes="36px"
+              src={line.product.imageUrl || undefined}
+            />
           </ImageGround>
           <span className="min-w-0 flex-1 truncate text-[13px] text-smoke">
             {line.product.name}

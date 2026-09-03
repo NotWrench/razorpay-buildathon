@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { ManagerScreen } from "@/components/manager/manager-screen";
-import { getManagerSummary, MANAGER_RANGES } from "@/lib/mock";
+import {
+  getManagerSummary,
+  getStoreSettings,
+  MANAGER_RANGES,
+} from "@/lib/data";
 
 /**
  * /manager IS the assistant.
@@ -19,7 +23,16 @@ export default async function ManagerPage({
   searchParams: Promise<{ range?: string }>;
 }) {
   const { range } = await searchParams;
-  const summary = await getManagerSummary(range);
+  const [summary, settings] = await Promise.all([
+    getManagerSummary(range),
+    getStoreSettings(),
+  ]);
 
-  return <ManagerScreen ranges={MANAGER_RANGES} summary={summary} />;
+  return (
+    <ManagerScreen
+      operator={settings.team[0]?.name ?? settings.name}
+      ranges={MANAGER_RANGES}
+      summary={summary}
+    />
+  );
 }

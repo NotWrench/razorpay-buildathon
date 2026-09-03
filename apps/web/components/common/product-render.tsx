@@ -1,15 +1,19 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
 import { cn } from "@workspace/ui/lib/utils";
+import Image from "next/image";
 
 /**
- * Every product image in the build, until real renders exist.
+ * Every product image in the build.
  *
- * No photography has been shot yet, and v3 is image-led — an empty imageUrl
- * would be a visible hole on every card. So each category draws itself: a
- * monochrome line render on a transparent ground, sized to its container.
+ * A product with a photograph gets the photograph; a product without one
+ * draws itself — a monochrome line render per category, on a transparent
+ * ground, sized to its container. v3 is image-led, so an empty `image_url`
+ * has to produce something rather than a hole, and it does.
  *
- * When photography arrives, this component grows a `src` prop and prefers it;
- * nothing that renders a product has to change.
+ * `sizes` is required by `next/image` under `fill` and there is no honest
+ * default: the same component draws a 40px row thumbnail and a half-viewport
+ * gallery frame. Callers that know their box say so; the fallback assumes a
+ * card, which is where most of these are.
  */
 
 const SHELL = "#2E2E2E";
@@ -20,7 +24,13 @@ interface ProductRenderProps {
   alt: string;
   category: CategorySlug;
   className?: string;
+  /** Roughly how wide this will be drawn, for the srcset. */
+  sizes?: string;
+  /** The product's photograph. The line render stands in when it is absent. */
+  src?: string;
 }
+
+const DEFAULT_SIZES = "(min-width: 1280px) 400px, (min-width: 768px) 45vw, 90vw";
 
 function Fan({ cx, cy, r }: { cx: number; cy: number; r: number }) {
   return (
@@ -360,7 +370,27 @@ const CROP: Record<CategorySlug, string> = {
   storage: "30 57 181 46",
 };
 
-function ProductRender({ alt, category, className }: ProductRenderProps) {
+function ProductRender({
+  alt,
+  category,
+  className,
+  sizes,
+  src,
+}: ProductRenderProps) {
+  if (src) {
+    return (
+      <div className={cn("relative h-full w-full", className)}>
+        <Image
+          alt={alt}
+          className="object-contain"
+          fill
+          sizes={sizes ?? DEFAULT_SIZES}
+          src={src}
+        />
+      </div>
+    );
+  }
+
   return (
     <svg
       className={cn("h-full w-full", className)}

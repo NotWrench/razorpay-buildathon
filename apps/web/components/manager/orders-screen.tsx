@@ -9,7 +9,7 @@ import { TypedConfirmDialog } from "@/components/manager/manager-dialogs";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable } from "@/components/manager/manager-table";
-import type { ManagerOrder, ManagerOrderState } from "@/lib/mock/types";
+import type { ManagerOrder, ManagerOrderState } from "@/lib/data/types";
 
 /**
  * Orders, and the two things you do to them.
