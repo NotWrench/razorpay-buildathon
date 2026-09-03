@@ -1,6 +1,11 @@
 "use server";
 
-import { loadBuildComponents } from "@workspace/commerce/builds";
+import {
+  BuildError,
+  createBuild,
+  loadBuildComponents,
+  updateBuild,
+} from "@workspace/commerce/builds";
 import {
   addToCart,
   CartError,
@@ -294,6 +299,69 @@ export async function checkoutPartsAction(
     });
   } catch (error) {
     return toCheckoutFailure(error);
+  }
+}
+
+const sheetSchema = z.object({
+  buildId: z.uuid().optional(),
+  productIds: z.array(z.uuid()).min(1).max(24),
+});
+
+/**
+ * Writes the assistant's build sheet down as a real build.
+ *
+ * The interview's recommendation lives in the browser until this runs, which
+ * is fine while the shopper is only looking at it — and useless the moment
+ * they ask the agent about it. A model cannot be handed a React state object;
+ * it can be handed a build id, and `packages/ai`'s page context re-reads that
+ * id under the buyer's own scope and states what is in it. Every builder tool
+ * then works on the same rows the sheet is drawing.
+ *
+ * Called once per turn rather than on every tick, so a swap or an unticked row
+ * costs nothing until it matters, and the build the agent reads is always the
+ * sheet as it stands rather than as it was first recommended.
+ */
+export async function saveAssistantBuildAction(
+  input: z.input<typeof sheetSchema>
+): Promise<ActionResult<{ buildId: string }>> {
+  const check = sheetSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That build could not be saved.");
+  }
+
+  const parsed = check.data;
+  const scope = await owner();
+  const items = parsed.productIds.map((productId) => ({
+    productId,
+    quantity: 1,
+  }));
+
+  try {
+    if (parsed.buildId) {
+      await updateBuild({
+        buildId: parsed.buildId,
+        buyerIdentifier: scope.buyerIdentifier,
+        items,
+        merchantId: scope.merchantId,
+      });
+
+      return ok({ buildId: parsed.buildId });
+    }
+
+    const { build } = await createBuild({
+      ...scope,
+      items,
+      name: "Assistant build",
+    });
+
+    return ok({ buildId: build.id });
+  } catch (error) {
+    return failed(
+      error instanceof BuildError
+        ? error.message
+        : "That build could not be saved."
+    );
   }
 }
 
