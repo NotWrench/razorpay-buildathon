@@ -1,5 +1,6 @@
 import {
   db,
+  isUuid,
   type Order,
   type OrderItem,
   orderItems,
@@ -273,9 +274,12 @@ export async function createCheckoutOrder(
 }
 
 export async function getOrderOrThrow(orderId: string): Promise<Order> {
-  const order = await db.query.orders.findFirst({
-    where: eq(orders.id, orderId),
-  });
+  /* Checked before the query, not after: Postgres answers a malformed uuid
+     with a driver error rather than an empty set, and every caller here
+     wants "no such order" either way. */
+  const order = isUuid(orderId)
+    ? await db.query.orders.findFirst({ where: eq(orders.id, orderId) })
+    : undefined;
 
   if (!order) {
     throw new PaymentError("ORDER_NOT_FOUND", `No order found for ${orderId}`);
