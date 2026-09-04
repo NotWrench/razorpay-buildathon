@@ -46,13 +46,13 @@ function FeatureBand({
         </ImageGround>
 
         <div className={cn(imageFirst ? "lg:order-2" : "lg:order-1")}>
-          <h2 className="font-display font-medium text-[28px] text-bone uppercase leading-tight tracking-[0.05em]">
+          <h2 className="t-model text-bone text-xl leading-tight">
             {feature.heading}
           </h2>
-          <p className="mt-6 max-w-[52ch] text-[17px] text-smoke">
+          <p className="t-body-lg mt-6 max-w-[52ch] text-smoke">
             {feature.body}
           </p>
-          <p className="mt-8 font-mono text-[13px] text-smoke tabular-nums">
+          <p className="t-num-xs mt-8 text-smoke">
             {feature.fact}
           </p>
         </div>

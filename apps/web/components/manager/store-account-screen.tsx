@@ -50,8 +50,8 @@ function Field({
       <input
         className={
           mono
-            ? "mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 font-mono text-[15px] text-bone tabular-nums outline-none transition-colors duration-[180ms] focus:border-bone"
-            : "mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-[15px] text-bone outline-none transition-colors duration-[180ms] focus:border-bone"
+            ? "t-num-sm mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-bone outline-none transition-colors duration-micro focus:border-bone"
+            : "t-body mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-bone outline-none transition-colors duration-micro focus:border-bone"
         }
         defaultValue={defaultValue}
         id={id}
@@ -82,7 +82,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
 
   return (
     <div className="px-5 pt-14 pb-24 sm:px-8 lg:px-8 2xl:px-12">
-      <h1 className="font-display font-semibold text-[32px] text-bone leading-none tracking-[-0.02em]">
+      <h1 className="t-display-md text-bone leading-none">
         Account
       </h1>
 
@@ -99,7 +99,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
           <div className="flex flex-wrap items-end justify-between gap-5">
             <div>
               <Label>Razorpay key id</Label>
-              <p className="mt-2 font-mono text-[15px] text-bone tabular-nums">
+              <p className="t-num-sm mt-2 text-bone">
                 {settings.razorpayKeyId}
               </p>
             </div>
@@ -117,14 +117,14 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
                 key={member.id}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] text-bone">
+                  <p className="t-body truncate text-bone">
                     {member.name}
                   </p>
-                  <p className="mt-0.5 truncate text-[13px] text-smoke">
+                  <p className="t-body-sm mt-0.5 truncate text-smoke">
                     {member.email}
                   </p>
                 </div>
-                <span className="text-[13px] text-smoke">{member.role}</span>
+                <span className="t-body-sm text-smoke">{member.role}</span>
               </div>
             ))}
           </div>
@@ -137,7 +137,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
         </Section>
 
         <Section title="Leaving">
-          <p className="max-w-[46ch] text-[15px] text-smoke leading-relaxed">
+          <p className="t-body max-w-[46ch] text-smoke leading-relaxed">
             Closing the store takes the catalogue offline and stops new orders.
             Existing orders stay readable.
           </p>

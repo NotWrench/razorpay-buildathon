@@ -47,7 +47,7 @@ function ManagerComposer({
     <div className="flex items-center gap-3 rounded-full border border-hairline bg-panel py-2 pr-2 pl-6">
       <input
         aria-label="Ask the manager assistant"
-        className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-bone outline-none placeholder:text-smoke"
+        className="t-body h-11 min-w-0 flex-1 bg-transparent text-bone outline-none placeholder:text-smoke"
         onChange={onChange}
         onKeyDown={onKeyDown}
         placeholder="Ask about any of this…"

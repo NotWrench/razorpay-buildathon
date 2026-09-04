@@ -206,7 +206,7 @@ function RouteRow({ entry }: { entry: PreviewRoute }) {
   return (
     <li className="border-hairline border-b">
       <Link
-        className="flex items-center gap-5 py-4 transition-colors duration-[180ms] hover:bg-carbon"
+        className="flex items-center gap-5 py-4 transition-colors duration-micro hover:bg-carbon"
         href={entry.href}
       >
         <span
@@ -215,10 +215,10 @@ function RouteRow({ entry }: { entry: PreviewRoute }) {
             entry.built ? "bg-verdant" : "bg-hairline"
           }`}
         />
-        <span className="w-40 shrink-0 font-mono text-[13px] text-bone tabular-nums">
+        <span className="t-num-xs w-40 shrink-0 text-bone">
           {entry.href}
         </span>
-        <span className="flex-1 text-[13px] text-smoke">
+        <span className="t-body-sm flex-1 text-smoke">
           {entry.description}
         </span>
         <Label className="shrink-0">
@@ -236,11 +236,11 @@ export default async function PreviewIndexPage() {
     <main className="mx-auto w-full max-w-[1000px] px-5 py-20 sm:px-8">
       <ScrollProgress />
       <Label>Build index</Label>
-      <h1 className="mt-4 font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+      <h1 className="t-display-lg mt-4 text-bone leading-none">
         Every route in the build
         <span className="text-lacquer">.</span>
       </h1>
-      <p className="mt-4 max-w-[66ch] text-[15px] text-smoke">
+      <p className="t-body mt-4 max-w-[66ch] text-smoke">
         One row per screen, in the order the prompts build them. A filled dot
         means the route exists and is worth looking at; an empty one means it is
         still a prompt away.
@@ -252,7 +252,7 @@ export default async function PreviewIndexPage() {
         ))}
       </ul>
 
-      <h2 className="mt-16 font-display font-semibold text-[21px] text-bone tracking-[-0.02em]">
+      <h2 className="t-display-sm mt-16 text-bone">
         Already in the repo
       </h2>
       <ul className="mt-6 border-hairline border-t">
@@ -261,10 +261,10 @@ export default async function PreviewIndexPage() {
         ))}
       </ul>
 
-      <h2 className="mt-20 font-display font-semibold text-[21px] text-bone tracking-[-0.02em]">
+      <h2 className="t-display-sm mt-20 text-bone">
         The foundation
       </h2>
-      <p className="mt-3 mb-6 max-w-[66ch] text-[15px] text-smoke">
+      <p className="t-body mt-3 mb-6 max-w-[66ch] text-smoke">
         Every primitive the rest of the build is made from. Nothing below ships
         as a page — it is here to be judged before anything is built on it.
       </p>

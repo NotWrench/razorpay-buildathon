@@ -72,7 +72,7 @@ function ShopClient({
   const onClear = useCallback(() => {
     const next = new URLSearchParams(query);
 
-    for (const key of ["brand", "build", "inStock", "max", "min", "spec"]) {
+    for (const key of ["brand", "build", "inStock", "max", "min", "q", "spec"]) {
       next.delete(key);
     }
 
@@ -181,7 +181,7 @@ function ShopClient({
       <div className="mx-auto w-full max-w-[1280px] px-8 pt-12 lg:px-16">
         {items.length === 0 ? (
           <div className="py-24">
-            <p className="text-[17px] text-bone">
+            <p className="t-body-lg text-bone">
               Nothing in {name.toLowerCase()} matches those filters.
             </p>
             {relaxations.length > 0 ? (

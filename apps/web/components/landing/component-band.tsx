@@ -8,7 +8,11 @@ import { ProductRender } from "@/components/common/product-render";
 import { shellRoutes } from "@/lib/routes";
 
 /**
- * Band 5 — contained, six tiles.
+ * Band 5 — full-bleed on carbon, six tiles.
+ *
+ * It used to be a contained grid directly beneath the lineup, which is also a
+ * contained grid — the one thing §4.5 rules out, and the reason the middle of
+ * the page read as one long undifferentiated column.
  *
  * The category list appears here and nowhere else on the page. An earlier
  * version put it beneath a three-column section and it rendered once per
@@ -28,9 +32,10 @@ function ComponentBand({
   totalCategories: number;
 }) {
   return (
-    <section className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
+    <section className="w-full bg-carbon py-24 lg:py-28">
+      <div className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
       <Label>Shop by component</Label>
-      <h2 className="mt-4 max-w-[22ch] font-display font-semibold text-[28px] text-bone tracking-[-0.02em]">
+      <h2 className="t-display-md mt-4 max-w-[22ch] text-bone">
         Or start from the part you already know you want.
       </h2>
 
@@ -41,17 +46,17 @@ function ComponentBand({
             href={shellRoutes.shopCategory(tile.slug)}
             key={tile.slug}
           >
-            <ImageGround className="aspect-[4/3] p-5">
+            <ImageGround className="aspect-[4/3] p-5 transition-transform duration-micro group-hover:-translate-y-0.5">
               <ProductRender
                 alt={tile.name}
                 category={tile.slug}
-                className="transition-transform duration-[420ms] group-hover:scale-[1.03]"
+                className="transition-transform duration-standard group-hover:scale-[1.03]"
               />
             </ImageGround>
-            <p className="mt-3 text-[15px] text-smoke transition-colors duration-[180ms] group-hover:text-bone">
+            <p className="t-body mt-3 text-bone">
               {tile.name}
             </p>
-            <p className="mt-1 font-mono text-[13px] text-smoke tabular-nums">
+            <p className="t-num-xs mt-1 text-smoke">
               {tile.count}
             </p>
           </Link>
@@ -62,6 +67,7 @@ function ComponentBand({
         <PillLink href={shellRoutes.components} variant="text">
           All {totalCategories} categories →
         </PillLink>
+      </div>
       </div>
     </section>
   );

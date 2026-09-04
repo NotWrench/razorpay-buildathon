@@ -74,7 +74,7 @@ function ManagerScreen({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[820px] flex-col px-5 pt-16 pb-10 sm:px-8">
       <header>
-        <h1 className="font-display font-semibold text-[32px] text-bone leading-none tracking-[-0.02em]">
+        <h1 className="t-display-md text-bone leading-none">
           Here&rsquo;s where the store stands, {operator}.
         </h1>
         <div className="mt-3">
@@ -93,7 +93,7 @@ function ManagerScreen({
       </div>
 
       {turns.length > 0 ? (
-        <div className="mt-14 border-hairline border-t pt-14">
+        <div className="rule-section mt-14 pt-14">
           <ManagerThread
             shown={stream.shown}
             streaming={stream.streaming}

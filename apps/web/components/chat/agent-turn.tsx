@@ -77,7 +77,7 @@ function textOf(part: Part): string {
 /** A quiet line for work in progress. Nothing here spins. */
 function WorkingLine({ label }: { label: string }) {
   return (
-    <p className="flex items-center gap-2 text-[13px] text-smoke">
+    <p className="t-body-sm flex items-center gap-2 text-smoke">
       <span aria-hidden className="stream-caret">
         ▍
       </span>
@@ -114,10 +114,10 @@ function NamedProducts({
           size="sm"
           variant="text"
         >
-          <span className="min-w-0 flex-1 truncate text-left text-[13px] text-bone">
+          <span className="t-body-sm min-w-0 flex-1 truncate text-left text-bone">
             {product.name}
           </span>
-          <span className="font-mono text-[13px] text-bone tabular-nums">
+          <span className="t-num-xs text-bone">
             {formatPaise(Number(product.pricePaise ?? 0))}
           </span>
           <span aria-hidden>→</span>
@@ -151,9 +151,9 @@ function ApprovalGate({
   );
 
   return (
-    <div className="rounded-[20px] border border-hairline bg-panel px-5 py-4">
+    <div className="surface-card rounded-[20px] border border-hairline bg-panel px-5 py-4">
       <Label>Needs your say-so</Label>
-      <p className="mt-2 text-[15px] text-bone leading-relaxed">
+      <p className="t-body mt-2 text-bone leading-relaxed">
         {part.approval?.requestReason ??
           "This one spends money, so it waits for you."}
       </p>
@@ -176,10 +176,10 @@ function CartLine({ output }: { output: ToolPart["output"] }) {
 
   return (
     <div className="flex items-center gap-4 border-hairline border-t border-b py-3.5">
-      <span className="flex-1 text-[13px] text-bone">
+      <span className="t-body-sm flex-1 text-bone">
         {count === 1 ? "1 line in the cart" : `${count} lines in the cart`}
       </span>
-      <span className="font-mono text-[13px] text-bone tabular-nums">
+      <span className="t-num-xs text-bone">
         {formatPaise(Number(output?.subtotalPaise ?? 0))}
       </span>
       <PillLink href={shellRoutes.cart} size="sm" variant="text">
@@ -216,12 +216,12 @@ function OrderLine({
   }, [checkout, onPay, orderId]);
 
   return (
-    <div className="rounded-[20px] border border-hairline bg-panel px-5 py-4">
+    <div className="surface-card rounded-[20px] border border-hairline bg-panel px-5 py-4">
       <Label>Order</Label>
-      <p className="mt-2 font-mono text-[21px] text-bone tabular-nums">
+      <p className="t-num-md mt-2 text-bone">
         {formatPaise(totalPaise)}
       </p>
-      <p className="mt-2 text-[15px] text-smoke leading-relaxed">
+      <p className="t-body mt-2 text-smoke leading-relaxed">
         {output?.message ?? "Nothing has been charged."}
       </p>
       {checkout ? (
@@ -261,7 +261,7 @@ function ToolResult({
     case "tool-createPaymentLink":
       return (
         <a
-          className="text-[15px] text-lacquer underline underline-offset-4"
+          className="t-body text-lacquer underline underline-offset-4"
           href={String(output.paymentLinkUrl ?? "")}
           rel="noreferrer"
           target="_blank"
@@ -297,7 +297,7 @@ function ToolLine({
 
   if (part.state === "output-denied") {
     return (
-      <p className="text-[13px] text-smoke">
+      <p className="t-body-sm text-smoke">
         You declined that, so nothing happened.
       </p>
     );
@@ -335,7 +335,7 @@ export function AgentTurn({
 }) {
   if (message.role === "user") {
     return (
-      <p className="pl-16 text-right text-[17px] text-smoke">
+      <p className="t-body-lg pl-16 text-right text-smoke">
         {message.parts
           .filter((part) => part.type === "text")
           .map((part) => textOf(part))
@@ -361,7 +361,7 @@ export function AgentTurn({
                  * a two-column table arrives with newlines in it, and collapsed
                  * whitespace turns that into one unreadable run of pipes.
                  */
-                className="whitespace-pre-wrap text-[17px] leading-relaxed"
+                className="t-body-lg whitespace-pre-wrap leading-relaxed"
                 id={key}
                 key={key}
                 /*

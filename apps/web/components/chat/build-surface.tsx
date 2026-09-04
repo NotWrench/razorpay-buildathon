@@ -122,14 +122,14 @@ function BuildSurface({
   if (docked) {
     return (
       <div
-        className="fixed top-1/2 right-6 z-40 w-[220px] -translate-y-1/2 rounded-[20px] border border-hairline bg-panel p-5 shadow-float"
+        className="surface-float fixed z-40 rounded-[20px] border border-hairline bg-panel p-5 max-lg:right-4 max-lg:bottom-28 max-lg:w-[196px] lg:top-1/2 lg:right-6 lg:w-[220px] lg:-translate-y-1/2"
         ref={container}
       >
         <Label>Your build</Label>
 
         {/* Fanned, not stacked — a neat pile reads as one object, a slight
             fan says there are several. */}
-        <div className="mt-4 flex h-14 items-center justify-center">
+        <div className="mt-4 flex h-14 items-center justify-center max-lg:hidden">
           {selected.slice(0, 4).map((entry, index) => (
             <ImageGround
               className="-ml-3 size-12 shrink-0 rounded-[12px] p-1.5 first:ml-0"
@@ -144,10 +144,10 @@ function BuildSurface({
           ))}
         </div>
 
-        <p className="mt-4 font-mono text-[13px] text-smoke tabular-nums">
+        <p className="t-num-xs mt-4 text-smoke">
           {selected.length} parts
         </p>
-        <p className="mt-1 font-mono text-[17px] text-bone tabular-nums">
+        <p className="t-num-sm mt-1 text-bone">
           {formatPaise(verdict.totalPaise)}
         </p>
 
@@ -179,12 +179,12 @@ function BuildSurface({
   return (
     <div className="relative left-1/2 w-[min(1000px,calc(100vw-3rem))] -translate-x-1/2">
       <div
-        className="overflow-hidden rounded-[20px] border border-hairline bg-panel/40"
+        className="surface-card overflow-hidden rounded-[20px] border border-hairline bg-panel/40"
         ref={container}
       >
         <div className="flex items-baseline justify-between gap-6 border-hairline border-b px-6 py-4">
           <Label>Your build</Label>
-          <span className="font-mono text-[13px] text-smoke tabular-nums">
+          <span className="t-num-xs text-smoke">
             {basis}
           </span>
         </div>
@@ -208,7 +208,7 @@ function BuildSurface({
 
         <div className="sticky bottom-0 border-hairline border-t bg-panel px-6 py-5">
           <div className="flex flex-wrap items-center justify-between gap-5">
-            <span className="font-mono text-[13px] text-smoke tabular-nums">
+            <span className="t-num-xs text-smoke">
               {selected.length} of {rows.length} selected
             </span>
 
@@ -224,12 +224,12 @@ function BuildSurface({
 
             <div className="text-right">
               <CountUp
-                className="text-[24px] text-bone"
+                className="t-num-md text-bone"
                 format={wholeRupees}
                 value={verdict.totalPaise}
               />
               {verdict.upgradePaise > 0 ? (
-                <p className="mt-1 font-mono text-[13px] text-lacquer tabular-nums">
+                <p className="t-num-xs mt-1 text-lacquer">
                   +{formatPaise(verdict.upgradePaise)} upgrades
                 </p>
               ) : null}

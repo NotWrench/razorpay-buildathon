@@ -91,11 +91,11 @@ function OrderLines({
             className="flex items-baseline justify-between gap-6 py-1.5"
             key={line.name}
           >
-            <span className="min-w-0 truncate text-[14px] text-smoke">
+            <span className="t-body-sm min-w-0 truncate text-smoke">
               {line.quantity > 1 ? `${line.quantity} × ` : ""}
               {line.name}
             </span>
-            <span className="shrink-0 font-mono text-[14px] text-smoke tabular-nums">
+            <span className="t-num-xs shrink-0 text-smoke">
               {formatPaise(line.pricePaise * line.quantity)}
             </span>
           </li>
@@ -169,7 +169,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "order",
         label: "Order",
         render: (order) => (
-          <span className="font-mono text-[15px] text-bone tabular-nums">
+          <span className="t-num-sm text-bone">
             {order.id}
           </span>
         ),
@@ -180,7 +180,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "customer",
         label: "Customer",
         render: (order) => (
-          <span className="text-[15px] text-bone">{order.customer}</span>
+          <span className="t-body text-bone">{order.customer}</span>
         ),
         sort: (a, b) => a.customer.localeCompare(b.customer),
         width: "auto",
@@ -189,7 +189,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "date",
         label: "Date",
         render: (order) => (
-          <span className="font-mono text-[13px] text-smoke tabular-nums">
+          <span className="t-num-xs text-smoke">
             {order.placedOn}
           </span>
         ),
@@ -200,7 +200,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "items",
         label: "Items",
         render: (order) => (
-          <span className="font-mono text-[13px] text-smoke tabular-nums">
+          <span className="t-num-xs text-smoke">
             {order.itemCount}
           </span>
         ),
@@ -212,7 +212,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "total",
         label: "Total",
         render: (order) => (
-          <span className="font-mono text-[15px] text-bone tabular-nums">
+          <span className="t-num-sm text-bone">
             {formatPaise(order.totalPaise)}
           </span>
         ),
@@ -224,7 +224,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "status",
         label: "Status",
         render: (order) => (
-          <span className={cn("text-[13px]", STATE_TONE[order.state])}>
+          <span className={cn("t-body-sm", STATE_TONE[order.state])}>
             {STATE_WORD[order.state]}
           </span>
         ),
@@ -261,7 +261,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         columns={columns}
         empty={
           <div className="flex flex-col items-start gap-5">
-            <p className="text-[16px] text-smoke">No orders in this filter.</p>
+            <p className="t-body text-smoke">No orders in this filter.</p>
             {/* A way out, not a label. An empty state whose only affordance
                 is a word you cannot press is a dead end with manners. */}
             <Pill onClick={showAll} size="sm" variant="text">

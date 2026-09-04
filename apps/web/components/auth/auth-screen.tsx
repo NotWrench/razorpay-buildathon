@@ -193,13 +193,13 @@ function AuthScreen({ mode: initial }: { mode: Mode }) {
 
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link className="flex items-baseline gap-1" href={shellRoutes.home}>
-            <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
+            <span className="t-display-sm font-bold text-bone">
               NEXUS
             </span>
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 
-          <p className="max-w-[19ch] font-bold font-display text-[40px] text-bone leading-[1.1] tracking-[-0.03em]">
+          <p className="t-display-lg max-w-[19ch] font-bold text-bone leading-[1.1]">
             The only store where the assistant can check the parts fit.
           </p>
 
@@ -216,18 +216,18 @@ function AuthScreen({ mode: initial }: { mode: Mode }) {
             className="mb-10 flex items-baseline gap-1 lg:hidden"
             href={shellRoutes.home}
           >
-            <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
+            <span className="t-display-sm font-bold text-bone">
               NEXUS
             </span>
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 
           <div className="auth-swap">
-            <h1 className="font-display font-semibold text-[28px] text-bone leading-none tracking-[-0.02em]">
+            <h1 className="t-display-md text-bone leading-none">
               {copy.heading}
             </h1>
 
-            <p className="mt-3 text-[15px] text-smoke">
+            <p className="t-body mt-3 text-smoke">
               {copy.swapLead}{" "}
               <Link
                 className="text-bone underline-offset-4 hover:underline"
@@ -239,19 +239,22 @@ function AuthScreen({ mode: initial }: { mode: Mode }) {
             </p>
 
             <div className="mt-8 grid gap-3">
-              <Pill className="w-full justify-center" variant="ghost">
+              <Pill className="w-full justify-center" disabled variant="ghost">
                 <ProviderGlyph provider="google" />
                 Continue with Google
               </Pill>
-              <Pill className="w-full justify-center" variant="ghost">
+              <Pill className="w-full justify-center" disabled variant="ghost">
                 <ProviderGlyph provider="github" />
                 Continue with GitHub
               </Pill>
+              <p className="t-body-sm text-center text-smoke">
+                Social sign-in is not connected yet.
+              </p>
             </div>
 
             <div className="my-8 flex items-center gap-4">
               <span className="h-px flex-1 bg-hairline" />
-              <span className="text-[13px] text-smoke">or</span>
+              <span className="t-body-sm text-smoke">or</span>
               <span className="h-px flex-1 bg-hairline" />
             </div>
 
@@ -305,12 +308,12 @@ function AuthScreen({ mode: initial }: { mode: Mode }) {
             </form>
 
             {sent ? (
-              <p className="mt-4 text-[13px] text-smoke">
+              <p className="t-body-sm mt-4 text-smoke">
                 Everything checks out. Accounts are not wired up yet.
               </p>
             ) : null}
 
-            <p className="mt-8 text-[13px] text-smoke leading-relaxed">
+            <p className="t-body-sm mt-8 text-smoke leading-relaxed">
               By continuing you agree to the{" "}
               <Link
                 className="text-bone underline-offset-4 hover:underline"

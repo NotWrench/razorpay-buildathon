@@ -1,8 +1,7 @@
 import { Label } from "@workspace/ui/components/label";
-import { Pill } from "@workspace/ui/components/pill";
-import { ArrowRight } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { PillLink } from "@/components/common/pill-link";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -46,10 +45,10 @@ const COLUMNS: { heading: string; links: { href: Route; label: string }[] }[] =
     {
       heading: "Company",
       links: [
-        { href: shellRoutes.home, label: "About" },
-        { href: shellRoutes.home, label: "Warranty" },
-        { href: shellRoutes.home, label: "Shipping" },
-        { href: shellRoutes.home, label: "Contact" },
+        { href: shellRoutes.about, label: "About" },
+        { href: shellRoutes.warranty, label: "Warranty" },
+        { href: shellRoutes.shipping, label: "Shipping" },
+        { href: shellRoutes.contact, label: "Contact" },
       ],
     },
   ];
@@ -66,7 +65,7 @@ function SiteFooter() {
                 {column.links.map((link) => (
                   <li key={link.label}>
                     <Link
-                      className="text-[15px] text-smoke transition-colors duration-[180ms] hover:text-bone"
+                      className="t-body text-smoke transition-colors duration-micro hover:text-bone"
                       href={link.href}
                     >
                       {link.label}
@@ -77,47 +76,56 @@ function SiteFooter() {
             </div>
           ))}
 
+          {/*
+            This column held a newsletter sign-up with no onSubmit and no
+            action, so the arrow ran a native GET and reloaded the page with
+            the address in the query string. There is no subscriber table
+            behind it either, so wiring it would have meant promising a
+            mailing list that does not exist. It points at the two ways of
+            reaching us that do.
+          */}
           <div>
-            <Label>New machines, twice a year</Label>
-            <p className="mt-5 max-w-[38ch] text-[15px] text-smoke">
-              We write when there is a new machine or a real price change.
-              Nothing else.
+            <Label>Talk to us</Label>
+            <p className="t-body mt-5 max-w-[38ch] text-smoke">
+              Questions about a part, a build or an order. The assistant
+              answers instantly; a person answers within a day.
             </p>
-            <form className="mt-6 flex items-center gap-2">
-              <input
-                aria-label="Email address"
-                className="h-11 min-w-0 flex-1 rounded-full border border-hairline bg-transparent px-5 text-[15px] text-bone placeholder:text-smoke focus:border-smoke focus:outline-none"
-                name="email"
-                placeholder="you@example.com"
-                type="email"
-              />
-              <Pill
-                aria-label="Subscribe"
-                className="size-11 px-0"
-                type="submit"
-                variant="ghost"
-              >
-                <ArrowRight aria-hidden className="size-4" />
-              </Pill>
-            </form>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <PillLink href={shellRoutes.assistant} size="sm" variant="ghost">
+                Ask the assistant
+              </PillLink>
+              <PillLink href={shellRoutes.contact} size="sm" variant="ghost">
+                Contact us
+              </PillLink>
+            </div>
           </div>
         </div>
 
-        <div className="mt-16 flex flex-wrap items-center justify-between gap-4 border-hairline border-t pt-8">
-          <p className="text-[13px] text-smoke">
-            © {new Date().getFullYear()} Nexus Systems, Bengaluru.
-          </p>
-          <p className="font-mono text-[13px] text-smoke tabular-nums">
-            GSTIN 29AABCN1234F1Z5
-          </p>
-        </div>
+        {/*
+          The mark used to close this page at clamp(4rem,18vw,16rem) — up to
+          256px — painted `text-panel`, which is #161616 on #060606: a contrast
+          ratio of about 1.1:1. It was the largest element on the site and it
+          rendered as a smudge. It sits in the legal strip now, at the size the
+          header uses, where it reads as a signature instead.
+        */}
+        <div className="rule-section mt-16 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 pt-8 pb-12">
+          <div className="flex items-center gap-4">
+            <Link
+              aria-label="Nexus, home"
+              className="flex items-baseline gap-1"
+              href={shellRoutes.home}
+            >
+              <span className="t-display-sm font-bold text-bone">NEXUS</span>
+              <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
+            </Link>
+            <span aria-hidden className="h-4 w-px bg-hairline" />
+            <p className="t-body-sm text-smoke">
+              © {new Date().getFullYear()} Nexus Systems, Bengaluru.
+            </p>
+          </div>
 
-        <p
-          aria-hidden
-          className="mt-16 select-none text-center font-bold font-display text-[clamp(4rem,18vw,16rem)] text-panel leading-[0.8] tracking-[-0.04em]"
-        >
-          NEXUS
-        </p>
+          <p className="t-num-xs text-smoke">GSTIN 29AABCN1234F1Z5</p>
+        </div>
       </div>
     </footer>
   );

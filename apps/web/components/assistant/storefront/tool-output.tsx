@@ -90,7 +90,7 @@ export function StorefrontToolOutput({
     case "tool-updateBuild":
       // The builder tools return the validation flattened onto the result,
       // so the card reads the output itself rather than a nested field.
-      return <BuildCheckCard slug={handlers.slug} validation={output} />;
+      return <BuildCheckCard validation={output} />;
 
     case "tool-getCart":
     case "tool-addToCart":

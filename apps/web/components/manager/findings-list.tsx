@@ -34,13 +34,13 @@ function FindingRow({ finding }: { finding: Finding }) {
     <div className="border-hairline border-b py-7">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
-          <p className="text-[16px] text-bone">{finding.headline}</p>
-          <p className="mt-1.5 text-[15px] text-smoke">{finding.action}</p>
+          <p className="t-body text-bone">{finding.headline}</p>
+          <p className="t-body mt-1.5 text-smoke">{finding.action}</p>
 
           <button
             aria-controls={panelId}
             aria-expanded={open}
-            className="mt-3 flex items-center gap-1.5 text-[13px] text-smoke outline-none transition-colors duration-[180ms] hover:text-bone focus-visible:text-bone"
+            className="t-body-sm mt-3 flex items-center gap-1.5 text-smoke outline-none transition-colors duration-micro hover:text-bone focus-visible:text-bone"
             onClick={toggle}
             type="button"
           >
@@ -49,8 +49,8 @@ function FindingRow({ finding }: { finding: Finding }) {
               aria-hidden
               className={
                 open
-                  ? "size-3.5 rotate-180 transition-transform duration-[180ms]"
-                  : "size-3.5 transition-transform duration-[180ms]"
+                  ? "size-3.5 rotate-180 transition-transform duration-micro"
+                  : "size-3.5 transition-transform duration-micro"
               }
             />
           </button>
@@ -61,7 +61,7 @@ function FindingRow({ finding }: { finding: Finding }) {
                 {finding.evidence.map((row) => (
                   <div key={row.label}>
                     <Label as="dt">{row.label}</Label>
-                    <dd className="mt-1 font-mono text-[15px] text-bone tabular-nums">
+                    <dd className="t-num-sm mt-1 text-bone">
                       {row.value}
                     </dd>
                   </div>
@@ -69,7 +69,7 @@ function FindingRow({ finding }: { finding: Finding }) {
               </dl>
               {/* The window is part of the evidence. A number without the
                   period it was measured over is not evidence at all. */}
-              <p className="mt-3 font-mono text-[13px] text-smoke tabular-nums">
+              <p className="t-num-xs mt-3 text-smoke">
                 {finding.window}
               </p>
             </div>
@@ -103,7 +103,7 @@ function FindingsList({
       <Label>{title}</Label>
 
       {ranked.length === 0 ? (
-        <p className="mt-5 text-[16px] text-smoke">
+        <p className="t-body mt-5 text-smoke">
           Nothing needs you in this window.
         </p>
       ) : (

@@ -68,7 +68,7 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
         />
         <label
           className={cn(
-            "flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[6px] border transition-colors duration-[180ms]",
+            "flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[6px] border transition-colors duration-micro",
             entry.selected
               ? "border-bone"
               : "border-hairline hover:border-smoke",
@@ -106,8 +106,8 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
               </>
             ) : null}
           </div>
-          <p className="mt-1 truncate text-[15px] text-bone">{part.name}</p>
-          <p className="mt-0.5 truncate font-mono text-[13px] text-smoke tabular-nums">
+          <p className="t-body mt-1 truncate text-bone">{part.name}</p>
+          <p className="t-num-xs mt-0.5 truncate text-smoke">
             {part.keySpecs
               .slice(0, 2)
               .map((spec) => spec.value)
@@ -118,7 +118,7 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
         <div className="shrink-0 text-right">
           <CountUp
             className={cn(
-              "text-[15px]",
+              "t-body",
               entry.selected ? "text-bone" : "text-smoke"
             )}
             format={formatPaise}
@@ -137,16 +137,16 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
 
           <div className="min-w-0 flex-1">
             <Label>Upgrade</Label>
-            <p className="mt-1 truncate text-[14px] text-bone">
+            <p className="t-body-sm mt-1 truncate text-bone">
               {entry.upgrade.product.name}
             </p>
-            <p className="mt-0.5 truncate text-[13px] text-smoke">
+            <p className="t-body-sm mt-0.5 truncate text-smoke">
               {entry.upgrade.reason}
             </p>
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="font-mono text-[14px] text-lacquer tabular-nums">
+            <p className="t-num-xs text-lacquer">
               +{formatPaise(entry.upgrade.deltaPaise)}
             </p>
             <Pill className="mt-2" onClick={swap} size="sm" variant="ghost">

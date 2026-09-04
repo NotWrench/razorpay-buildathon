@@ -2,9 +2,11 @@
 
 import type { PageContextInput } from "@workspace/ai";
 import { Label } from "@workspace/ui/components/label";
+import { Shimmer } from "@workspace/ui/components/motion/shimmer";
 import { Pill } from "@workspace/ui/components/pill";
+import { StatusLine } from "@workspace/ui/components/status-line";
 import { cn } from "@workspace/ui/lib/utils";
-import { ArrowUp, Sparkles, Square } from "lucide-react";
+import { ArrowUp, Sparkles, Square, X } from "lucide-react";
 import type { ChangeEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -57,13 +59,21 @@ function AssistantDock({
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<DockTurn[]>([]);
   const [streaming, setStreaming] = useState(false);
+  /*
+   * Waiting on the server, which is not the same as revealing an answer. The
+   * gap between pressing send and the first word used to be silence with an
+   * unchanged panel, which reads as a broken button.
+   */
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState("");
   const [starters, setStarters] = useState<DockStarter[]>([]);
 
-  const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const titleId = useId();
+
+  const retry = useCallback(() => setFailed(false), []);
 
   const stop = useCallback(() => {
     // biome-ignore lint/suspicious/noUnnecessaryConditions: the timer only exists while streaming
@@ -97,12 +107,28 @@ function AssistantDock({
       const askedId = `u${turnId}`;
 
       setDraft("");
+      setFailed(false);
       setTurns((current) => [
         ...current,
         { id: askedId, role: "user", shown: 0, text: asked },
       ]);
 
-      const reply = await dockReplyAction(asked, context.productId);
+      setPending(true);
+
+      let reply: Awaited<ReturnType<typeof dockReplyAction>>;
+
+      try {
+        reply = await dockReplyAction(asked, context.productId);
+      } catch (error) {
+        /* Shown in the thread, next to the question it failed to answer —
+           a toast that has already faded helps nobody. */
+        setFailed(true);
+
+        throw error;
+      } finally {
+        setPending(false);
+      }
+
       const words = reply.text.split(" ").length;
       const reduced = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
@@ -223,36 +249,82 @@ function AssistantDock({
     };
   }, [open]);
 
+  /*
+   * The placeholder used to say "Ask about this product…" on every page,
+   * including the cart and the home page, where there is no product.
+   */
+  const subject =
+    contextLabel && contextLabel.length > 28
+      ? `${contextLabel.slice(0, 28).trimEnd()}…`
+      : contextLabel;
+
+  let placeholder = "Ask about anything in the store…";
+
+  if (subject) {
+    placeholder = `Ask about ${subject}…`;
+  } else if (context.page === "cart") {
+    placeholder = "Ask about your cart…";
+  } else if (context.page === "search") {
+    placeholder = "Ask about these parts…";
+  }
+
   return (
     <>
-      {open ? null : (
-        <button
-          className="dock-surface fixed right-6 bottom-6 z-50 flex h-12 items-center gap-2.5 rounded-full border border-hairline bg-panel/80 px-5 text-[13px] text-bone shadow-float backdrop-blur-[16px] transition-colors duration-[180ms] hover:border-smoke lg:right-8 lg:bottom-8"
-          onClick={toggle}
-          type="button"
-        >
-          <Sparkles aria-hidden className="size-4" />
-          Ask
-          {hasNews ? (
-            <span
-              aria-hidden
-              className="absolute -top-0.5 -right-0.5 size-[5px] rounded-full bg-lacquer"
-            />
-          ) : null}
-        </button>
-      )}
+      {/*
+        The pill stays mounted and fades under the panel rather than being
+        unmounted the moment it opens. Two elements swapping is what made the
+        open read as a jump; one surface handing off to another reads as a
+        movement.
+      */}
+      <button
+        aria-expanded={open}
+        aria-label="Open the assistant"
+        className={cn(
+          "t-body-sm dock-surface surface-float fixed right-6 bottom-6 z-50 flex h-12 items-center gap-2.5 rounded-full border border-hairline bg-panel/80 px-5 text-bone backdrop-blur-[16px] lg:right-8 lg:bottom-8",
+          "transition-[opacity,transform,border-color] duration-exit hover:border-smoke",
+          open
+            ? "pointer-events-none scale-95 opacity-0"
+            : "scale-100 opacity-100"
+        )}
+        onClick={toggle}
+        tabIndex={open ? -1 : undefined}
+        type="button"
+      >
+        <Sparkles aria-hidden className="size-4" />
+        Ask
+        {hasNews ? (
+          <span
+            aria-hidden
+            className="absolute -top-0.5 -right-0.5 size-[5px] rounded-full bg-lacquer"
+          />
+        ) : null}
+      </button>
+
+      {/*
+        A scrim, on small screens only. An 85dvh panel floating over a live,
+        clickable page is a panel you dismiss by accident.
+      */}
+      <button
+        aria-hidden
+        className={cn(
+          "fixed inset-0 z-40 bg-void/60 backdrop-blur-[2px] transition-opacity duration-exit md:hidden",
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        )}
+        onClick={close}
+        tabIndex={-1}
+        type="button"
+      />
 
       <div
         aria-labelledby={titleId}
         aria-modal={open}
         className={cn(
-          "dock-surface centre-mask fixed z-50 flex flex-col overflow-hidden rounded-[28px] border border-hairline bg-panel/95 shadow-float backdrop-blur-[28px]",
+          "dock-surface centre-mask surface-float fixed z-50 flex flex-col overflow-hidden rounded-[28px] border border-hairline bg-panel/95 backdrop-blur-[28px]",
           "max-md:inset-x-0 max-md:bottom-0 max-md:h-[85dvh] max-md:rounded-b-none",
           "md:right-8 md:bottom-8 md:h-[560px] md:w-[380px]"
         )}
         data-open={open}
         inert={!open}
-        ref={panelRef}
         role="dialog"
         style={{ pointerEvents: open ? "auto" : "none" }}
       >
@@ -263,54 +335,112 @@ function AssistantDock({
             className="mx-auto mt-3 h-1 w-10 rounded-full bg-hairline md:hidden"
           />
 
-          <div className="flex items-start justify-between gap-4 border-hairline border-b px-5 py-4">
-            <div>
-              <p className="text-[15px] text-bone" id={titleId}>
+          <div className="flex items-center gap-3 border-hairline border-b px-5 py-4">
+            <span
+              aria-hidden
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-riser"
+            >
+              <Sparkles className="size-4 text-bone" />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p
+                className="t-body flex items-center gap-2 text-bone"
+                id={titleId}
+              >
                 Assistant
+                <span
+                  aria-hidden
+                  className="size-[5px] shrink-0 rounded-full bg-lacquer"
+                />
               </p>
-              <Label className="mt-1 block">
-                {contextLabel
-                  ? `Viewing: ${contextLabel}`
-                  : `Page: ${context.page}`}
-              </Label>
+              <p className="t-label truncate text-smoke">
+                {contextLabel ?? `Page: ${context.page}`}
+              </p>
             </div>
-            <Pill onClick={close} size="sm" variant="text">
-              Close
-            </Pill>
+
+            <button
+              aria-label="Close the assistant"
+              className="-mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-smoke transition-colors duration-micro hover:bg-riser hover:text-bone"
+              onClick={close}
+              type="button"
+            >
+              <X aria-hidden className="size-4" />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-5">
             {turns.length === 0 ? (
-              <div className="border-hairline border-t">
-                {starters.map((starter) => (
-                  <StarterRow
-                    key={starter.id}
-                    label={starter.label}
-                    meta={starter.meta}
-                    onSend={send}
-                    value={starter.value}
-                  />
-                ))}
+              <div>
+                {/* There used to be nothing above the starters at all. */}
+                <p className="t-body text-bone">
+                  Ask me about anything on this page.
+                </p>
+                <p className="t-body-sm mt-1.5 text-smoke">
+                  I answer from this store&rsquo;s own catalogue — three things
+                  quickly, and I hand the rest to the full assistant.
+                </p>
+
+                <div className="mt-5 border-hairline border-t">
+                  {starters.map((starter) => (
+                    <StarterRow
+                      key={starter.id}
+                      label={starter.label}
+                      meta={starter.meta}
+                      onSend={send}
+                      value={starter.value}
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
               <DockThread streaming={streaming} turns={turns} />
             )}
+
+            {pending ? (
+              <div className="mt-5 flex items-center gap-2.5">
+                <Sparkles
+                  aria-hidden
+                  className="size-3.5 shrink-0 animate-pulse text-smoke"
+                />
+                <Shimmer className="h-3 w-40" radius="pill" />
+              </div>
+            ) : null}
+
+            {failed ? (
+              <div className="mt-5">
+                <StatusLine
+                  message="That did not reach the store. Try it again."
+                  state="incompatible"
+                />
+                <Pill
+                  className="mt-3"
+                  onClick={retry}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Dismiss
+                </Pill>
+              </div>
+            ) : null}
           </div>
 
           <div className="px-5 pb-4">
-            <div className="flex items-end gap-2 rounded-[24px] border border-hairline bg-void px-4 py-2.5">
+            <div className="flex items-end gap-2 rounded-[24px] border border-hairline bg-void px-4 py-2.5 transition-colors duration-micro focus-within:border-smoke">
               <textarea
-                className="max-h-24 min-h-6 flex-1 resize-none bg-transparent text-[13px] text-bone placeholder:text-smoke focus:outline-none"
+                aria-label="Ask the assistant"
+                className="t-body-sm max-h-24 min-h-6 flex-1 resize-none bg-transparent text-bone placeholder:text-smoke focus:outline-none"
                 onChange={onDraft}
                 onKeyDown={onKeyDown}
-                placeholder="Ask about this product…"
+                placeholder={placeholder}
                 ref={inputRef}
                 rows={1}
                 value={draft}
               />
               <button
                 aria-label={streaming ? "Stop" : "Send"}
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-lacquer text-white transition-colors duration-[180ms] hover:bg-ember"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-lacquer text-white transition-colors duration-micro hover:bg-ember disabled:opacity-40"
+                disabled={!(streaming || draft.trim())}
                 onClick={streaming ? stop : onSend}
                 type="button"
               >
@@ -359,19 +489,23 @@ function StarterRow({
 }) {
   const handleClick = useCallback(() => onSend(value), [onSend, value]);
 
+  /*
+   * The hover used to be `hover:text-bone` on a label that was already bone,
+   * so the row looked interactive and then did nothing when you pointed at it.
+   * The ground moves instead, which is what a list row should do.
+   */
   return (
     <button
-      className="flex w-full items-center gap-3 border-hairline border-b py-3.5 text-left transition-colors duration-[180ms] hover:text-bone"
+      className="group -mx-2 flex w-full items-center gap-3 rounded-[12px] border-hairline border-b px-2 py-3.5 text-left transition-colors duration-micro hover:bg-riser"
       onClick={handleClick}
       type="button"
     >
-      <span className="flex-1 text-[13px] text-bone">{label}</span>
-      {meta ? (
-        <span className="font-mono text-[13px] text-bone tabular-nums">
-          {meta}
-        </span>
-      ) : null}
-      <span aria-hidden className="text-[13px] text-smoke">
+      <span className="t-body-sm flex-1 text-bone">{label}</span>
+      {meta ? <span className="t-num-xs text-smoke">{meta}</span> : null}
+      <span
+        aria-hidden
+        className="t-body-sm text-smoke transition-transform duration-micro group-hover:translate-x-0.5 group-hover:text-bone"
+      >
         →
       </span>
     </button>

@@ -19,8 +19,8 @@ function SavedBuilds({ builds }: { builds: SavedBuild[] }) {
           key={build.id}
         >
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] text-bone">{build.name}</p>
-            <p className="mt-1 font-mono text-[13px] text-smoke tabular-nums">
+            <p className="t-body truncate text-bone">{build.name}</p>
+            <p className="t-num-xs mt-1 text-smoke">
               {build.partCount} parts · {formatPaise(build.totalPaise)}
             </p>
           </div>

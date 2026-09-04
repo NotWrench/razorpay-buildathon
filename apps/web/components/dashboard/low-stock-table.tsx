@@ -41,7 +41,7 @@ export function LowStockTable({ rows }: { rows: LowStockProduct[] }) {
             <TableCell>
               {row.name}
               {row.sku ? (
-                <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                <span className="t-num-xs ml-2 text-muted-foreground">
                   {row.sku}
                 </span>
               ) : null}

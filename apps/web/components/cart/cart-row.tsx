@@ -57,7 +57,7 @@ function CartRow({
   return (
     <li
       className={cn(
-        "border-hairline border-b py-6 transition-opacity duration-[280ms]",
+        "border-hairline border-b py-6 transition-opacity duration-exit",
         exiting && "pointer-events-none opacity-0"
       )}
       ref={handleRef}
@@ -74,7 +74,7 @@ function CartRow({
 
         <div className="min-w-0 flex-1">
           <Link
-            className="text-[15px] text-bone transition-colors duration-[180ms] hover:text-smoke"
+            className="t-body text-bone transition-colors duration-micro hover:text-smoke"
             href={shellRoutes.product(line.product.id)}
           >
             {line.product.name}
@@ -82,26 +82,26 @@ function CartRow({
           <Label className="mt-1 block">{line.product.brand}</Label>
         </div>
 
-        <span className="w-28 text-right font-mono text-[13px] text-smoke tabular-nums">
+        <span className="t-num-xs w-28 text-right text-smoke">
           {formatPaise(line.product.pricePaise)}
         </span>
 
         <div className="inline-flex h-10 items-center gap-1 rounded-full border border-hairline px-2">
           <button
             aria-label={`One fewer ${line.product.name}`}
-            className="flex size-7 items-center justify-center rounded-full text-smoke transition-colors duration-[180ms] hover:text-bone disabled:opacity-40"
+            className="flex size-7 items-center justify-center rounded-full text-smoke transition-colors duration-micro hover:text-bone disabled:opacity-40"
             disabled={line.quantity === 1}
             onClick={decrease}
             type="button"
           >
             <Minus aria-hidden className="size-3.5" />
           </button>
-          <span className="w-7 text-center font-mono text-[15px] text-bone tabular-nums">
+          <span className="t-num-sm w-7 text-center text-bone">
             {line.quantity}
           </span>
           <button
             aria-label={`One more ${line.product.name}`}
-            className="flex size-7 items-center justify-center rounded-full text-smoke transition-colors duration-[180ms] hover:text-bone disabled:opacity-40"
+            className="flex size-7 items-center justify-center rounded-full text-smoke transition-colors duration-micro hover:text-bone disabled:opacity-40"
             onClick={increase}
             type="button"
           >
@@ -109,7 +109,7 @@ function CartRow({
           </button>
         </div>
 
-        <span className="w-32 text-right font-mono text-[15px] text-bone tabular-nums">
+        <span className="t-num-sm w-32 text-right text-bone">
           {formatPaise(line.product.pricePaise * line.quantity)}
         </span>
 

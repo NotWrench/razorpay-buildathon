@@ -13,7 +13,7 @@ import { Pill } from "@workspace/ui/components/pill";
 function RouteError({ line, reset }: { line: string; reset: () => void }) {
   return (
     <div className="mx-auto w-full max-w-[1280px] px-5 py-32 text-center sm:px-8 lg:px-10 2xl:px-16">
-      <p className="text-[17px] text-bone">{line}</p>
+      <p className="t-body-lg text-bone">{line}</p>
       <Pill className="mt-6" onClick={reset} variant="ghost">
         Try again
       </Pill>

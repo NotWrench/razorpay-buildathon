@@ -1,7 +1,7 @@
 import type { Merchant } from "@workspace/db";
 import Link from "next/link";
 import { SearchField } from "@/components/product/search-field";
-import { dashboardRoutes, storeRoutes } from "@/lib/routes";
+import { dashboardRoutes, shellRoutes, storeRoutes } from "@/lib/routes";
 import { AccountMenu } from "./account-menu";
 import { CartButton } from "./cart-button";
 import { StoreNav } from "./store-nav";
@@ -39,7 +39,7 @@ export function StoreHeader({
           links={[
             { exact: true, href: routes.home, label: "Home" },
             { href: routes.products, label: "Shop" },
-            { href: routes.build, label: "PC Builder" },
+            { href: shellRoutes.build, label: "PC Builder" },
             { href: routes.orders, label: "Orders" },
           ]}
         />

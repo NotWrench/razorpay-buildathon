@@ -1,7 +1,7 @@
 import type { Merchant } from "@workspace/db";
 import { CpuIcon, SparklesIcon } from "lucide-react";
 import { ButtonLink } from "@/components/common/button-link";
-import { storeRoutes } from "@/lib/routes";
+import { shellRoutes, storeRoutes } from "@/lib/routes";
 
 /**
  * The storefront's opening pitch.
@@ -24,7 +24,7 @@ export function StoreHero({
   return (
     <section className="border-border border-b bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+        <p className="t-label text-muted-foreground">
           {productCount} parts · {categoryCount} categories
         </p>
         <h1 className="mt-2 max-w-2xl font-heading font-semibold text-3xl tracking-tight sm:text-4xl">
@@ -37,7 +37,7 @@ export function StoreHero({
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <ButtonLink href={routes.build}>
+          <ButtonLink href={shellRoutes.build}>
             <CpuIcon />
             Start a build
           </ButtonLink>

@@ -61,8 +61,8 @@ function AuthField({
         aria-invalid={error ? true : undefined}
         autoComplete={autoComplete}
         className={cn(
-          "mt-2 h-[52px] w-full rounded-full border bg-panel px-5 text-[15px] text-bone",
-          "outline-none transition-colors duration-[180ms] placeholder:text-smoke",
+          "t-body mt-2 h-[52px] w-full rounded-full border bg-panel px-5 text-bone",
+          "outline-none transition-colors duration-micro placeholder:text-smoke",
           /* Focus is a border, not a halo. */
           "border-hairline focus:border-bone",
           error && "border-amber"
@@ -77,7 +77,7 @@ function AuthField({
       />
 
       {error ? (
-        <p className="mt-2 pl-5 text-[13px] text-amber" id={errorId}>
+        <p className="t-body-sm mt-2 pl-5 text-amber" id={errorId}>
           {error}
         </p>
       ) : null}

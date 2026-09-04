@@ -28,16 +28,22 @@ import { useTurnInterruption } from "./use-turn-interruption";
 
 export interface StorefrontAssistantOptions {
   context?: PageContextInput;
+  /** A saved thread, replayed. Both the display and the model's own context. */
+  initialMessages?: StorefrontMessage[];
   initialMode?: ChatMode;
+  /** The row those messages came from, so the thread continues rather than forks. */
+  resumeConversationId?: string;
   slug: string;
 }
 
 export function useStorefrontAssistant({
   context,
   initialMode,
+  initialMessages,
+  resumeConversationId,
   slug,
 }: StorefrontAssistantOptions) {
-  const conversationId = useRef<string | undefined>(undefined);
+  const conversationId = useRef<string | undefined>(resumeConversationId);
   const [mode, setMode] = useState<ChatMode | undefined>(initialMode);
 
   const modeRef = useRef(mode);
@@ -49,6 +55,7 @@ export function useStorefrontAssistant({
   const { clear, interruption, noteFinish } = useTurnInterruption();
 
   const chat = useChat<StorefrontMessage>({
+    messages: initialMessages,
     onFinish: noteFinish,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     transport: new DefaultChatTransport({

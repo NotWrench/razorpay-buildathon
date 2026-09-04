@@ -228,6 +228,229 @@
 }
 
 /*
+ * The type system, as classes.
+ *
+ * §4.3 of docs/UI-DESIGN-PLAN.md names three faces and one scale, and that
+ * scale is declared in @theme above. Before this block existed, every
+ * component re-spelled the same intent in arbitrary pixels — `text-[15px]`
+ * 102 times, `text-[13px]` 99, four different spellings of the same small-caps
+ * label, and six sizes that were on no scale at all. The system was
+ * documented, declared, and then bypassed everywhere.
+ *
+ * Two rules keep it honest:
+ *
+ *   1. A `.t-*` class sets face, size, weight, tracking and leading. Nothing
+ *      else — never colour. Colour carries meaning here (smoke is secondary,
+ *      verdant passes, lacquer is a problem) and has to stay visible at the
+ *      call site rather than hiding inside a type class.
+ *   2. Mono is for numbers. Prices, wattage, counts, SKUs. Never prose.
+ *
+ * These sit in `components` rather than `utilities` deliberately: a Tailwind
+ * utility should still win, so `text-lg` on a `.t-body` does what the next
+ * person expects instead of losing to a specificity fight.
+ */
+@layer components {
+  /* Display — Archivo, tight, for headlines and section openers. */
+  .t-display-xl {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: var(--tracking-tighter);
+  }
+
+  .t-display-lg {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: var(--tracking-tighter);
+  }
+
+  .t-display-md {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .t-display-sm {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /*
+   * The machine-name treatment — the one ORIGIN signature we borrow. Caps at
+   * 500 with positive tracking, which is the opposite of how a part is set.
+   *
+   * This is the single exception to rule 1: it carries no size, because the
+   * same treatment runs from a 56px model hero down to a 17px gallery caption.
+   * Pair it with a size from the scale (`text-2xl`, `text-xl`, `text-base`).
+   */
+  .t-model {
+    font-family: var(--font-display);
+    font-weight: 500;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  /* Body — Inter Tight. Everything functional. */
+  .t-body-lg {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.55;
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .t-body {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .t-body-sm {
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    font-weight: 400;
+    line-height: 1.45;
+    letter-spacing: var(--tracking-normal);
+  }
+
+  /*
+   * The label. Sans, small caps, 11px, 0.14em — never mono, which is what
+   * stops the site reading as a terminal. This replaces four competing
+   * spellings of the same idiom (`tracking-widest`, `-wider`, `-wide`, and a
+   * literal `[0.14em]`). It sets no colour; pair it with `text-smoke`.
+   */
+  .t-label {
+    font-family: var(--font-sans);
+    font-size: var(--text-2xs);
+    font-weight: 500;
+    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+  }
+
+  /*
+   * Numbers. Tabular so a column of prices never jitters as it re-renders.
+   * The base layer's `.font-mono` rule can't reach these, since they set the
+   * family directly, so each one carries its own tabular-nums.
+   */
+  .t-num-lg,
+  .t-num-md,
+  .t-num-sm,
+  .t-num-xs {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .t-num-lg {
+    font-size: var(--text-xl);
+  }
+
+  .t-num-md {
+    font-size: var(--text-lg);
+  }
+
+  .t-num-sm {
+    font-size: var(--text-sm);
+  }
+
+  .t-num-xs {
+    font-size: var(--text-xs);
+  }
+}
+
+/*
+ * The motion clock, mirrored from packages/ui/src/lib/motion.ts.
+ *
+ * Tailwind v4 has an `--ease-*` theme namespace but no `--duration-*` one, so
+ * the durations are registered as utilities instead. Same numbers the
+ * components were already writing as `duration-[420ms]` literals — this only
+ * gives them a name, so a change to the clock lands in one place.
+ */
+@utility duration-micro {
+  transition-duration: 180ms;
+}
+
+@utility duration-exit {
+  transition-duration: 280ms;
+}
+
+@utility duration-standard {
+  transition-duration: 420ms;
+}
+
+@utility duration-reveal {
+  transition-duration: 800ms;
+}
+
+/*
+ * Surfaces and rules.
+ *
+ * The palette gave every card the same treatment — a lighter rectangle on a
+ * darker page — and every divider the same 1px #2a2a2a, 157 times over. At
+ * that point the eye stops reading them as structure and starts reading them
+ * as texture, which is most of what "plain" meant.
+ *
+ * Two additions, both inside §4.4's rules (no glow, no red borders):
+ *
+ *   1. A card gets a 1px top edge of near-white at very low alpha. That is how
+ *      a real surface catches the light coming down the page, and it is the
+ *      cheapest way to make a dark UI read as physical rather than flat. It is
+ *      an edge, not a glow: no blur, no spread, one pixel.
+ *   2. A section opening gets a heavier rule than a row divider. Same
+ *      vocabulary, two weights, so a boundary that means "new section" stops
+ *      looking like a boundary that means "next row".
+ */
+@layer components {
+  .surface-card {
+    box-shadow:
+      var(--shadow-card),
+      inset 0 1px 0 color-mix(in srgb, var(--bone) 5%, transparent);
+  }
+
+  .surface-float {
+    box-shadow:
+      var(--shadow-float),
+      inset 0 1px 0 color-mix(in srgb, var(--bone) 8%, transparent);
+  }
+
+  /* The heavier of the two rules. A row divider stays `border-hairline`. */
+  .rule-section {
+    border-top: 1px solid color-mix(in srgb, var(--bone) 10%, transparent);
+  }
+
+  /*
+   * The image ground, from `ImageGround`.
+   *
+   * It used to hardcode two hexes — #262626 and #151515 — which were riser and
+   * panel written out by hand, so the one depth mechanism the design rests on
+   * was never actually a token. The top edge sits a little above riser and the
+   * foot settles onto panel, which is what gives a flat render somewhere to
+   * stand rather than float.
+   */
+  .ground-surface {
+    background-image: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--bone) 6%, var(--riser)) 0%,
+      var(--panel) 100%
+    );
+  }
+}
+
+/*
  * The route transition. CSS rather than a motion timeline because it gates
  * the opacity of a whole page: a stalled frame loop must never be able to
  * leave a route half-transparent with nothing to recover it.
@@ -398,8 +621,8 @@
  */
 .search-field::-webkit-search-cancel-button,
 .search-field::-webkit-search-decoration {
-  appearance: none;
   display: none;
+  appearance: none;
 }
 
 .search-pane[data-shown="true"] {
@@ -428,8 +651,8 @@
  * rather than an empty track.
  */
 .power-bar {
-  transform-origin: left;
   transform: scaleX(var(--power-ratio, 1));
+  transform-origin: left;
   transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 

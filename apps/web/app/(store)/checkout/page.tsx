@@ -25,7 +25,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-6 py-2.5">
       <Label>{label}</Label>
-      <span className="font-mono text-[15px] text-bone tabular-nums">
+      <span className="t-num-sm text-bone">
         {value}
       </span>
     </div>
@@ -36,7 +36,7 @@ function Total({ paise }: { paise: number }) {
   return (
     <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
       <Label>Total</Label>
-      <span className="font-mono text-[32px] text-bone tabular-nums">
+      <span className="t-num-lg text-bone">
         {formatPaise(paise)}
       </span>
     </div>
@@ -59,14 +59,14 @@ export default async function CheckoutPage({
 
     return (
       <div className="mx-auto w-full max-w-[640px] px-5 pt-14 pb-24 sm:px-8">
-        <h1 className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+        <h1 className="t-display-lg text-bone leading-none">
           Checkout
         </h1>
 
-        <div className="mt-12 rounded-[20px] bg-panel p-7 shadow-card">
+        <div className="surface-card mt-12 rounded-[20px] bg-panel p-7">
           <div className="flex items-baseline justify-between gap-6">
             <Label>Your build</Label>
-            <span className="font-mono text-[13px] text-smoke tabular-nums">
+            <span className="t-num-xs text-smoke">
               {build.length} parts
             </span>
           </div>
@@ -77,10 +77,10 @@ export default async function CheckoutPage({
                 className="flex items-baseline justify-between gap-6 border-hairline border-t py-3"
                 key={part.id}
               >
-                <span className="min-w-0 truncate text-[15px] text-bone">
+                <span className="t-body min-w-0 truncate text-bone">
                   {part.name}
                 </span>
-                <span className="shrink-0 font-mono text-[15px] text-smoke tabular-nums">
+                <span className="t-num-sm shrink-0 text-smoke">
                   {formatPaise(part.pricePaise)}
                 </span>
               </li>
@@ -104,18 +104,18 @@ export default async function CheckoutPage({
 
   return (
     <div className="mx-auto w-full max-w-[640px] px-5 pt-14 pb-24 sm:px-8">
-      <h1 className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+      <h1 className="t-display-lg text-bone leading-none">
         Checkout
       </h1>
 
-      <div className="mt-12 rounded-[20px] bg-panel p-7 shadow-card">
+      <div className="surface-card mt-12 rounded-[20px] bg-panel p-7">
         <Row label="Items" value={String(items)} />
         <Row label="Subtotal" value={formatPaise(cart.subtotalPaise)} />
 
         {cart.discountPaise > 0 ? (
           <div className="flex items-baseline justify-between gap-6 py-2.5">
             <Label>Discount</Label>
-            <span className="font-mono text-[15px] text-lacquer tabular-nums">
+            <span className="t-num-sm text-lacquer">
               −{formatPaise(cart.discountPaise)}
             </span>
           </div>
@@ -124,7 +124,7 @@ export default async function CheckoutPage({
         <Total paise={cart.totalPaise} />
 
         {items === 0 ? (
-          <p className="mt-7 text-[15px] text-smoke">
+          <p className="t-body mt-7 text-smoke">
             There is nothing in your cart to pay for yet.
           </p>
         ) : (

@@ -43,21 +43,21 @@ function OrderRow({ order }: { order: AccountOrder }) {
         onClick={toggle}
         type="button"
       >
-        <span className="font-mono text-[15px] text-bone tabular-nums">
+        <span className="t-num-sm text-bone">
           {order.id}
         </span>
-        <span className="font-mono text-[13px] text-smoke tabular-nums">
+        <span className="t-num-xs text-smoke">
           {order.placedOn}
         </span>
-        <span className="font-mono text-[13px] text-smoke tabular-nums">
+        <span className="t-num-xs text-smoke">
           {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
         </span>
-        <span className="font-mono text-[15px] text-bone tabular-nums md:text-right">
+        <span className="t-num-sm text-bone md:text-right">
           {formatPaise(order.totalPaise)}
         </span>
         <span
           className={cn(
-            "text-[13px] md:text-right",
+            "t-body-sm md:text-right",
             order.state === "cancelled" ? "text-lacquer" : "text-smoke"
           )}
         >
@@ -72,11 +72,11 @@ function OrderRow({ order }: { order: AccountOrder }) {
               className="flex items-baseline justify-between gap-6 py-1.5"
               key={line.name}
             >
-              <span className="min-w-0 truncate text-[14px] text-smoke">
+              <span className="t-body-sm min-w-0 truncate text-smoke">
                 {line.quantity > 1 ? `${line.quantity} × ` : ""}
                 {line.name}
               </span>
-              <span className="shrink-0 font-mono text-[14px] text-smoke tabular-nums">
+              <span className="t-num-xs shrink-0 text-smoke">
                 {formatPaise(line.pricePaise * line.quantity)}
               </span>
             </li>

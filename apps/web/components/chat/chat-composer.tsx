@@ -56,7 +56,7 @@ function ModeItem({
 
   return (
     <Menu.Item
-      className="rounded-[16px] px-4 py-2.5 text-[15px] text-bone outline-none transition-colors duration-[180ms] data-highlighted:bg-riser"
+      className="t-body rounded-[16px] px-4 py-2.5 text-bone outline-none transition-colors duration-micro data-highlighted:bg-riser"
       onClick={handleClick}
     >
       {label}
@@ -121,7 +121,7 @@ const ChatComposer = forwardRef<HTMLTextAreaElement, ChatComposerProps>(
     return (
       <div className="flex min-h-[60px] items-center gap-4 rounded-full border border-hairline bg-panel px-5 py-2.5">
         <Menu.Root>
-          <Menu.Trigger className="flex shrink-0 items-center gap-1.5 text-[15px] text-smoke transition-colors duration-[180ms] hover:text-bone data-popup-open:text-bone">
+          <Menu.Trigger className="t-body flex shrink-0 items-center gap-1.5 text-smoke transition-colors duration-micro hover:text-bone data-popup-open:text-bone">
             {modeLabel}
             <ChevronDown aria-hidden className="size-3.5" />
           </Menu.Trigger>
@@ -146,7 +146,7 @@ const ChatComposer = forwardRef<HTMLTextAreaElement, ChatComposerProps>(
         <textarea
           aria-label="Message"
           className={cn(
-            "max-h-[120px] min-h-6 flex-1 resize-none bg-transparent text-[15px] text-bone",
+            "t-body max-h-[120px] min-h-6 flex-1 resize-none bg-transparent text-bone",
             "placeholder:text-smoke focus:outline-none"
           )}
           onChange={onChange}
@@ -159,7 +159,7 @@ const ChatComposer = forwardRef<HTMLTextAreaElement, ChatComposerProps>(
 
         <button
           aria-label={streaming ? "Stop" : "Send"}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-lacquer text-white transition-colors duration-[180ms] hover:bg-ember"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-lacquer text-white transition-colors duration-micro hover:bg-ember"
           onClick={streaming ? onStop : onSend}
           type="button"
         >

@@ -63,7 +63,7 @@ export function ApprovalQueue({ orders }: { orders: QueuedOrder[] }) {
 
   return (
     <section>
-      <h2 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+      <h2 className="t-label mb-2 text-muted-foreground">
         Waiting for approval ({orders.length})
       </h2>
 

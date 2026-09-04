@@ -27,7 +27,7 @@ function PowerBar({ draw, supply }: { draw: number; supply: number }) {
 
   return (
     <div className="mt-10">
-      <p className="font-mono text-[13px] text-smoke tabular-nums">
+      <p className="t-num-xs text-smoke">
         {draw} W estimated · {supply} W supply
       </p>
       <div className="mt-3 h-0.5 w-full overflow-hidden rounded-full bg-hairline">
@@ -51,12 +51,12 @@ function ManifestTable({ machine }: { machine: PrebuiltDetail }) {
             <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
               <Label className="w-32 shrink-0">{entry.slot}</Label>
               <Link
-                className="flex-1 text-[15px] text-bone transition-colors duration-[180ms] hover:text-smoke"
+                className="t-body flex-1 text-bone transition-colors duration-micro hover:text-smoke"
                 href={shellRoutes.product(entry.product.id)}
               >
                 {entry.product.name}
               </Link>
-              <span className="font-mono text-[13px] text-smoke tabular-nums">
+              <span className="t-num-xs text-smoke">
                 {formatPaise(entry.product.pricePaise)}
               </span>
             </div>

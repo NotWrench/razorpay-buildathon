@@ -45,7 +45,7 @@ function GalleryTile({
         <ProductRender
           alt=""
           category="case"
-          className="transition-transform duration-[420ms] group-hover:scale-[1.03]"
+          className="transition-transform duration-standard group-hover:scale-[1.03]"
         />
       </ImageGround>
     </button>
@@ -81,10 +81,10 @@ function ModelGallery({ name, views }: ModelGalleryProps) {
 
       <Dialog.Root onOpenChange={setOpen} open={open}>
         <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-70 bg-void/80 backdrop-blur-[4px] transition-opacity duration-[280ms] data-ending-style:opacity-0 data-starting-style:opacity-0" />
-          <Dialog.Popup className="fixed top-1/2 left-1/2 z-71 w-[min(1100px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] bg-panel p-6 shadow-float outline-none transition-opacity duration-[420ms] data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:duration-[280ms]">
+          <Dialog.Backdrop className="fixed inset-0 z-70 bg-void/80 backdrop-blur-[4px] transition-opacity duration-exit data-ending-style:opacity-0 data-starting-style:opacity-0" />
+          <Dialog.Popup className="fixed top-1/2 left-1/2 z-71 w-[min(1100px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] bg-panel p-6 shadow-float outline-none transition-opacity duration-standard data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:duration-exit">
             <div className="flex items-center justify-between pb-5">
-              <Dialog.Title className="font-display font-medium text-[17px] text-bone uppercase tracking-[0.05em]">
+              <Dialog.Title className="t-model text-base text-bone">
                 {name}
               </Dialog.Title>
               <Pill onClick={close} size="sm" variant="text">

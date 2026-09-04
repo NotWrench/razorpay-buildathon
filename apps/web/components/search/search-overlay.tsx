@@ -224,7 +224,7 @@ function SearchOverlay() {
         <div className="centre-mask-inner flex h-full flex-col overflow-y-auto px-8 py-8 lg:px-16">
           <div className="flex items-center justify-between">
             <span className="flex items-baseline gap-1">
-              <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
+              <span className="t-display-sm font-bold text-bone">
                 NEXUS
               </span>
               <span
@@ -244,7 +244,7 @@ function SearchOverlay() {
               </label>
               <input
                 autoComplete="off"
-                className="search-field w-full bg-transparent pb-5 font-display font-semibold text-[clamp(32px,5vw,56px)] text-bone tracking-[-0.03em] outline-none placeholder:text-smoke"
+                className="search-field t-display-lg w-full bg-transparent pb-5 text-[clamp(32px,5vw,56px)] text-bone outline-none placeholder:text-smoke"
                 id="search-field"
                 onChange={onChange}
                 placeholder="Search Nexus"
@@ -269,7 +269,7 @@ function SearchOverlay() {
             </div>
 
             {/* Reserved: the note holds its height whether or not it speaks. */}
-            <p className="mt-4 h-5 text-[13px] text-smoke">
+            <p className="t-body-sm mt-4 h-5 text-smoke">
               {settled && results?.total === 0
                 ? `Nothing matches “${settledTerm}”.`
                 : null}
@@ -355,7 +355,7 @@ function SearchOverlay() {
                       <div className="flex items-baseline justify-between">
                         <Label>Parts</Label>
                         {settled && results && !results.capped ? (
-                          <span className="font-mono text-[13px] text-smoke tabular-nums">
+                          <span className="t-num-xs text-smoke">
                             {results.total}
                           </span>
                         ) : null}

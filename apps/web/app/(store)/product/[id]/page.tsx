@@ -11,6 +11,7 @@ import { ComponentCard } from "@/components/product/component-card";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductTabs } from "@/components/product/product-tabs";
 import { getProduct, openBuild } from "@/lib/data";
+import { storeSlug } from "@/lib/data/store";
 import { route } from "@/lib/routes";
 
 /**
@@ -40,7 +41,11 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Params }) {
   const { id } = await params;
-  const [product, build] = await Promise.all([getProduct(id), openBuild()]);
+  const [product, build, slug] = await Promise.all([
+    getProduct(id),
+    openBuild(),
+    storeSlug(),
+  ]);
 
   if (!product) {
     notFound();
@@ -57,7 +62,7 @@ export default async function ProductPage({ params }: { params: Params }) {
 
         <div>
           <Label>{product.brand}</Label>
-          <h1 className="mt-3 font-display font-semibold text-[28px] text-bone tracking-[-0.02em]">
+          <h1 className="t-display-md mt-3 text-bone">
             {product.name}
           </h1>
 
@@ -87,6 +92,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             buildName={build?.name}
             onHand={product.onHand}
             productId={product.id}
+            slug={slug}
             stock={product.stock}
           />
 
@@ -94,11 +100,11 @@ export default async function ProductPage({ params }: { params: Params }) {
             <CompatibilityStrip report={product.compatibility} />
           </div>
 
-          <p className="mt-8 max-w-[60ch] text-[15px] text-smoke">
+          <p className="t-body mt-8 max-w-[60ch] text-smoke">
             {product.description}
           </p>
 
-          <p className="mt-8 font-mono text-[13px] text-smoke tabular-nums">
+          <p className="t-num-xs mt-8 text-smoke">
             {product.sku}
           </p>
         </div>
@@ -108,7 +114,7 @@ export default async function ProductPage({ params }: { params: Params }) {
         <ProductTabs product={product} />
       </div>
 
-      <p className="mt-20 flex items-center gap-2 text-[15px] text-smoke">
+      <p className="t-body mt-20 flex items-center gap-2 text-smoke">
         <Sparkles aria-hidden className="size-4" />
         <PillLink
           className="text-smoke hover:text-bone"

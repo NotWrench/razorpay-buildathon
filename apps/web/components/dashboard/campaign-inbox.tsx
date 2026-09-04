@@ -51,7 +51,7 @@ export function CampaignInbox({ campaigns }: { campaigns: InboxCampaign[] }) {
 
   return (
     <section>
-      <h2 className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+      <h2 className="t-label mb-2 text-muted-foreground">
         Campaigns ({campaigns.length})
       </h2>
 
@@ -73,7 +73,7 @@ export function CampaignInbox({ campaigns }: { campaigns: InboxCampaign[] }) {
               </span>
               <span
                 className={cn(
-                  "whitespace-nowrap rounded-sm px-1.5 py-0.5 text-[10px] uppercase tracking-wider",
+                  "t-label whitespace-nowrap rounded-sm px-1.5 py-0.5",
                   campaign.status === "active" &&
                     "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
                   campaign.status === "pending_approval" &&

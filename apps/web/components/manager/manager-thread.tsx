@@ -48,7 +48,7 @@ function ResultTable({ table }: { table: ManagerTable }) {
           <tbody>
             {table.rows.map((row) => (
               <tr
-                className="transition-colors duration-[180ms] hover:bg-panel"
+                className="transition-colors duration-micro hover:bg-panel"
                 key={row.join("|")}
               >
                 {row.map((cell, index) => (
@@ -56,7 +56,7 @@ function ResultTable({ table }: { table: ManagerTable }) {
                     className={cn(
                       /* 16px rhythm: this side of the product is denser than
                          the storefront on purpose. */
-                      "border-hairline border-b py-2 text-[15px] text-bone",
+                      "t-body border-hairline border-b py-2 text-bone",
                       table.numeric.includes(index)
                         ? "text-right font-mono tabular-nums"
                         : "text-left"
@@ -95,11 +95,11 @@ function ManagerThread({
 
         return (
           <div className="chat-turn" key={turn.id}>
-            <p className="text-[15px] text-smoke">{turn.question}</p>
+            <p className="t-body text-smoke">{turn.question}</p>
 
             <div className="mt-4">
               <StreamedText
-                className="text-[16px]"
+                className="t-body"
                 id={turn.id}
                 shown={last ? shown : turn.reply.split(" ").length}
                 streaming={last && streaming}

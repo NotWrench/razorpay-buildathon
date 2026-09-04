@@ -38,7 +38,7 @@ function FilterPill({
     <button
       aria-pressed={active}
       className={cn(
-        "h-11 rounded-full border px-6 text-[15px] transition-colors duration-[180ms]",
+        "t-body h-11 rounded-full border px-6 transition-colors duration-micro",
         active
           ? "border-bone bg-bone text-void"
           : "border-hairline text-smoke hover:border-smoke hover:text-bone"

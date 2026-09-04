@@ -30,7 +30,7 @@ const USE_CASES = [
 function UseCaseMenu() {
   return (
     <Menu.Root>
-      <Menu.Trigger className="flex items-center gap-1.5 text-[15px] text-smoke transition-colors duration-[180ms] hover:text-bone data-popup-open:text-bone">
+      <Menu.Trigger className="t-body flex items-center gap-1.5 text-smoke transition-colors duration-micro hover:text-bone data-popup-open:text-bone">
         Shop by use
         <ChevronDown aria-hidden className="size-3.5" />
       </Menu.Trigger>
@@ -42,14 +42,14 @@ function UseCaseMenu() {
               <Label className="block px-4 pt-3 pb-2">Shop by use</Label>
               {USE_CASES.map((useCase) => (
                 <Menu.LinkItem
-                  className="block rounded-[20px] px-4 py-3 outline-none transition-colors duration-[180ms] data-highlighted:bg-riser"
+                  className="block rounded-[20px] px-4 py-3 outline-none transition-colors duration-micro data-highlighted:bg-riser"
                   key={useCase.value}
                   render={<Link href={shellRoutes.byUse(useCase.value)} />}
                 >
-                  <span className="block text-[15px] text-bone">
+                  <span className="t-body block text-bone">
                     {useCase.label}
                   </span>
-                  <span className="mt-0.5 block text-[13px] text-smoke">
+                  <span className="t-body-sm mt-0.5 block text-smoke">
                     {useCase.blurb}
                   </span>
                 </Menu.LinkItem>

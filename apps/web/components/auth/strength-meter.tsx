@@ -50,7 +50,7 @@ function StrengthMeter({ value }: { value: string }) {
         {Array.from({ length: SEGMENTS }, (_, index) => (
           <span
             className={cn(
-              "h-[3px] flex-1 rounded-full transition-colors duration-[180ms]",
+              "h-[3px] flex-1 rounded-full transition-colors duration-micro",
               index < score ? "bg-lacquer" : "bg-hairline"
             )}
             // biome-ignore lint/suspicious/noArrayIndexKey: the segments are positions, not data

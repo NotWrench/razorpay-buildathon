@@ -27,7 +27,7 @@ export function StockBadge({
   if (stock <= lowStockThreshold) {
     return (
       <span
-        className={cn("text-amber-600 text-xs dark:text-amber-400", className)}
+        className={cn("text-amber text-xs", className)}
       >
         Only {stock} left
       </span>
