@@ -24,6 +24,7 @@ import { checkoutTools } from "../tools/checkout";
 import { explainTools } from "../tools/explain";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
+import { webSearchTools } from "../tools/web-search";
 import { storefrontApproval } from "./approval";
 import { activeToolsFor, type ChatMode, modeInstructions } from "./modes";
 import { storefrontPrompt } from "./prompts";
@@ -39,6 +40,7 @@ export function storefrontToolSet(ctx: AgentContext) {
     ...requirementTools(ctx),
     ...checkoutTools(ctx),
     ...explainTools(ctx),
+    ...webSearchTools(ctx),
   };
 }
 

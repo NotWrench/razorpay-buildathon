@@ -71,14 +71,19 @@ export {
 } from "./embeddings";
 export {
   assertCartShape,
+  assertPcSearchAllowed,
   assertWithinSpendCap,
   checkMarginFloor,
+  checkPcSearchQuery,
   clampDiscountPercent,
   clampFlatDiscount,
   committedSpendPaise,
   LIMITS,
   type MarginBreach,
+  PC_SEARCH_LIMITS,
+  type PcSearchValidation,
   recordMarginBreach,
+  recordSearchGuardrailBreach,
 } from "./guardrails";
 export {
   type CancellationSummary,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { PageContextInput } from "@workspace/ai";
+import type { PageContextInput, StorefrontMessage } from "@workspace/ai";
 import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { cn } from "@workspace/ui/lib/utils";
@@ -146,14 +146,23 @@ function questionProgress(messages: AgentMessage[]) {
 }
 
 interface ChatScreenProps {
+  initialMessages?: StorefrontMessage[];
+  initialQuery?: string;
+  resumeConversationId?: string;
   /** The store this assistant shops in, for the agent endpoint. */
   slug: string;
   /** Shown on the payment window, which is the shopper's own bank statement. */
   storeName: string;
 }
 
-function ChatScreen({ slug, storeName }: ChatScreenProps) {
-  const [draft, setDraft] = useState("");
+function ChatScreen({
+  initialMessages,
+  initialQuery,
+  resumeConversationId,
+  slug,
+  storeName,
+}: ChatScreenProps) {
+  const [draft, setDraft] = useState(initialQuery ?? "");
   const [pinned, setPinned] = useState(true);
   const [rows, setRows] = useState<BuildSlotRow[]>([]);
   const [basis, setBasis] = useState<string | null>(null);
@@ -175,7 +184,9 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
 
   const assistant = useStorefrontAssistant({
     context,
+    initialMessages,
     initialMode: "build",
+    resumeConversationId,
     slug,
   });
 

@@ -6,3 +6,8 @@ export { merchantTools } from "./merchant";
 export { readinessTools } from "./readiness";
 export { requirementTools } from "./requirements";
 export { shoppingTools } from "./shopping";
+export {
+  type WebSearchOutput,
+  type WebSearchResult,
+  webSearchTools,
+} from "./web-search";

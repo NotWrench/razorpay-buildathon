@@ -136,10 +136,130 @@ async function main() {
   });
 
   if (existingMerchant) {
-    console.log(
-      `Store "${STORE_SLUG}" already exists (${existingMerchant.id}). Delete it first to reseed.`
-    );
-    process.exit(0);
+    if (process.argv.includes("--reset")) {
+      console.log(`Resetting store "${STORE_SLUG}" (${existingMerchant.id})...`);
+      await db.delete(merchants).where(eq(merchants.id, existingMerchant.id));
+    } else {
+      console.log(
+        `Store "${STORE_SLUG}" already exists (${existingMerchant.id}). Checking for catalog updates...`
+      );
+
+      const existingCategories = await db.query.productCategories.findMany({
+        where: eq(productCategories.merchantId, existingMerchant.id),
+      });
+      const categoryIdBySlug = new Map(
+        existingCategories.map((row) => [row.slug, row.id])
+      );
+
+      const existingProducts = await db.query.products.findMany({
+        where: eq(products.merchantId, existingMerchant.id),
+      });
+      const existingSkus = new Set(
+        existingProducts.map((p) => p.sku).filter(Boolean)
+      );
+
+      const missingItems = PC_CATALOG.filter(
+        (item) => !existingSkus.has(item.sku)
+      );
+
+      if (missingItems.length === 0) {
+        console.log("All catalog products are already up to date.");
+        process.exit(0);
+      }
+
+      console.log(`Syncing ${missingItems.length} new product(s) to store...`);
+      const listedAt = daysAgo(CATALOG_LISTED_DAYS_AGO);
+
+      const inserted = await db
+        .insert(products)
+        .values(
+          missingItems.map((item) => {
+            const categoryId = categoryIdBySlug.get(item.categorySlug);
+
+            if (!categoryId) {
+              throw new Error(
+                `${item.sku} names category "${item.categorySlug}", which is not in the taxonomy`
+              );
+            }
+
+            return {
+              attributes: item.attributes,
+              brand: item.brand,
+              category: item.categorySlug,
+              categoryId,
+              costPrice: seedCostPaise(
+                item.sku,
+                item.categorySlug,
+                item.priceRupees
+              ),
+              createdAt: listedAt,
+              description: item.description,
+              imageUrl: item.imageUrl,
+              merchantId: existingMerchant.id,
+              name: item.name,
+              price: item.priceRupees * 100,
+              sku: item.sku,
+              stock: item.stock,
+            };
+          })
+        )
+        .returning();
+
+      const bySku = new Map(inserted.map((row) => [row.sku ?? "", row]));
+      console.log(`  ${inserted.length} new products inserted`);
+
+      const specRows = missingItems.flatMap((item) => {
+        const product = bySku.get(item.sku);
+
+        if (!(product && item.specs)) {
+          return [];
+        }
+
+        return [
+          {
+            categorySlug: item.categorySlug,
+            merchantId: existingMerchant.id,
+            productId: product.id,
+            ...item.specs,
+          },
+        ];
+      });
+
+      if (specRows.length > 0) {
+        await db.insert(productSpecs).values(specRows);
+        console.log(`  ${specRows.length} spec sheets inserted`);
+      }
+
+      const inventoryRows = missingItems.flatMap((item) => {
+        const product = bySku.get(item.sku);
+
+        if (!(product && item.inventory)) {
+          return [];
+        }
+
+        const { lastRestockedDaysAgo, ...rest } = item.inventory;
+
+        return [
+          {
+            lastRestockedAt:
+              lastRestockedDaysAgo === undefined
+                ? null
+                : daysAgo(lastRestockedDaysAgo),
+            merchantId: existingMerchant.id,
+            productId: product.id,
+            ...rest,
+          },
+        ];
+      });
+
+      if (inventoryRows.length > 0) {
+        await db.insert(inventory).values(inventoryRows);
+        console.log(`  ${inventoryRows.length} inventory records inserted`);
+      }
+
+      console.log("Catalog update complete.");
+      process.exit(0);
+    }
   }
 
   const [merchant] = await db

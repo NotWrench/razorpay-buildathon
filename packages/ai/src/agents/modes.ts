@@ -42,6 +42,7 @@ type ToolName = keyof StorefrontTools;
 const ALWAYS: ToolName[] = [
   "getProduct",
   "searchProducts",
+  "searchWeb",
   "recallPreferences",
   "rememberPreference",
   "explainDecision",

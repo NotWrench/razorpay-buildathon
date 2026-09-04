@@ -36,7 +36,9 @@ export const AuditAction = {
   REORDER_ORDERED: "REORDER_ORDERED",
   REORDER_REJECTED: "REORDER_REJECTED",
   REORDER_REQUESTED: "REORDER_REQUESTED",
+  SEARCH_GUARDRAIL_BLOCKED: "SEARCH_GUARDRAIL_BLOCKED",
   STORE_RENAMED: "STORE_RENAMED",
+  WEB_SEARCH: "WEB_SEARCH",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
