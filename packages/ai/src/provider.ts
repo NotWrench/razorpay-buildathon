@@ -1,6 +1,12 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
-import type { EmbeddingModel, LanguageModel } from "ai";
+import {
+  type EmbeddingModel,
+  extractReasoningMiddleware,
+  type LanguageModel,
+  wrapLanguageModel,
+} from "ai";
+import { NIM_REASONING_TAG, reasoningFetch } from "./nim-reasoning";
 
 /**
  * Model resolution.
@@ -136,11 +142,20 @@ function nvidiaChat() {
     throw new Error("NVIDIA_API_KEY is required when AI_PROVIDER=nvidia");
   }
 
-  return createOpenAI({
+  const model = createOpenAI({
     apiKey,
     baseURL: process.env.NVIDIA_BASE_URL ?? DEFAULT_NVIDIA_URL,
+    // NIM returns gpt-oss's thinking in `reasoning_content`, which this
+    // provider does not read. The fetch folds it into the content stream in a
+    // tag; the middleware below lifts it back out. See `nim-reasoning.ts`.
+    fetch: reasoningFetch(),
     name: "nvidia",
   }).chat(process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL);
+
+  return wrapLanguageModel({
+    middleware: extractReasoningMiddleware({ tagName: NIM_REASONING_TAG }),
+    model,
+  });
 }
 
 /**
