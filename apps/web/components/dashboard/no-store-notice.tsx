@@ -17,11 +17,11 @@ export function NoStoreNotice({ signedIn }: { signedIn: boolean }) {
       <p className="mt-2 text-muted-foreground text-sm">
         {signedIn
           ? "This account does not own a store yet. Create one with POST /api/merchants, or run bun run seed to set up the demo store."
-          : "The merchant dashboard needs a signed-in store owner. The seed script creates merchant@example.com."}
+          : "The merchant dashboard needs a signed-in store owner. Sign in with the Google account the seed script named in SEED_OWNER_EMAIL."}
       </p>
 
       {signedIn ? null : (
-        <ButtonLink className="mt-4" href="/sign-in">
+        <ButtonLink className="mt-4" href="/login">
           Sign in
         </ButtonLink>
       )}

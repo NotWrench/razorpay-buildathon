@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useWordStream } from "@/components/chat/use-word-stream";
+import { ConnectRazorpayNotice } from "@/components/manager/connect-razorpay-notice";
 import { FindingsList } from "@/components/manager/findings-list";
 import { ManagerComposer } from "@/components/manager/manager-composer";
 import type { ManagerTurn } from "@/components/manager/manager-thread";
@@ -31,11 +32,14 @@ import type { ManagerRange, ManagerSummary } from "@/lib/data/types";
 function ManagerScreen({
   operator,
   ranges,
+  razorpayConnected,
   summary,
 }: {
   /** Whoever the store belongs to. The greeting is the whole page header. */
   operator: string;
   ranges: ManagerRange[];
+  /** Whether the store bills through its own Razorpay account yet. */
+  razorpayConnected: boolean;
   summary: ManagerSummary;
 }) {
   const [draft, setDraft] = useState("");
@@ -81,6 +85,8 @@ function ManagerScreen({
           <RangeMenu current={summary.range} ranges={ranges} />
         </div>
       </header>
+
+      {razorpayConnected ? null : <ConnectRazorpayNotice />}
 
       {/* 56px between blocks. The briefing is six things, read top to bottom. */}
       <div className="mt-14 grid gap-14">

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
 import { TypedConfirmDialog } from "@/components/manager/manager-dialogs";
+import { RazorpayConnect } from "@/components/manager/razorpay-connect";
 import type { StoreSettings } from "@/lib/data/types";
 
 /**
@@ -63,11 +64,6 @@ function Field({
 function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
   const [closing, setClosing] = useState(false);
 
-  const onUpdateKey = useCallback(
-    () => toast("Key rotation happens in the Razorpay dashboard."),
-    []
-  );
-
   const onInvite = useCallback(
     () => toast("Invitation drafted. It has not been sent."),
     []
@@ -96,17 +92,12 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
         </Section>
 
         <Section title="Payment">
-          <div className="flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <Label>Razorpay key id</Label>
-              <p className="mt-2 font-mono text-[15px] text-bone tabular-nums">
-                {settings.razorpayKeyId}
-              </p>
-            </div>
-            <Pill onClick={onUpdateKey} size="sm" variant="ghost">
-              Update
-            </Pill>
-          </div>
+          <RazorpayConnect
+            isOwner={settings.isOwner}
+            merchantId={settings.merchantId}
+            ownerEmail={settings.ownerEmail}
+            razorpay={settings.razorpay}
+          />
         </Section>
 
         <Section title="Team">

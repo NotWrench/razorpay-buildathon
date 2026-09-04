@@ -697,3 +697,42 @@ An audit of the whole build, not a feature. Grouped as the prompt asks.
 3. **The site header still animates `height`** over the first 120px of scroll. Making it transform-only means either the header no longer physically shrinks, or content flows under a fixed-height ground — both are design changes, not repairs, and this is the one piece of chrome every route depends on. Flagged rather than redesigned in a polish pass. Its per-frame `backdrop-filter`, which was the expensive half, is gone.
 4. **`full-specs` animates `grid-template-rows`.** Kept, for the reason prompt 06 recorded: the transform-only alternatives either double-scale the type or make the footer jump under the cursor.
 5. **The interview's current-step dot is a 1px lacquer ring** — a red outline, which §6 calls a defect and prompt 09 explicitly specified. The older, more specific instruction wins; noted so it is a decision rather than a miss.
+
+
+### 15 — Google-only sign-in, and connecting a Razorpay account · 2026-09-04 · **done**
+
+`/login`, `/signup`, `/manager`, `/manager/account`, and the route behind the button.
+
+**Landed**
+
+| File | What |
+|---|---|
+| `packages/auth/src/index.ts` | Google as the only provider; account linking on `trustedProviders: ["google"]`; `isGoogleConfigured` |
+| `app/(auth)/login/page.tsx` | the one screen; `?next=` honoured, same-origin only |
+| `app/(auth)/signup/page.tsx` | a redirect to `/login` — the route stays so old links keep working |
+| `components/auth/auth-screen.tsx` | the split screen, now one button |
+| `components/manager/razorpay-connect.tsx` | the key-pair dialog, the mode badge, disconnect |
+| `components/manager/connect-razorpay-notice.tsx` | one line on `/manager` while the store has no keys of its own |
+| `app/api/merchants/razorpay/route.ts` | `PUT` connects, `DELETE` reverts to the platform account |
+| `lib/data/manager.ts` · `lib/data/types.ts` | `RazorpayConnection` — connected, masked key id, mode, platform mode |
+| `scripts/seed.ts` · `.env.example` | `SEED_OWNER_EMAIL`, and why it has to be a real Google address |
+
+**Removed.** `app/sign-in/page.tsx`, `components/auth/auth-field.tsx`, `sign-in-form.tsx`, `strength-meter.tsx` — entry 11's password half, deleted rather than left unreachable. `/sign-in`'s two remaining links (`account-menu`, `no-store-notice`) now point at `/login`.
+
+**Decisions**
+
+1. **One provider, so no sign-up screen.** Entry 11's crossfade existed to move between two screens that differed by one field. With Google as the only way in, the first press creates the account and the second signs in — there is no second state to cross-fade to, so `/signup` is a redirect rather than a heading over the same button. The strength meter measured a password nobody types any more.
+2. **Not connected is a working state, not a fault.** `resolveMerchantCredentials` already fell back to the platform keys, so a store with no keys of its own takes payments perfectly well. The account screen therefore says *which account is taking the money* rather than whether a form has been filled in, and `/manager`'s nudge is a line of prose, not a banner with a dismiss button. It disappears when the store connects.
+3. **The mode is read off the key, never stored.** Razorpay stamps `rzp_test_` / `rzp_live_` into the id, so there is no separate flag to set and nothing that can drift out of step with the keys it describes. Live is the only badge that wears lacquer — an operator should never have to parse a prefix to learn whether the next order moves real money.
+4. **The keys are checked against Razorpay before they are written.** `PUT` spends one `orders.all({ count: 1 })` — the cheapest authenticated read the API has — so a typo fails on this screen, in front of the person who typed it, rather than at a stranger's checkout a week later. The refusal is returned rather than thrown from the `catch`, which keeps the SDK's original error attached as `details`.
+5. **The secret is write-only.** It goes in through this one route and no endpoint returns it; the key id is masked to first-eight and last-four everywhere it is shown. A screen that prints a live key in full is one screenshot away from being an incident.
+6. **The button explains itself when it would fail.** The storefront resolves its merchant from the environment, not from a session, so the manager screens render for anyone — but `assertMerchantOwner` guards the write. `isOwner` is resolved server-side and a non-owner gets the owner's address and a sign-in link instead of a button that always 404s.
+7. **`SEED_OWNER_EMAIL`, because Google only hands back addresses it issues.** A store seeded to `merchant@example.com` is a store nobody can sign in and own. Point it at your own Google address and the account linking in (1) attaches the first Google sign-in to the seeded user — which is the whole reason the Connect button acts on a store you actually own. `emailAndPassword` stays enabled on the server and nowhere in the UI, because the seed mints the owner through `auth.api.signUpEmail`.
+
+**Verified.** `bun run typecheck` is at **zero errors across all 8 packages** — `.next/types` still carried a validator for the deleted `/sign-in` page, cleared with `next typegen`, which is worth knowing before debugging a `TS2307` on a file you just removed. Lint is **clean on all eleven changed files** (`ultracite check`); the repo-wide 323 are pre-existing v1/shadcn and package-manifest formatting this change was not asked to touch. `next build` reaches **`✓ Compiled successfully` and `Finished TypeScript`** — note that entry 14's Bun/Next interop bug is gone, so the build now gets as far as collecting page data.
+
+**Could not verify, and why**
+
+1. **Nothing was exercised at runtime.** `next build` dies prerendering `/account` on `ECONNREFUSED` to Postgres: **Docker is not running on this machine and nothing is listening on 5443 or 5445**. That is the environment, not the code — every page compiled. The flow needs `bun run db:up && bun run seed` before it can be walked.
+2. **`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `SEED_OWNER_EMAIL` are empty in `.env`.** Until they are set the login screen deliberately renders its own amber "not configured" line instead of a button into a Google error page — which is the state it is currently in, and the reason the sign-in half is unproven end to end. `RAZORPAY_KEY_ID` is already an `rzp_test_` key, so the platform fallback has something real to fall back to.
+3. **No measurements.** Entry 11's numbers for this screen — the 576/704 split, the 380px column — should still hold, since the change removed fields from the right column rather than moving it, but no browser was opened to confirm it and none of the new manager surfaces were measured at 390px.

@@ -3,80 +3,37 @@
 import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Pill } from "@workspace/ui/components/pill";
 import Link from "next/link";
-import type { FormEvent } from "react";
 import { useCallback, useState } from "react";
-import { AuthField } from "@/components/auth/auth-field";
-import { StrengthMeter } from "@/components/auth/strength-meter";
 import { ProductRender } from "@/components/common/product-render";
-import { route, shellRoutes } from "@/lib/routes";
+import { signIn } from "@/lib/auth-client";
+import { shellRoutes } from "@/lib/routes";
 
 /**
- * Sign in and sign up, which are one screen.
+ * Signing in, which is one button.
  *
- * They share a layout, a left panel and every field but one, so moving between
- * them is a state change rather than a navigation: the right column's contents
- * crossfade and the URL is corrected with `history.pushState`. A full route
- * change here would blank and rebuild a screen that is 90% identical, which is
- * how a two-field difference comes to feel like a page load.
+ * Google is the only provider, so there is no sign-up screen, no password
+ * field, no strength meter and no "or" divider — an account is created the
+ * first time somebody presses this, and the second time it is a sign-in. The
+ * screen that used to switch between two nearly identical modes now has one
+ * thing on it.
  *
- * Nothing is wired. `packages/auth` is ready and deliberately untouched —
- * `signIn.email`, `signUp.email` and `signIn.social` take exactly the values
- * this form already holds.
+ * `signIn.social` redirects the browser to Google, so there is no success
+ * branch here: the promise only ever resolves locally when the redirect was
+ * refused, which is the case the error state is for.
  */
 
-type Mode = "login" | "signup";
-
-interface Copy {
-  heading: string;
-  submit: string;
-  swapHref: string;
-  swapLabel: string;
-  swapLead: string;
-}
-
-const COPY: Record<Mode, Copy> = {
-  login: {
-    heading: "Welcome back.",
-    submit: "Sign in",
-    swapHref: "/signup",
-    swapLabel: "Create one",
-    swapLead: "No account yet?",
-  },
-  signup: {
-    heading: "Make an account.",
-    submit: "Create account",
-    swapHref: "/login",
-    swapLabel: "Sign in",
-    swapLead: "Already have an account?",
-  },
-};
-
 /**
- * Schematic marks, not logos.
+ * A schematic mark, not a logo.
  *
  * Same rule the cart's payment row follows: drawing somebody else's trademark
- * into a demo is not a thing to do casually, so these are the simplest shapes
- * that read as "the Google one" and "the GitHub one" without reproducing
- * either mark.
+ * into a demo is not a thing to do casually, so this is the simplest shape
+ * that reads as "the Google one" without reproducing the mark.
  */
-function ProviderGlyph({ provider }: { provider: "google" | "github" }) {
-  if (provider === "google") {
-    return (
-      <svg aria-hidden fill="none" viewBox="0 0 16 16">
-        <path
-          d="M14 8a6 6 0 1 1-1.8-4.3M14 8H8"
-          stroke="currentColor"
-          strokeWidth="1.4"
-        />
-      </svg>
-    );
-  }
-
+function GoogleGlyph() {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 16 16">
-      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
       <path
-        d="M6 14v-2.4c0-.7.5-1.2 1-1.4M10 14v-2.4c0-.7-.5-1.2-1-1.4"
+        d="M14 8a6 6 0 1 1-1.8-4.3M14 8H8"
         stroke="currentColor"
         strokeWidth="1.4"
       />
@@ -84,95 +41,47 @@ function ProviderGlyph({ provider }: { provider: "google" | "github" }) {
   );
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const MIN_PASSWORD = 8;
-
-/** Returns the objection to a value, or null when there is none. */
-function objection(field: string, value: string): string | null {
-  if (field === "name") {
-    return value.trim().length > 0 ? null : "We need something to call you.";
-  }
-
-  if (field === "email") {
-    if (value.trim().length === 0) {
-      return "An email address, please.";
-    }
-
-    return EMAIL_PATTERN.test(value.trim())
-      ? null
-      : "That does not look like an email address.";
-  }
-
-  if (value.length === 0) {
-    return "A password, please.";
-  }
-
-  return value.length >= MIN_PASSWORD
-    ? null
-    : `Passwords are at least ${MIN_PASSWORD} characters.`;
+interface AuthScreenProps {
+  /**
+   * False when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are unset.
+   *
+   * Resolved on the server and passed down, because the alternative is a
+   * button that redirects into a Google error page and a developer with no
+   * idea which of the two ends is misconfigured.
+   */
+  configured: boolean;
+  /** Where to land after Google sends the browser back. Same-origin only. */
+  next: string;
 }
 
-function AuthScreen({ mode: initial }: { mode: Mode }) {
-  const [mode, setMode] = useState<Mode>(initial);
-  const [values, setValues] = useState({ email: "", name: "", password: "" });
-  const [errors, setErrors] = useState<Record<string, string | null>>({});
-  const [sent, setSent] = useState(false);
+function AuthScreen({ configured, next }: AuthScreenProps) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const copy = COPY[mode];
-  const fields =
-    mode === "signup" ? ["name", "email", "password"] : ["email", "password"];
+  const onGoogle = useCallback(async () => {
+    setPending(true);
+    setError(null);
 
-  const onChange = useCallback((name: string, value: string) => {
-    setValues((current) => ({ ...current, [name]: value }));
-    /* An objection is answered as soon as the answer is typed. */
-    setErrors((current) =>
-      current[name] ? { ...current, [name]: objection(name, value) } : current
-    );
-  }, []);
-
-  const onBlur = useCallback((name: string) => {
-    setValues((current) => {
-      setErrors((existing) => ({
-        ...existing,
-        [name]: objection(name, current[name as keyof typeof current]),
-      }));
-
-      return current;
+    const result = await signIn.social({
+      callbackURL: next,
+      errorCallbackURL: "/login",
+      provider: "google",
     });
-  }, []);
 
-  const swap = useCallback(
-    (event: FormEvent) => {
-      event.preventDefault();
+    /* Reached only when the redirect never happened. */
+    setPending(false);
 
-      const next: Mode = mode === "login" ? "signup" : "login";
+    if (result?.error) {
+      setError(result.error.message ?? "Google would not take us just now.");
+    }
+  }, [next]);
 
-      setErrors({});
-      setSent(false);
-      setMode(next);
-      /* The URL catches up without a navigation; back still works. */
-      window.history.pushState(null, "", `/${next}`);
-    },
-    [mode]
-  );
-
-  const onSubmit = useCallback(
-    (event: FormEvent) => {
-      event.preventDefault();
-
-      const found = Object.fromEntries(
-        fields.map((field) => [
-          field,
-          objection(field, values[field as keyof typeof values]),
-        ])
-      );
-
-      setErrors(found);
-      setSent(Object.values(found).every((entry) => entry === null));
-    },
-    [fields, values]
-  );
+  const start = useCallback(() => {
+    onGoogle().catch(() => {
+      setPending(false);
+      setError("Google would not take us just now.");
+    });
+  }, [onGoogle]);
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
@@ -207,9 +116,9 @@ function AuthScreen({ mode: initial }: { mode: Mode }) {
         </div>
       </div>
 
-      {/* Right: the column that changes. */}
+      {/* Right: the button. */}
       <div className="flex flex-1 items-center justify-center bg-carbon px-6 py-16">
-        <div className="w-full max-w-[380px]" key={mode}>
+        <div className="w-full max-w-[380px]">
           {/* The wordmark lives on the left panel, which is not here below lg —
               and a sign-in screen with no way back to the store is a trap. */}
           <Link
@@ -222,117 +131,66 @@ function AuthScreen({ mode: initial }: { mode: Mode }) {
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 
-          <div className="auth-swap">
-            <h1 className="font-display font-semibold text-[28px] text-bone leading-none tracking-[-0.02em]">
-              {copy.heading}
-            </h1>
+          <h1 className="font-display font-semibold text-[28px] text-bone leading-none tracking-[-0.02em]">
+            Sign in.
+          </h1>
 
-            <p className="mt-3 text-[15px] text-smoke">
-              {copy.swapLead}{" "}
-              <Link
-                className="text-bone underline-offset-4 hover:underline"
-                href={route(copy.swapHref)}
-                onClick={swap}
-              >
-                {copy.swapLabel}
-              </Link>
-            </p>
+          <p className="mt-3 text-[15px] text-smoke leading-relaxed">
+            Shopping does not need an account. This is for the two things that
+            do — keeping your orders across devices, and the manager side of a
+            store.
+          </p>
 
-            <div className="mt-8 grid gap-3">
-              <Pill className="w-full justify-center" variant="ghost">
-                <ProviderGlyph provider="google" />
-                Continue with Google
-              </Pill>
-              <Pill className="w-full justify-center" variant="ghost">
-                <ProviderGlyph provider="github" />
-                Continue with GitHub
-              </Pill>
-            </div>
-
-            <div className="my-8 flex items-center gap-4">
-              <span className="h-px flex-1 bg-hairline" />
-              <span className="text-[13px] text-smoke">or</span>
-              <span className="h-px flex-1 bg-hairline" />
-            </div>
-
-            <form className="grid gap-5" noValidate onSubmit={onSubmit}>
-              {mode === "signup" ? (
-                <AuthField
-                  autoComplete="name"
-                  error={errors.name ?? undefined}
-                  label="Name"
-                  name="name"
-                  onBlur={onBlur}
-                  onChange={onChange}
-                  placeholder="Kavin Raj"
-                  value={values.name}
-                />
-              ) : null}
-
-              <AuthField
-                autoComplete="email"
-                error={errors.email ?? undefined}
-                label="Email"
-                name="email"
-                onBlur={onBlur}
-                onChange={onChange}
-                placeholder="you@example.com"
-                type="email"
-                value={values.email}
-              />
-
-              <div>
-                <AuthField
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                  error={errors.password ?? undefined}
-                  label="Password"
-                  name="password"
-                  onBlur={onBlur}
-                  onChange={onChange}
-                  type="password"
-                  value={values.password}
-                />
-                {mode === "signup" ? (
-                  <StrengthMeter value={values.password} />
-                ) : null}
-              </div>
-
-              <Pill className="mt-1 w-full justify-center" type="submit">
-                {copy.submit}
-              </Pill>
-            </form>
-
-            {sent ? (
-              <p className="mt-4 text-[13px] text-smoke">
-                Everything checks out. Accounts are not wired up yet.
-              </p>
-            ) : null}
-
-            <p className="mt-8 text-[13px] text-smoke leading-relaxed">
-              By continuing you agree to the{" "}
-              <Link
-                className="text-bone underline-offset-4 hover:underline"
-                href={shellRoutes.home}
-              >
-                terms
-              </Link>{" "}
-              and the{" "}
-              <Link
-                className="text-bone underline-offset-4 hover:underline"
-                href={shellRoutes.home}
-              >
-                privacy policy
-              </Link>
-              .
-            </p>
+          <div className="mt-8">
+            <Pill
+              className="w-full justify-center"
+              disabled={!configured || pending}
+              onClick={start}
+              variant="ghost"
+            >
+              <GoogleGlyph />
+              {pending ? "Taking you to Google…" : "Continue with Google"}
+            </Pill>
           </div>
+
+          {configured ? null : (
+            <p className="mt-4 text-[13px] text-amber leading-relaxed">
+              Google sign-in is not configured. Set{" "}
+              <code className="font-mono">GOOGLE_CLIENT_ID</code> and{" "}
+              <code className="font-mono">GOOGLE_CLIENT_SECRET</code> in the
+              workspace <code className="font-mono">.env</code>, with{" "}
+              <code className="font-mono">/api/auth/callback/google</code>{" "}
+              registered as a redirect URI.
+            </p>
+          )}
+
+          {error ? (
+            <p className="mt-4 text-[13px] text-amber leading-relaxed">
+              {error}
+            </p>
+          ) : null}
+
+          <p className="mt-8 text-[13px] text-smoke leading-relaxed">
+            By continuing you agree to the{" "}
+            <Link
+              className="text-bone underline-offset-4 hover:underline"
+              href={shellRoutes.home}
+            >
+              terms
+            </Link>{" "}
+            and the{" "}
+            <Link
+              className="text-bone underline-offset-4 hover:underline"
+              href={shellRoutes.home}
+            >
+              privacy policy
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-export type { Mode };
 export { AuthScreen };

@@ -32,6 +32,7 @@ export default async function ManagerPage({
     <ManagerScreen
       operator={settings.team[0]?.name ?? settings.name}
       ranges={MANAGER_RANGES}
+      razorpayConnected={settings.razorpay.connected}
       summary={summary}
     />
   );

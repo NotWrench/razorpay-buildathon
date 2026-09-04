@@ -1,4 +1,9 @@
 import { db, merchants } from "@workspace/db";
+import {
+  createRazorpayClient,
+  PaymentError,
+  toPaymentError,
+} from "@workspace/payments";
 import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -6,11 +11,51 @@ import { resolveActor } from "@/lib/api/actor";
 import { assertMerchantOwner } from "@/lib/api/merchant";
 import { handleRouteError, ok, unauthorized } from "@/lib/api/respond";
 
+/**
+ * Razorpay stamps the mode into the key id, so the pair is the whole
+ * declaration: there is no separate "test mode" flag to set, and no way for
+ * one to drift out of step with the keys it describes.
+ */
+const KEY_PATTERN = /^rzp_(live|test)_[A-Za-z0-9]+$/;
+
 const bodySchema = z.object({
-  keyId: z.string().min(8).max(120).startsWith("rzp_"),
+  keyId: z
+    .string()
+    .min(12)
+    .max(120)
+    .regex(
+      KEY_PATTERN,
+      "A Razorpay key id looks like rzp_test_xxxxxxxxxxxx or rzp_live_xxxxxxxxxxxx"
+    ),
   keySecret: z.string().min(8).max(200),
   merchantId: z.uuid(),
 });
+
+/**
+ * Asks Razorpay whether the pair is real, before it is written down.
+ *
+ * `orders.all` is the cheapest authenticated read the API offers, and a 401
+ * from it is the only reliable way to tell a working key from a typo. Without
+ * this the store would accept bad credentials happily and only fail at the
+ * next checkout — by which point the person who typed them is gone and the
+ * symptom is "payments are broken".
+ *
+ * Returns the refusal rather than throwing it, so the original SDK error stays
+ * attached as `details` on the error the caller raises instead of being
+ * flattened into a message here.
+ */
+async function credentialRefusal(
+  keyId: string,
+  keySecret: string
+): Promise<PaymentError | null> {
+  try {
+    await createRazorpayClient({ keyId, keySecret }).orders.all({ count: 1 });
+
+    return null;
+  } catch (error) {
+    return toPaymentError(error);
+  }
+}
 
 /**
  * PUT /api/merchants/razorpay
@@ -34,12 +79,26 @@ export async function PUT(request: NextRequest): Promise<Response> {
 
     await assertMerchantOwner(actor, body.merchantId);
 
+    const refusal = await credentialRefusal(body.keyId, body.keySecret);
+
+    if (refusal) {
+      throw new PaymentError(
+        "MERCHANT_NOT_CONNECTED",
+        `Razorpay refused those credentials: ${refusal.message}`,
+        refusal.details
+      );
+    }
+
     await db
       .update(merchants)
       .set({ razorpayKeyId: body.keyId, razorpayKeySecret: body.keySecret })
       .where(eq(merchants.id, body.merchantId));
 
-    return ok({ connected: true, keyId: body.keyId });
+    return ok({
+      connected: true,
+      keyId: body.keyId,
+      mode: body.keyId.startsWith("rzp_test_") ? "test" : "live",
+    });
   } catch (error) {
     return handleRouteError(error);
   }

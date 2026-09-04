@@ -19,6 +19,7 @@ import {
 import { formatPaise } from "@workspace/ui/lib/money";
 import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { cache } from "react";
+import { currentUser } from "@/lib/session";
 import { orderRef } from "./account";
 import { toSummary } from "./product";
 import { requireDefaultStore, storeId } from "./store";
@@ -666,26 +667,56 @@ export const getRestock = cache(
   }
 );
 
-/** The last four of a key, and nothing else. The secret never leaves the row. */
-function maskKey(keyId: string | null): string {
+/** The first eight and the last four of a key. The secret never leaves the row. */
+function maskKey(keyId: string): string {
+  return `${keyId.slice(0, 8)}${"•".repeat(8)}${keyId.slice(-4)}`;
+}
+
+/**
+ * Test or live, from the key id itself.
+ *
+ * Razorpay stamps the mode into the prefix, so there is nothing to store and
+ * nothing to get out of sync — and an operator looking at this screen can tell
+ * at a glance whether the store is taking real money.
+ */
+function keyMode(keyId: string | null | undefined): "live" | "test" | null {
   if (!keyId) {
-    return "Not connected";
+    return null;
   }
 
-  return `${keyId.slice(0, 8)}${"•".repeat(8)}${keyId.slice(-4)}`;
+  if (keyId.startsWith("rzp_test_")) {
+    return "test";
+  }
+
+  return keyId.startsWith("rzp_live_") ? "live" : null;
 }
 
 export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
   const merchant = await requireDefaultStore();
 
-  const owner = await db.query.user.findFirst({
-    where: eq(user.id, merchant.userId),
-  });
+  const [owner, viewer] = await Promise.all([
+    db.query.user.findFirst({ where: eq(user.id, merchant.userId) }),
+    currentUser(),
+  ]);
+
+  /* Read rather than required: the platform keys are optional in development,
+     and a settings screen should not be the thing that 500s over a missing
+     env var. */
+  const platformKeyId = process.env.RAZORPAY_KEY_ID ?? null;
+  const connected = Boolean(merchant.razorpayKeyId);
 
   return {
     currency: merchant.currency,
+    isOwner: viewer?.id === merchant.userId,
+    merchantId: merchant.id,
     name: merchant.businessName,
-    razorpayKeyId: maskKey(merchant.razorpayKeyId),
+    ownerEmail: owner?.email ?? null,
+    razorpay: {
+      connected,
+      keyId: merchant.razorpayKeyId ? maskKey(merchant.razorpayKeyId) : null,
+      mode: keyMode(merchant.razorpayKeyId),
+      platformMode: keyMode(platformKeyId),
+    },
     slug: merchant.storeSlug,
     /* One merchant, one user. There is no team table, so the team is the one
        person the store actually belongs to rather than three invented ones. */

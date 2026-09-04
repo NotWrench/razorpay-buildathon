@@ -357,11 +357,46 @@ export interface TeamMember {
   role: "Owner" | "Manager" | "Support";
 }
 
+/**
+ * Which Razorpay account this store is billed through.
+ *
+ * A store that has connected nothing still takes payments — everything
+ * downstream falls back to the platform keys (`resolveMerchantCredentials`) —
+ * so "not connected" is a state, not a fault, and the screen says which
+ * account the money is currently going to rather than only whether a form has
+ * been filled in.
+ */
+export interface RazorpayConnection {
+  /**
+   * Whether the store has keys of its own.
+   *
+   * False means the platform account is taking the money.
+   */
+  connected: boolean;
+  /** Masked at rest. The whole key id never reaches this screen, and the secret never leaves the row. */
+  keyId: string | null;
+  /** Read off the key id's own `rzp_test_` / `rzp_live_` prefix. */
+  mode: "live" | "test" | null;
+  /** The same, for the platform keys the store falls back to. */
+  platformMode: "live" | "test" | null;
+}
+
 export interface StoreSettings {
   currency: string;
+  /**
+   * Whether the signed-in user owns this store.
+   *
+   * The storefront resolves its merchant from the environment rather than from
+   * a session, so the manager screens render for anyone — but connecting a
+   * payment account is guarded server-side by `assertMerchantOwner`, and a
+   * button that always fails is worse than one that explains itself.
+   */
+  isOwner: boolean;
+  merchantId: string;
   name: string;
-  /** Masked at rest. The real key never reaches this screen. */
-  razorpayKeyId: string;
+  /** Who to sign in as, named when the viewer is not that person. */
+  ownerEmail: string | null;
+  razorpay: RazorpayConnection;
   slug: string;
   team: TeamMember[];
 }

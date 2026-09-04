@@ -56,7 +56,19 @@ import {
 const CATALOG_LISTED_DAYS_AGO = 120;
 
 const STORE_SLUG = "nova-electronics";
-const OWNER_EMAIL = "merchant@example.com";
+
+/**
+ * Who the demo store belongs to.
+ *
+ * Sign-in is Google-only, and Google will only ever hand back an address it
+ * actually issues — so a store seeded to `merchant@example.com` is a store
+ * nobody can sign in and own. Point `SEED_OWNER_EMAIL` at your own Google
+ * address and the account linking in `packages/auth` attaches your first
+ * Google sign-in to this same user, which is what makes the manager's
+ * "Connect Razorpay" button work against a store you own.
+ */
+const OWNER_EMAIL =
+  process.env.SEED_OWNER_EMAIL?.trim() || "merchant@example.com";
 const OWNER_PASSWORD = "demo-password-123";
 
 function daysAgo(days: number): Date {
