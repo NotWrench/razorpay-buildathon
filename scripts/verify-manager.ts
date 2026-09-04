@@ -20,6 +20,7 @@ import {
   db,
   inventory,
   merchants,
+  productSpecs,
   products,
   reorderRequests,
   user,
@@ -396,6 +397,233 @@ async function main() {
       margin.grossMarginPercent < 50,
     `${margin.grossMarginPercent}%`
   );
+
+  // --------------------------------------------------------------- case 7
+  //
+  // Catalog readiness. The number that matters is the money behind products an
+  // agent genuinely cannot recommend — not every product with a blemish.
+  console.log("\n7. Readiness separates 'cannot sell' from 'looks worse'");
+
+  const { getCatalogReadiness } = await import("@workspace/ai");
+
+  const readiness = await getCatalogReadiness(store.id);
+
+  console.log(
+    `  score ${readiness.score}, ${readiness.needsWork.length} with gaps, ${readiness.blocked.length} blocking`
+  );
+
+  check(
+    "it scores the active catalogue",
+    readiness.productsScored > 0,
+    `${readiness.productsScored} products`
+  );
+  check(
+    "blocked is a subset of what needs work",
+    readiness.blocked.length <= readiness.needsWork.length,
+    `${readiness.blocked.length} of ${readiness.needsWork.length}`
+  );
+
+  /*
+   * The property the split exists for. A product whose only gap is a missing
+   * photograph still sells, and counting its stock as revenue at risk would
+   * inflate the headline with products that are fine — a merchant who acts on
+   * that number once and finds nothing wrong will not act on it again.
+   */
+  const cosmeticOnly = readiness.needsWork.filter(
+    (product) => !product.blocked
+  );
+
+  check(
+    "a product with only cosmetic gaps is not counted as blocked",
+    cosmeticOnly.every((product) =>
+      product.gaps.every((gap) => !gap.blocking)
+    ),
+    `${cosmeticOnly.length} product(s) need work but still sell`
+  );
+
+  const riskFromBlocked = readiness.blocked.reduce(
+    (sum, product) => sum + product.stockValuePaise,
+    0
+  );
+
+  check(
+    "revenue at risk counts only the blocking ones",
+    readiness.revenueAtRiskPaise === riskFromBlocked,
+    `${readiness.revenueAtRiskPaise} paise`
+  );
+
+  check(
+    "every gap names what its absence costs",
+    readiness.needsWork.every((product) =>
+      product.gaps.every((gap) => gap.costs.length > 0)
+    ),
+    readiness.needsWork[0]?.gaps[0]?.costs ?? "no gaps to check"
+  );
+
+  // --------------------------------------------------------------- case 8
+  //
+  // Key scoping. A key issued by one shop must not order from another — the
+  // merchantId arrives in a request body, so without this the caller picks
+  // their own scope.
+  console.log("\n8. An agent key is bound to the store that issued it");
+
+  const { assertKeyScope } = await import("@workspace/ai");
+
+  const scoped = {
+    identifier: "key_test",
+    merchantId: store.id,
+    type: "ai_agent" as const,
+    userId: null,
+  };
+
+  let refused = false;
+
+  try {
+    assertKeyScope(scoped, "00000000-0000-0000-0000-000000000000");
+  } catch {
+    refused = true;
+  }
+
+  check("a key is refused against another store", refused);
+
+  let allowed = true;
+
+  try {
+    assertKeyScope(scoped, store.id);
+  } catch {
+    allowed = false;
+  }
+
+  check("and accepted against its own", allowed);
+
+  /*
+   * Keys issued before scoping existed carry no merchant. Locking them out
+   * silently would break a counterparty mid-integration, which is worse than
+   * the gap it closes — the agents screen shows the merchant which keys are
+   * unscoped instead.
+   */
+  let legacyAllowed = true;
+
+  try {
+    assertKeyScope(
+      { identifier: "old_key", type: "ai_agent", userId: null },
+      store.id
+    );
+  } catch {
+    legacyAllowed = false;
+  }
+
+  check(
+    "a key issued before scoping is not silently locked out",
+    legacyAllowed,
+    "unscoped keys still work, and the screen flags them"
+  );
+
+  let humanAllowed = true;
+
+  try {
+    assertKeyScope(
+      { identifier: "someone@example.com", type: "human", userId: "u" },
+      "00000000-0000-0000-0000-000000000000"
+    );
+  } catch {
+    humanAllowed = false;
+  }
+
+  check(
+    "the check applies to keys, not to people",
+    humanAllowed,
+    "a signed-in human is governed by store ownership instead"
+  );
+
+  // --------------------------------------------------------------- case 9
+  //
+  // Enrichment provenance. Across repeated agent runs the model invented a
+  // GPU's length from its own memory of the card — the approval gate stopped
+  // the write, but the merchant was being asked to confirm figures that came
+  // from nowhere. A cited source that nobody verifies is worth as much as no
+  // source, so the "the description says so" claim is checked against the
+  // description we actually hold.
+  console.log("\n9. A cited specification source is verified, not trusted");
+
+  const { readinessTools } = await import("@workspace/ai");
+
+  const [described] = await db
+    .select()
+    .from(products)
+    .where(
+      and(eq(products.merchantId, store.id), isNotNull(products.description))
+    )
+    .limit(1);
+
+  if (described?.description) {
+    const tools = readinessTools({
+      actor: { identifier: actorId, type: "human", userId: actorId },
+      autoApproveCeilingPaise: 0,
+      conversationId: "00000000-0000-0000-0000-000000000000",
+      merchantId: store.id,
+      spendCapPaise: 0,
+      storeSlug: store.storeSlug,
+    });
+
+    const run = (input: Record<string, unknown>) =>
+      // biome-ignore lint/suspicious/noExplicitAny: exercising one tool directly.
+      (tools.enrichProduct as any).execute(input, {} as never) as Promise<{
+        enriched: boolean;
+        error?: string;
+      }>;
+
+    const unsourced = await run({
+      productId: described.id,
+      specs: { lengthMm: 280 },
+    });
+
+    check(
+      "a specification with no stated source is refused",
+      unsourced.enriched === false,
+      unsourced.error?.slice(0, 70)
+    );
+
+    const fabricated = await run({
+      productId: described.id,
+      sourcedFrom: {
+        origin: "product_description",
+        quote: "this exact sentence is certainly not in the description",
+      },
+      specs: { lengthMm: 280 },
+    });
+
+    check(
+      "a quote that is not in the description is refused",
+      fabricated.enriched === false,
+      fabricated.error?.slice(0, 70)
+    );
+
+    /*
+     * And it still lets a real citation through, so the check is a gate rather
+     * than a wall — a rule that refuses everything is indistinguishable from a
+     * broken tool.
+     */
+    const genuine = await run({
+      productId: described.id,
+      sourcedFrom: {
+        origin: "product_description",
+        quote: described.description.slice(0, 20),
+      },
+      specs: { lengthMm: 280 },
+    });
+
+    check(
+      "a genuine quote from the description is accepted",
+      genuine.enriched === true,
+      genuine.error ?? "written, with the source in the audit trail"
+    );
+
+    // Put the scratch spec back.
+    await db.delete(productSpecs).where(eq(productSpecs.productId, described.id));
+  } else {
+    check("a product has a description to cite", false, "none found");
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);

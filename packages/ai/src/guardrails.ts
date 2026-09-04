@@ -86,6 +86,39 @@ async function committedSpendFor(
   return Number(row?.total ?? 0);
 }
 
+/**
+ * Refuses a buying agent reaching into a store it was not issued for.
+ *
+ * A key carries the one merchant it may trade with, and every entry point that
+ * takes a `merchantId` from the caller has to check it — otherwise the id in
+ * the request body decides which shop the agent is shopping at, which is the
+ * caller choosing their own scope.
+ *
+ * It lives here with the spend cap and the margin floor rather than in the web
+ * app, because it is the same kind of thing: a bound on what an agent may do
+ * with somebody else's money, enforced server-side, stated in one place.
+ *
+ * Keys issued before scoping existed carry no merchant and are left alone. A
+ * silent tightening that locks out a counterparty mid-integration is worse
+ * than the gap it closes, and the agents screen shows the merchant which of
+ * their keys are unscoped.
+ */
+export function assertKeyScope(
+  actor: { merchantId?: string; type: "human" | "ai_agent" },
+  merchantId: string
+): void {
+  if (actor.type !== "ai_agent" || !actor.merchantId) {
+    return;
+  }
+
+  if (actor.merchantId !== merchantId) {
+    throw new PaymentError(
+      "MERCHANT_NOT_FOUND",
+      "This key was issued for a different store."
+    );
+  }
+}
+
 export interface SpendCapSubject {
   /** The buyer's own cap when the merchant set one, else the platform's. */
   capPaise: number;

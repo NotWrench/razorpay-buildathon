@@ -28,7 +28,7 @@ export function readinessTools(ctx: AgentContext) {
         "far worse than a missing one: a missing one returns " +
         "insufficient_data and the buyer checks, a wrong one produces a " +
         "confident answer that sells somebody a part that does not fit.",
-      execute: async ({ description, productId, specs }) => {
+      execute: async ({ description, productId, sourcedFrom, specs }) => {
         const product = await db.query.products.findFirst({
           where: and(
             eq(products.id, productId),
@@ -38,6 +38,51 @@ export function readinessTools(ctx: AgentContext) {
 
         if (!product) {
           return { enriched: false, error: "That product is not in this store." };
+        }
+
+        const hasSpecs = Object.values(specs ?? {}).some(
+          (value) => value !== undefined && value !== null
+        );
+
+        /*
+         * Provenance, checked rather than promised.
+         *
+         * The prompt tells the model not to invent a specification, and across
+         * repeated runs it invented one anyway — `lengthMm` on a card it
+         * recognised, and on one run five fields at once. The gate stopped the
+         * write every time, which is not the same as the system being safe:
+         * the merchant was being asked to approve figures that came from the
+         * model's memory of the part, presented like figures that came from
+         * somewhere.
+         *
+         * So a spec now has to say where it came from, the same way
+         * `draftCampaign` has to cite the tool its evidence came from. And
+         * when the claim is "the description says so", that is verified
+         * against the description we hold — a citation nobody checks is worth
+         * exactly as much as no citation.
+         */
+        if (hasSpecs) {
+          if (!sourcedFrom) {
+            return {
+              enriched: false,
+              error:
+                "Every specification needs a source. Say whether the merchant gave you these figures or the product's own description states them — and if neither, ask the merchant instead of supplying them yourself.",
+            };
+          }
+
+          if (sourcedFrom.origin === "product_description") {
+            const haystack = (product.description ?? "").toLowerCase();
+            const quoted = sourcedFrom.quote.trim().toLowerCase();
+
+            if (quoted.length === 0 || !haystack.includes(quoted)) {
+              return {
+                enriched: false,
+                error:
+                  `That quote does not appear in ${product.name}'s description, so the figures are not coming from where you said. ` +
+                  "Ask the merchant for them instead.",
+              };
+            }
+          }
         }
 
         const changed: string[] = [];
@@ -119,9 +164,13 @@ export function readinessTools(ctx: AgentContext) {
           action: AuditAction.PRODUCT_ENRICHED,
           actorId: ctx.actor.userId ?? ctx.actor.identifier,
           actorType: "ai_assistant",
-          explanation: `Filled in ${changed.join(", ")} for ${product.name}.`,
+          explanation:
+            `Filled in ${changed.join(", ")} for ${product.name}.` +
+            (sourcedFrom
+              ? ` Source: ${sourcedFrom.origin.replace(/_/g, " ")} — "${sourcedFrom.quote}"`
+              : ""),
           merchantId: ctx.merchantId,
-          metadata: { changed, productId },
+          metadata: { changed, productId, sourcedFrom: sourcedFrom ?? null },
         });
 
         return {
@@ -139,6 +188,24 @@ export function readinessTools(ctx: AgentContext) {
           "At least a sentence about what it is and who it suits. Under 60 characters grounds nothing."
         ),
         productId: z.uuid(),
+        sourcedFrom: optional(
+          z.object({
+            origin: z
+              .enum(["merchant_stated", "product_description"])
+              .describe(
+                "Where the figures came from. There is no option for your own knowledge of the part, because that is not a source the merchant can check."
+              ),
+            quote: z
+              .string()
+              .min(3)
+              .max(400)
+              .describe(
+                "The merchant's own words, or the exact phrase from the description. A description quote is checked against the stored text and the call is refused if it is not there."
+              ),
+          })
+        ).describe(
+          "Required whenever you pass any specification. Omit only when you are changing the description alone."
+        ),
         specs: optional(
           z.object({
             formFactor: optional(z.string().max(40)),

@@ -1,6 +1,8 @@
 export * from "./agents";
 export {
+  type AgentBuyerActivity,
   type AttachRate,
+  getAgentBuyerActivity,
   getAttachRates,
   getFrequentlyBoughtWith,
   getPaymentHealth,
@@ -71,7 +73,9 @@ export {
 } from "./embeddings";
 export {
   assertCartShape,
+  assertKeyScope,
   assertPcSearchAllowed,
+  assertSpendCapFor,
   assertWithinSpendCap,
   checkMarginFloor,
   checkPcSearchQuery,
@@ -83,6 +87,7 @@ export {
   PC_SEARCH_LIMITS,
   type PcSearchValidation,
   recordMarginBreach,
+  type SpendCapSubject,
   recordSearchGuardrailBreach,
 } from "./guardrails";
 export {

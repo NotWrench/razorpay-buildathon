@@ -307,6 +307,110 @@ export async function getPaymentHealth(
   return health;
 }
 
+export interface AgentBuyerActivity {
+  approvalRatePercent: number | null;
+  approvedOrders: number;
+  /** The API key id the orders were placed under. */
+  buyerIdentifier: string;
+  /** Value of the orders that were approved, in paise. */
+  committedPaise: number;
+  lastOrderAt: Date | null;
+  pendingOrders: number;
+  rejectedOrders: number;
+  totalOrders: number;
+}
+
+/**
+ * What each buying agent has actually done here.
+ *
+ * The merchant's side of the counterparty relationship. Approval rate is the
+ * figure worth having: an agent whose orders are almost always approved is one
+ * to raise the cap on, and an agent the merchant keeps rejecting is one to
+ * revoke — and neither judgement was possible from anywhere in this system
+ * before, because orders by agent were never grouped.
+ *
+ * Rejected orders are counted but contribute nothing to `committedPaise`. A
+ * rejected order committed no money and counting it would make a key look
+ * spent when it is untouched.
+ */
+export async function getAgentBuyerActivity(
+  merchantId: string,
+  windowDays = 90
+): Promise<AgentBuyerActivity[]> {
+  const rows = await db
+    .select({
+      approvalStatus: orders.approvalStatus,
+      buyerIdentifier: orders.buyerIdentifier,
+      lastAt: sql<Date>`max(${orders.createdAt})`,
+      orders: count(orders.id),
+      total: sum(orders.totalAmount),
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.merchantId, merchantId),
+        eq(orders.buyerType, "ai_agent"),
+        gte(orders.createdAt, since(windowDays))
+      )
+    )
+    .groupBy(orders.buyerIdentifier, orders.approvalStatus);
+
+  const byBuyer = new Map<string, AgentBuyerActivity>();
+
+  for (const row of rows) {
+    const entry = byBuyer.get(row.buyerIdentifier) ?? {
+      approvalRatePercent: null,
+      approvedOrders: 0,
+      buyerIdentifier: row.buyerIdentifier,
+      committedPaise: 0,
+      lastOrderAt: null,
+      pendingOrders: 0,
+      rejectedOrders: 0,
+      totalOrders: 0,
+    };
+
+    const orderCount = Number(row.orders);
+
+    entry.totalOrders += orderCount;
+
+    if (row.approvalStatus === "approved") {
+      entry.approvedOrders += orderCount;
+      entry.committedPaise += Number(row.total ?? 0);
+    } else if (row.approvalStatus === "rejected") {
+      entry.rejectedOrders += orderCount;
+    } else {
+      entry.pendingOrders += orderCount;
+    }
+
+    const at = row.lastAt ? new Date(row.lastAt) : null;
+
+    if (at && (!entry.lastOrderAt || at > entry.lastOrderAt)) {
+      entry.lastOrderAt = at;
+    }
+
+    byBuyer.set(row.buyerIdentifier, entry);
+  }
+
+  return [...byBuyer.values()]
+    .map((entry) => {
+      /*
+       * Rate over *decided* orders only. Counting the pending ones as
+       * unapproved would drag a good counterparty's score down purely because
+       * the merchant has not got to their queue this morning.
+       */
+      const decided = entry.approvedOrders + entry.rejectedOrders;
+
+      return {
+        ...entry,
+        approvalRatePercent:
+          decided === 0
+            ? null
+            : Math.round((entry.approvedOrders / decided) * 100),
+      };
+    })
+    .sort((a, b) => b.committedPaise - a.committedPaise);
+}
+
 export function getPendingAgentOrders(merchantId: string, limit = 25) {
   return db
     .select()

@@ -14,6 +14,7 @@ import { type ToolSet, tool } from "ai";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
+  getAgentBuyerActivity,
   getAttachRates,
   getPaymentHealth,
   getPendingAgentOrders,
@@ -229,6 +230,34 @@ export function merchantTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({}),
+    }),
+
+    getAgentBuyerActivity: tool({
+      description:
+        "What each external buying agent has bought here: orders placed, how " +
+        "many the merchant approved, how many they rejected, and the value " +
+        "committed. Use this when asked which agents are worth keeping, or " +
+        "whether to raise or cut somebody's spending limit. An approval rate " +
+        "is over decided orders only — orders still sitting in the queue are " +
+        "not counted against the agent.",
+      execute: async ({ windowDays }) => {
+        const rows = await getAgentBuyerActivity(ctx.merchantId, windowDays);
+
+        return {
+          agents: rows.map((row) => ({
+            ...row,
+            committed: formatPaise(row.committedPaise),
+          })),
+          note:
+            rows.length === 0
+              ? "No external agent has ordered here in this window. That is a fact about demand, not about the keys — say so plainly rather than implying something is broken."
+              : undefined,
+          windowDays,
+        };
+      },
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(90),
+      }),
     }),
 
     getAttachRate: tool({

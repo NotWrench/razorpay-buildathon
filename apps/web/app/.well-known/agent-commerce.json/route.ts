@@ -31,7 +31,14 @@ export async function GET(request: NextRequest): Promise<Response> {
       {
         authentication: {
           header: "x-api-key",
-          note: "Issue a key from the merchant dashboard. A key identifies you as an ai_agent buyer for the whole of your session.",
+          /*
+           * This used to point at a dashboard that did not exist. It does now,
+           * and the two things it says about a key are both enforced rather
+           * than described: a key carries the one store it may trade with, and
+           * the cap that store chose for it. See `/manager/agents`.
+           */
+          issued_at: `${origin}/manager/agents`,
+          note: "A merchant issues you a key from /manager/agents. It identifies you as an ai_agent buyer of that one store, and carries the spending limit that merchant set for you — which may be lower than the platform cap below. Ordering against another store with it is refused.",
           scheme: "api-key",
         },
         capabilities: {

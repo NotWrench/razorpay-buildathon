@@ -1,8 +1,13 @@
-import { quoteForMerchant } from "@workspace/ai";
+import {
+  assertKeyScope,
+  assertSpendCapFor,
+  quoteForMerchant,
+  spendCapPaise,
+} from "@workspace/ai";
 import { createCheckoutOrder } from "@workspace/payments";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { assertKeyScope, resolveActor } from "@/lib/api/actor";
+import { resolveActor } from "@/lib/api/actor";
 import { handleRouteError, ok, unauthorized } from "@/lib/api/respond";
 
 const bodySchema = z.object({
@@ -52,6 +57,26 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     // Priced by the store, exactly as the in-app agent prices it.
     const quote = await quoteForMerchant(body.merchantId, body.items);
+
+    /*
+     * The cap the manifest publishes, actually applied here.
+     *
+     * It used to be enforced only inside the `createOrder` tool, which covered
+     * the in-app assistant and not this endpoint — the one
+     * `.well-known/agent-commerce.json` points external buying agents at,
+     * while advertising a `per_conversation_cap_paise` that nothing on this
+     * path checked. A published bound nobody enforces is worse than no bound:
+     * a counterparty reads it and plans against it.
+     */
+    await assertSpendCapFor(
+      {
+        capPaise: actor.spendCapPaise ?? spendCapPaise(),
+        identifier: actor.identifier,
+        merchantId: body.merchantId,
+        type: actor.type,
+      },
+      quote.totalPaise
+    );
 
     const result = await createCheckoutOrder({
       aiPurchaseReason: body.aiPurchaseReason,

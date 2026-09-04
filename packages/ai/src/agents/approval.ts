@@ -142,9 +142,17 @@ export function merchantApproval(_ctx: AgentContext) {
    * wrong one produces a confident answer that sells somebody a part which
    * does not fit. The merchant is the only one who actually knows.
    */
-  const enrichProduct: ApprovalFor<{ productId: string }> = () =>
+  const enrichProduct: ApprovalFor<{
+    productId: string;
+    sourcedFrom?: { origin: string; quote: string };
+  }> = ({ sourcedFrom }) =>
     requireApproval(
-      "Save these details to the catalogue? Every buying agent reads them from now on, so a wrong figure travels."
+      // The source is on the card, because "approve these specifications" and
+      // "approve these specifications, which you told me yourself" are two
+      // very different questions to put to a merchant.
+      sourcedFrom
+        ? `Save these details to the catalogue? Every buying agent reads them from now on. Stated source: ${sourcedFrom.origin.replace(/_/g, " ")} — "${sourcedFrom.quote}"`
+        : "Save these details to the catalogue? Every buying agent reads them from now on, so a wrong figure travels."
     );
 
   return {

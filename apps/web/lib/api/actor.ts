@@ -1,6 +1,5 @@
 import { auth } from "@workspace/auth";
 import type { ApiKeyMetadata } from "@workspace/db";
-import { PaymentError } from "@workspace/payments";
 import type { NextRequest } from "next/server";
 import { GUEST_COOKIE, isGuestIdentifier } from "@/lib/store/guest";
 
@@ -93,30 +92,4 @@ export async function resolveActor(
   }
 
   return null;
-}
-
-/**
- * Refuses a buying agent that is reaching into a store it was not issued for.
- *
- * A key carries the one merchant it may trade with, and every entry point that
- * takes a `merchantId` from the caller has to check it — otherwise the id in
- * the request body decides which shop the agent is shopping at, which is the
- * caller choosing their own scope.
- *
- * Keys issued before scoping existed carry no merchant and are left alone: a
- * silent tightening that locks out a counterparty mid-integration is worse
- * than the gap it closes, and `listAgentKeys` shows the merchant which of
- * their keys are unscoped.
- */
-export function assertKeyScope(actor: Actor, merchantId: string): void {
-  if (actor.type !== "ai_agent" || !actor.merchantId) {
-    return;
-  }
-
-  if (actor.merchantId !== merchantId) {
-    throw new PaymentError(
-      "MERCHANT_NOT_FOUND",
-      "This key was issued for a different store."
-    );
-  }
 }

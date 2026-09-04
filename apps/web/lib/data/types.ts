@@ -358,6 +358,25 @@ export interface ManagerOrder {
   totalPaise: Money;
 }
 
+/**
+ * One credential a merchant issued to a buying agent.
+ *
+ * `prefix` is masked and the secret is absent, because it is unrecoverable by
+ * design — it exists in the response to the call that created it and nowhere
+ * else.
+ */
+export interface AgentKeyRow {
+  createdAt: Date;
+  id: string;
+  label: string;
+  orders: { approved: number; pending: number; rejected: number; total: number };
+  prefix: string;
+  revoked: boolean;
+  /** Null when the key falls back to the platform default. */
+  spendCapPaise: Money | null;
+  spentPaise: Money;
+}
+
 export interface RestockRow {
   id: string;
   inStock: number;

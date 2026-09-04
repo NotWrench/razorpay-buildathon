@@ -233,6 +233,75 @@ export function MerchantToolOutput({ part }: { part: ToolPartShape }) {
         </ToolCard>
       );
 
+    case "tool-getCatalogReadiness":
+      return <ReadinessCard readiness={output} />;
+
+    case "tool-enrichProduct":
+      return output.enriched ? (
+        <ToolCard title="Catalogue updated" tone="success">
+          <p>{output.summary}</p>
+          {output.note ? (
+            <p className="mt-1 text-amber-700 text-xs dark:text-amber-400">
+              {output.note}
+            </p>
+          ) : null}
+        </ToolCard>
+      ) : (
+        <ErrorCard message={output.error ?? "Could not update that."} />
+      );
+
+    case "tool-getAgentBuyerActivity":
+      return <AgentBuyersCard agents={output.agents ?? []} note={output.note} />;
+
+    case "tool-getCampaignPerformance":
+      if (output.found === false) {
+        return (
+          <ToolCard title="Not found">
+            <p className="text-muted-foreground">
+              No campaign with that id in this store.
+            </p>
+          </ToolCard>
+        );
+      }
+
+      return <CampaignResultCard result={output} />;
+
+    case "tool-pauseCampaign":
+      return output.paused ? (
+        <ToolCard title="Campaign stopped">
+          <p>{output.summary}</p>
+        </ToolCard>
+      ) : (
+        <ErrorCard message={output.error ?? "Could not stop that."} />
+      );
+
+    case "tool-getMarginSummary":
+      return (
+        <ToolCard title={`Margin · last ${output.windowDays} days`}>
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Stat label="Revenue" value={output.revenue} />
+            <Stat label="Cost of goods" value={output.costOfGoods} />
+            <Stat label="Gross margin" value={output.grossMargin} />
+            <Stat
+              label="Margin %"
+              value={
+                output.grossMarginPercent === null
+                  ? "n/a"
+                  : `${output.grossMarginPercent}%`
+              }
+            />
+          </dl>
+          {/*
+            The coverage caveat is not a footnote. A margin computed over the
+            costed half of a catalogue and read as the whole is a number that
+            makes a merchant confident about the wrong thing.
+          */}
+          <p className="mt-2 border-border border-t pt-2 text-muted-foreground text-xs">
+            {output.assumptions}
+          </p>
+        </ToolCard>
+      );
+
     case "tool-getAgentOrderQueue":
       return <AgentQueueCard orders={output.orders ?? []} />;
 
@@ -515,6 +584,130 @@ function CampaignDraftCard({ draft }: { draft: Output }) {
           </ul>
         </div>
       ) : null}
+    </ToolCard>
+  );
+}
+
+/**
+ * How much of the catalogue an AI buyer can actually use.
+ *
+ * Blocking gaps are separated from cosmetic ones on the card as well as in the
+ * data, because the merchant's first question is "which of these costs me
+ * sales" and a flat list of complaints does not answer it.
+ */
+function ReadinessCard({ readiness }: { readiness: Output }) {
+  return (
+    <ToolCard
+      title="Agent-readable catalogue"
+      tone={readiness.blockedCount > 0 ? "warning" : "neutral"}
+    >
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <Stat label="Score" value={`${readiness.score} / 100`} />
+        <Stat label="Cannot recommend" value={String(readiness.blockedCount)} />
+        <Stat label="Stock exposed" value={readiness.revenueAtRisk} />
+      </dl>
+
+      <ul className="mt-3 space-y-2">
+        {(readiness.products ?? []).map((product: Output) => (
+          <li key={product.productId}>
+            <div className="flex justify-between gap-2">
+              <span className={product.blocksRecommendation ? "font-medium" : ""}>
+                {product.name}
+              </span>
+              <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+                {product.score} · {product.stockValue}
+              </span>
+            </div>
+            <ul className="mt-0.5 list-disc pl-4 text-muted-foreground text-xs">
+              {product.gaps.map((gap: string) => (
+                <li key={gap}>{gap}</li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-2 border-border border-t pt-2 text-muted-foreground text-xs">
+        {readiness.assumptions}
+      </p>
+    </ToolCard>
+  );
+}
+
+/** The merchant's AI customers, and how often they get a yes. */
+function AgentBuyersCard({
+  agents,
+  note,
+}: {
+  agents: Output[];
+  note?: string;
+}) {
+  if (agents.length === 0) {
+    return (
+      <ToolCard title="Agent buyers">
+        <p className="text-muted-foreground">
+          {note ?? "No external agent has ordered here."}
+        </p>
+      </ToolCard>
+    );
+  }
+
+  return (
+    <ToolCard title="Agent buyers">
+      <ul className="space-y-2">
+        {agents.map((agent) => (
+          <li key={agent.buyerIdentifier}>
+            <div className="flex justify-between gap-2">
+              <span className="font-mono text-xs">
+                {agent.buyerIdentifier}
+              </span>
+              <span className="whitespace-nowrap tabular-nums">
+                {agent.committed}
+              </span>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {agent.totalOrders} order(s) ·{" "}
+              {agent.approvalRatePercent === null
+                ? "none decided yet"
+                : `${agent.approvalRatePercent}% approved`}
+              {agent.pendingOrders > 0
+                ? ` · ${agent.pendingOrders} waiting on you`
+                : ""}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </ToolCard>
+  );
+}
+
+/** Did the campaign work — with the reason that question is hard on the card. */
+function CampaignResultCard({ result }: { result: Output }) {
+  const better = result.unitsChange > 0;
+
+  return (
+    <ToolCard title={result.title}>
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Stat label="Units before" value={String(result.baseline.units)} />
+        <Stat label="Units during" value={String(result.during.units)} />
+        <Stat
+          label="Change"
+          value={`${better ? "+" : ""}${result.unitsChange}`}
+        />
+        <Stat label="Given away" value={result.givenAway} />
+      </dl>
+
+      <p className="mt-2 text-muted-foreground text-xs">
+        {result.attributedOrders} order(s) carried this campaign's discount.
+      </p>
+
+      {/*
+        The caveat is rendered, not summarised. A before-and-after read as
+        proof is how a coincidence becomes a reason to do it again.
+      */}
+      <p className="mt-2 border-border border-t pt-2 text-muted-foreground text-xs">
+        {result.caveat}
+      </p>
     </ToolCard>
   );
 }

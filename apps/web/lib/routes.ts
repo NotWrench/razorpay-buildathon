@@ -42,6 +42,7 @@ export const storeRoutes = (slug: string) => ({
  */
 export const managerRoutes = {
   account: route("/manager/account"),
+  agents: route("/manager/agents"),
   assistant: route("/manager"),
   assistantWith: (rangeId: string) => route(`/manager?range=${rangeId}`),
   orders: route("/manager/orders"),
