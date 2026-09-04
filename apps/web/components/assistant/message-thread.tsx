@@ -26,6 +26,7 @@ export function MessageThread<TMessage extends ThreadMessage>({
   empty,
   error,
   messages,
+  onAnswer,
   onApproval,
   onRetry,
   pendingLabel,
@@ -37,6 +38,8 @@ export function MessageThread<TMessage extends ThreadMessage>({
   /** A turn that ended badly. In practice never set while `busy` is true. */
   error?: Error;
   messages: TMessage[];
+  /** Answers an `askBuyer` question. Absent on agents that cannot ask. */
+  onAnswer?: (toolCallId: string, value: string) => void;
   onApproval: (response: { approved: boolean; id: string }) => void;
   onRetry?: () => void;
   pendingLabel: (type: string) => string;
@@ -99,6 +102,7 @@ export function MessageThread<TMessage extends ThreadMessage>({
               <ToolPart
                 deniedNote={deniedNote}
                 key={key}
+                onAnswer={onAnswer}
                 onApproval={onApproval}
                 part={tool}
                 pendingLabel={pendingLabel}

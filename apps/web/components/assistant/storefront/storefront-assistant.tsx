@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatMode, PageContextInput } from "@workspace/ai";
+import { useCallback } from "react";
 import { useRazorpay } from "@/hooks/use-razorpay";
 import { useStorefrontAssistant } from "@/hooks/use-storefront-assistant";
 import { ChatShell } from "../chat-shell";
@@ -41,6 +42,7 @@ export function StorefrontAssistant({
 }) {
   const {
     addToolApprovalResponse,
+    addToolOutput,
     busy,
     error,
     messages,
@@ -51,6 +53,17 @@ export function StorefrontAssistant({
   } = useStorefrontAssistant({ context, initialMode, slug });
 
   const { open, paying } = useRazorpay();
+
+  /*
+   * The buyer's tap *is* the tool's output — `askBuyer` has no server-side
+   * execute, so the loop stays suspended until this lands. The hook's
+   * `sendAutomaticallyWhen` then resumes the turn; see `lib/assistant/resume`.
+   */
+  const answer = useCallback(
+    (toolCallId: string, value: string) =>
+      addToolOutput({ output: value, tool: "askBuyer", toolCallId }),
+    [addToolOutput]
+  );
 
   return (
     <ChatShell
@@ -85,6 +98,7 @@ export function StorefrontAssistant({
           </div>
         }
         messages={messages}
+        onAnswer={answer}
         onApproval={addToolApprovalResponse}
         pendingLabel={storefrontPendingLabel}
         renderOutput={(part) => (

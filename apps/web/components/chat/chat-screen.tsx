@@ -462,6 +462,12 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
 
   const handlers = useMemo<AgentTurnHandlers>(
     () => ({
+      /*
+       * The buyer's tap *is* the tool's output — `askBuyer` has no server-side
+       * execute, so the turn stays suspended until this lands.
+       */
+      onAnswer: (toolCallId: string, value: string) =>
+        assistant.addToolOutput({ output: value, tool: "askBuyer", toolCallId }),
       onApproval: assistant.addToolApprovalResponse,
       onPay: (checkout: RazorpayCheckout, orderId: string) => {
         open({
@@ -483,7 +489,14 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
       },
       payingOrder: paying,
     }),
-    [assistant.addToolApprovalResponse, open, paying, sendMessage, storeName]
+    [
+      assistant.addToolApprovalResponse,
+      assistant.addToolOutput,
+      open,
+      paying,
+      sendMessage,
+      storeName,
+    ]
   );
 
   /* Auto-scroll follows the stream, and yields the moment you scroll up. */

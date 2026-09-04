@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { AskBuyerCard } from "./ask-buyer-card";
 import { ApprovalCard } from "./cards";
 import { ErrorCard, ToolCard, ToolStatus } from "./primitives";
 
@@ -36,17 +37,30 @@ export function asToolPart(part: { type: string }): ToolPartShape | null {
 
 export function ToolPart({
   deniedNote,
+  onAnswer,
   onApproval,
   part,
   pendingLabel,
   renderOutput,
 }: {
   deniedNote: string;
+  /** Absent on agents that cannot ask — the merchant's, today. */
+  onAnswer?: (toolCallId: string, value: string) => void;
   onApproval: (response: { approved: boolean; id: string }) => void;
   part: ToolPartShape;
   pendingLabel: (type: string) => string;
   renderOutput: (part: ToolPartShape) => ReactNode;
 }) {
+  /*
+   * A question is not a tool call that happened; it is one the turn is waiting
+   * on. It has to be caught before the state machine below, which would
+   * otherwise render the pending line — a spinner against a question nobody
+   * can answer, for as long as the tab is open.
+   */
+  if (part.type === "tool-askBuyer" && onAnswer) {
+    return <AskBuyerCard onAnswer={onAnswer} part={part} />;
+  }
+
   if (part.state === "approval-requested") {
     if (part.approval?.isAutomatic) {
       return <ToolStatus>Checking policy…</ToolStatus>;

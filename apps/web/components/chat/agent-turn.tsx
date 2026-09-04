@@ -7,6 +7,10 @@ import { formatPaise } from "@workspace/ui/lib/money";
 import { Sparkles } from "lucide-react";
 import { useCallback } from "react";
 import { storefrontPendingLabel } from "@/components/assistant/storefront/pending-labels";
+import {
+  AnsweredQuestion,
+  AskBuyerQuestion,
+} from "@/components/chat/ask-buyer";
 import { ReasoningTrail } from "@/components/chat/reasoning-trail";
 import { StreamedText } from "@/components/chat/streamed-text";
 import { PillLink } from "@/components/common/pill-link";
@@ -51,9 +55,12 @@ export interface AgentMessage {
 interface ToolPart extends Part {
   approval?: { id: string; isAutomatic?: boolean; requestReason?: string };
   errorText?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: a tool input is a wide union, narrowed per case below.
+  input?: any;
   // biome-ignore lint/suspicious/noExplicitAny: a tool output is a wide union, narrowed per case below.
   output?: any;
   state: string;
+  toolCallId?: string;
 }
 
 export interface RazorpayCheckout {
@@ -64,6 +71,13 @@ export interface RazorpayCheckout {
 }
 
 export interface AgentTurnHandlers {
+  /**
+   * The buyer's reply to an `askBuyer` call.
+   *
+   * That tool has no server-side execute: the loop is suspended until this
+   * output arrives, so a question with no way to answer it hangs the turn.
+   */
+  onAnswer: (toolCallId: string, value: string) => void;
   onApproval: (response: { approved: boolean; id: string }) => void;
   onPay: (checkout: RazorpayCheckout, orderId: string) => void;
   /** The order whose payment window is already open, if any. */
@@ -283,6 +297,45 @@ function ToolResult({
   }
 }
 
+/**
+ * A question from the model, and the answer once given.
+ *
+ * Both states are drawn here rather than left to `ToolResult`, because unlike
+ * every other tool this one is not a thing that happened — it is a thing the
+ * turn is waiting on. Falling through to the generic pending line would show
+ * "Thinking…" against a question nobody can answer, forever.
+ */
+function AskBuyerLine({
+  handlers,
+  part,
+}: {
+  handlers: AgentTurnHandlers;
+  part: ToolPart;
+}) {
+  const callId = part.toolCallId ?? "";
+  const { onAnswer } = handlers;
+
+  const answer = useCallback(
+    (value: string) => onAnswer(callId, value),
+    [callId, onAnswer]
+  );
+
+  if (part.state === "output-available") {
+    return (
+      <AnsweredQuestion
+        label={String(part.input?.label ?? "Answer")}
+        value={String(part.output ?? "")}
+      />
+    );
+  }
+
+  if (part.state === "input-streaming" || part.state === "input-available") {
+    return <AskBuyerQuestion input={part.input ?? {}} onAnswer={answer} />;
+  }
+
+  return null;
+}
+
 function ToolLine({
   handlers,
   part,
@@ -290,6 +343,10 @@ function ToolLine({
   handlers: AgentTurnHandlers;
   part: ToolPart;
 }) {
+  if (part.type === "tool-askBuyer") {
+    return <AskBuyerLine handlers={handlers} part={part} />;
+  }
+
   if (part.state === "approval-requested") {
     return part.approval?.isAutomatic ? (
       <WorkingLine label="Checking the store's policy…" />
