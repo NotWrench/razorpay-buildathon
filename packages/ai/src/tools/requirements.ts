@@ -107,7 +107,12 @@ export function requirementTools(ctx: AgentContext) {
         choices: z
           .array(
             z.object({
-              label: z.string().max(40).describe("What the pill reads."),
+              label: z
+                .string()
+                .max(40)
+                .describe(
+                  "What the pill reads. A short phrase to tap — no prices."
+                ),
               value: z
                 .string()
                 .max(60)

@@ -96,6 +96,35 @@ describe("foldDelta", () => {
     });
   });
 
+  test("strips harmony control tokens out of content", () => {
+    /*
+     * The leak that poisons the *next* turn: this text is persisted and sent
+     * back as history, and NIM rejects its own tokens on the way in with a
+     * 400. One leaked token would otherwise end the conversation.
+     */
+    expect(
+      fold({ content: "Here it is.<|end|><|start|>assistant<|channel|>final" })
+    ).toEqual({
+      content: "Here it is.assistantfinal",
+      open: false,
+    });
+  });
+
+  test("strips harmony control tokens out of reasoning too", () => {
+    expect(fold({ reasoning_content: "Let me check<|end|>" })).toEqual({
+      content: `${OPEN}Let me check`,
+      open: true,
+    });
+  });
+
+  test("leaves ordinary angle brackets alone", () => {
+    /* A price comparison is not markup. */
+    expect(fold({ content: "8GB < 16GB, and 3 > 2." })).toEqual({
+      content: "8GB < 16GB, and 3 > 2.",
+      open: false,
+    });
+  });
+
   test("clears the source fields so nothing downstream re-reads them", () => {
     const delta: Record<string, unknown> = {
       reasoning: "a",

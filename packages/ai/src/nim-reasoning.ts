@@ -35,16 +35,32 @@ const CLOSE = `</${NIM_REASONING_TAG}>`;
 const TAG_PATTERN = new RegExp(`</?${NIM_REASONING_TAG}>`, "g");
 
 /**
- * Removes the tag from text that is about to be wrapped in it.
+ * Harmony's own control tokens: `<|end|>`, `<|start|>`, `<|channel|>`.
  *
- * The model's thinking is untrusted text as far as this transform is
- * concerned: a `</nim_reasoning>` inside it would close the block early and
- * the rest of the reasoning would be rendered as the answer.
+ * NIM parses these out of the model's output for us and intermittently misses
+ * some — the same leak `agents/repair.ts` fixes for tool names, which arrive
+ * as `searchProducts<|channel|>commentary` about one call in four.
+ *
+ * In assistant text the consequence is worse than a cosmetic one, and it is
+ * not this turn that pays. The text is persisted and sent back as history on
+ * the next turn, and NIM rejects its own tokens on the way in — 400,
+ * "unexpected tokens remaining in message header". So one leaked token turns
+ * every subsequent turn of that conversation into a failure, and the buyer is
+ * told the assistant hit an error with no way to get past it but starting
+ * over. Stripping them costs a few stray words in one reply.
+ */
+const HARMONY_TOKEN = /<\|[^|>]*\|>/g;
+
+/**
+ * Removes anything that would be read as markup rather than as words.
+ *
+ * The model's own output is untrusted text as far as this transform is
+ * concerned. A `</nim_reasoning>` inside its thinking would close the block
+ * early and spill the rest into the buyer's view; a harmony token inside its
+ * answer poisons the next turn.
  */
 function sanitise(text: string): string {
-  return text.includes(NIM_REASONING_TAG)
-    ? text.replace(TAG_PATTERN, "")
-    : text;
+  return text.replace(TAG_PATTERN, "").replace(HARMONY_TOKEN, "");
 }
 
 interface Delta {
