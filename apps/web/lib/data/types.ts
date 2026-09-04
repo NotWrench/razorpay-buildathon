@@ -358,6 +358,23 @@ export interface ManagerOrder {
   totalPaise: Money;
 }
 
+/** One line of the store's ledger — an action, who took it, and why. */
+export interface ActivityEntry {
+  action: string;
+  actor: string;
+  at: string;
+  explanation: string;
+  /** True when this entry records something that did not work. */
+  failed: boolean;
+  /** The recorded failure type, when the order it names has one. */
+  failureType: string | null;
+  id: string;
+  /** The display reference, when the entry names an order in this store. */
+  orderRef: string | null;
+  /** True when this happened on an unattended run rather than on request. */
+  scheduled: boolean;
+}
+
 /** A campaign as the merchant reviews it: state, spend, and what it did. */
 export interface ManagerCampaign {
   approvedByMerchant: boolean;

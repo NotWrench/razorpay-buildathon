@@ -44,7 +44,7 @@ export function campaignTools(ctx: AgentContext) {
         "Activate an approved campaign so it starts discounting live orders. " +
         "This is a money action — only call it when the merchant has said to " +
         "activate this specific campaign.",
-      execute: async ({ campaignId }) => {
+      execute: async ({ acknowledgeOverlap, campaignId }) => {
         const campaign = await db.query.campaigns.findFirst({
           where: and(
             eq(campaigns.id, campaignId),
@@ -54,6 +54,36 @@ export function campaignTools(ctx: AgentContext) {
 
         if (!campaign) {
           return { activated: false, error: "No such campaign in this store." };
+        }
+
+        /*
+         * Overlap, said out loud.
+         *
+         * `bestCampaign` picks the single offer worth the most to the buyer,
+         * so two live campaigns on the same product do not stack — the smaller
+         * one silently stops applying. That is the right pricing behaviour and
+         * the wrong thing to leave unsaid: a merchant running two promotions
+         * believes both are working, and will read the quieter one's flat
+         * numbers as the offer failing rather than as it never being used.
+         */
+        const overlapping = await findOverlap(ctx.merchantId, campaign);
+
+        if (overlapping.length > 0 && !acknowledgeOverlap) {
+          return {
+            activated: false,
+            error:
+              `"${campaign.title}" overlaps ${overlapping.length} live campaign(s) on the same products: ` +
+              overlapping
+                .map((row) => `"${row.title}" (${describeOffer(row)})`)
+                .join(", ") +
+              ". Only the offer worth most to the buyer applies, so these will not stack — the weaker one simply stops being used. " +
+              "Tell the merchant which one wins, and ask whether to stop the other or activate anyway.",
+            overlaps: overlapping.map((row) => ({
+              campaignId: row.id,
+              offer: describeOffer(row),
+              title: row.title,
+            })),
+          };
         }
 
         /*
@@ -103,7 +133,15 @@ export function campaignTools(ctx: AgentContext) {
               : " It has no budget cap."),
         };
       },
-      inputSchema: z.object({ campaignId: z.uuid() }),
+      inputSchema: z.object({
+        acknowledgeOverlap: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Set only after telling the merchant about an overlap and hearing them say to activate anyway."
+          ),
+        campaignId: z.uuid(),
+      }),
     }),
     draftCampaign: tool({
       description:
@@ -405,6 +443,55 @@ export function campaignTools(ctx: AgentContext) {
 }
 
 const DAY_MS = 86_400_000;
+
+/** "20% off" or "₹500 off" — the offer in the merchant's terms. */
+function describeOffer(campaign: typeof campaigns.$inferSelect): string {
+  return campaign.discountType === "percentage"
+    ? `${campaign.discountValue}% off`
+    : `${formatPaise(campaign.discountValue)} off`;
+}
+
+/**
+ * Live campaigns that share a product with this one.
+ *
+ * Deliberately product-level rather than clever. Two campaigns can collide in
+ * subtler ways — a category rule and a product rule reaching the same cart —
+ * and a warning that fires on every possible interaction is one nobody reads.
+ * Sharing a named product is the case a merchant actually creates by accident.
+ */
+async function findOverlap(
+  merchantId: string,
+  candidate: typeof campaigns.$inferSelect
+): Promise<(typeof campaigns.$inferSelect)[]> {
+  const rules = (candidate.triggerRules ?? {}) as { productIds?: string[] };
+  const mine = new Set(rules.productIds ?? []);
+
+  if (mine.size === 0) {
+    return [];
+  }
+
+  const live = await db
+    .select()
+    .from(campaigns)
+    .where(
+      and(
+        eq(campaigns.merchantId, merchantId),
+        eq(campaigns.status, "active"),
+        eq(campaigns.approvedByMerchant, true)
+      )
+    );
+
+  return live.filter((row) => {
+    if (row.id === candidate.id) {
+      return false;
+    }
+
+    const theirs = ((row.triggerRules ?? {}) as { productIds?: string[] })
+      .productIds;
+
+    return (theirs ?? []).some((id) => mine.has(id));
+  });
+}
 
 /**
  * What a campaign actually did, measured against the window before it.

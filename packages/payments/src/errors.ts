@@ -43,17 +43,45 @@ export class PaymentError extends Error {
   }
 }
 
+/**
+ * What to say when Razorpay refuses and does not explain itself.
+ *
+ * Most rejections carry `error.description` — "the amount is more than the
+ * amount captured" — and that sentence is the best thing to show a merchant.
+ * Some carry nothing at all: the SDK throws `{ statusCode: 404 }` with an
+ * undefined body, which used to reach the merchant as "Unknown Razorpay
+ * error". That is the least useful thing a payment screen can say, and it
+ * lands at the exact moment somebody is anxious about money.
+ *
+ * The status is not much, but it is a fact, and it points somewhere.
+ */
+const STATUS_MEANING: Record<number, string> = {
+  400: "Razorpay rejected the request as invalid. The amount or the payment state is probably not what we think it is.",
+  401: "Razorpay did not accept this store's API credentials. Reconnect the payment account.",
+  404: "Razorpay has no record of that payment. It may belong to a different account, or to live mode rather than test mode.",
+  429: "Razorpay is rate-limiting this account. Wait a moment and try again.",
+  500: "Razorpay had an internal error. Nothing was changed here; try again shortly.",
+  502: "Razorpay was unreachable. Nothing was changed here; try again shortly.",
+};
+
 /** Normalizes anything thrown by the Razorpay SDK into a `PaymentError`. */
 export function toPaymentError(error: unknown): PaymentError {
   if (error instanceof PaymentError) {
     return error;
   }
 
+  const raw = error as {
+    error?: { description?: string };
+    statusCode?: number;
+  } | null;
+
   const description =
-    (error as { error?: { description?: string } } | null)?.error
-      ?.description ??
+    raw?.error?.description ??
     (error as Error | null)?.message ??
-    "Unknown Razorpay error";
+    (raw?.statusCode ? STATUS_MEANING[raw.statusCode] : undefined) ??
+    (raw?.statusCode
+      ? `Razorpay refused the request with HTTP ${raw.statusCode} and gave no reason.`
+      : "Razorpay refused the request and gave no reason.");
 
   return new PaymentError("RAZORPAY_API_ERROR", description, error);
 }

@@ -27,8 +27,18 @@ import { repairHarmonyToolName } from "./repair";
  * this because I asked" is the first thing a merchant will want to know.
  */
 
-/** Tools the unattended run may not even attempt. */
-const MAX_STEPS = 14;
+/**
+ * Step budget for one unattended run.
+ *
+ * It has to cover the whole tool sequence *and* leave steps over for the model
+ * to actually write the briefing. At 14 a legitimate run — two sales windows,
+ * two margin windows, orders, failures, the queue, stock risk, readiness,
+ * discount and reorder candidates — spent its last step on a tool call and
+ * returned empty prose, so the run "succeeded" and produced nothing to read.
+ * This is a runaway guard, not a behaviour constraint, and it should sit well
+ * clear of what a thorough answer costs.
+ */
+const MAX_STEPS = 22;
 
 const BRIEFING_PROMPT = `You are running unattended, overnight, for a store whose owner is asleep. Nobody will answer a question, and no approval card can be pressed — every tool that moves money is suspended and will simply not run, so do not try to use one.
 
@@ -39,6 +49,8 @@ Your job is to leave the merchant a short briefing they can act on in two minute
 3. Check what needs a person: getAgentOrderQueue, getStockRisk, getCatalogReadiness.
 4. Draft at most one campaign, and only if getDiscountCandidates gives you real evidence for it. Give it a budget and a run length. If nothing warrants a discount, draft nothing — that is the correct outcome, not a failure.
 5. Raise at most one reorder request, and only from getReorderCandidates.
+
+Then stop pulling numbers and write. The briefing is the deliverable — a run that reads everything and says nothing has failed, however thorough the reading was. Do not call a tool you have already called with the same window.
 
 Write the briefing as plain prose in your reply. Lead with what changed and what needs them. Say clearly that nothing you drafted is live and that everything waits for them.
 

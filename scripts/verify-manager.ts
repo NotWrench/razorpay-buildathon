@@ -17,17 +17,21 @@
 import {
   agentDb,
   auditLogs,
+  campaigns,
   db,
+  failures,
   inventory,
   merchantPolicy,
   merchants,
+  orders,
+  payments,
   productPriceHistory,
   productSpecs,
   products,
   reorderRequests,
   user,
 } from "@workspace/db";
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
 let passed = 0;
 let failed = 0;
@@ -906,6 +910,277 @@ async function main() {
       ? `${MUST_BE_GATED.length} tools all stop for a human`
       : `UNGATED: ${ungated.join(", ")}`
   );
+
+  // -------------------------------------------------------------- case 13
+  //
+  // The failure this system is meant to handle well.
+  //
+  // A refund is the merchant's most anxious moment, and Razorpay is the
+  // authority on whether it happens. The property asserted here is the one
+  // that matters when it says no: *nothing local moves*. An order marked
+  // refunded whose money never went back is worse than an error, because the
+  // merchant stops looking.
+  console.log("\n13. A refused refund changes nothing and says so");
+
+  const { paymentOpsTools } = await import("@workspace/ai");
+
+  const opsTools = paymentOpsTools({
+    actor: { identifier: actorId, type: "human", userId: actorId },
+    autoApproveCeilingPaise: 0,
+    conversationId: "00000000-0000-0000-0000-000000000000",
+    merchantId: store.id,
+    spendCapPaise: 0,
+    storeSlug: store.storeSlug,
+  });
+
+  const [unpaid] = await db
+    .insert(orders)
+    .values({
+      approvalStatus: "approved",
+      buyerIdentifier: "verify-refund@example.com",
+      buyerType: "human",
+      merchantId: store.id,
+      orderStatus: "created",
+      subtotal: 250_000,
+      totalAmount: 250_000,
+    })
+    .returning();
+
+  if (unpaid) {
+    const refused = (await // biome-ignore lint/suspicious/noExplicitAny: exercising one tool directly.
+    (opsTools.refundOrder as any).execute(
+      {
+        orderId: unpaid.id,
+        reason: "Exercised by verify-manager against an uncaptured order.",
+      },
+      {} as never
+    )) as { error?: string; refunded: boolean };
+
+    check(
+      "refunding an order with no captured payment is refused",
+      refused.refunded === false,
+      refused.error?.slice(0, 80)
+    );
+
+    /*
+     * The sentence that does the work. "It failed" and "it failed and nothing
+     * moved" are different things to read at the moment money was supposed to
+     * go back to a customer.
+     */
+    check(
+      "the refusal says nothing was charged",
+      /nothing was charged|nothing to refund/i.test(refused.error ?? ""),
+      refused.error?.slice(0, 80)
+    );
+
+    const afterRefusal = await db.query.orders.findFirst({
+      where: eq(orders.id, unpaid.id),
+    });
+
+    check(
+      "the order is left exactly as it was",
+      afterRefusal?.orderStatus === "created",
+      `still ${afterRefusal?.orderStatus}`
+    );
+
+    await db.delete(orders).where(eq(orders.id, unpaid.id));
+  } else {
+    check("a scratch order could be created", false);
+  }
+
+  // -------------------------------------------------------------- case 14
+  //
+  // Overlapping campaigns. `quote.ts` picks the single best offer, so two live
+  // campaigns on one product do not stack — the weaker simply stops applying.
+  // That is correct pricing and the wrong thing to leave unsaid: a merchant
+  // reads the quiet campaign's flat numbers as the offer failing.
+  console.log("\n14. Activating an overlapping campaign warns first");
+
+  const { campaignTools } = await import("@workspace/ai");
+
+  const campaignCtx = {
+    actor: { identifier: actorId, type: "human" as const, userId: actorId },
+    autoApproveCeilingPaise: 0,
+    conversationId: "00000000-0000-0000-0000-000000000000",
+    merchantId: store.id,
+    spendCapPaise: 0,
+    storeSlug: store.storeSlug,
+  };
+
+  const [live, pending] = await db
+    .insert(campaigns)
+    .values([
+      {
+        approvedByMerchant: true,
+        discountType: "percentage",
+        discountValue: 10,
+        merchantId: store.id,
+        status: "active",
+        title: "verify-manager live campaign",
+        triggerRules: { productIds: [product.id] },
+      },
+      {
+        discountType: "percentage",
+        discountValue: 5,
+        merchantId: store.id,
+        status: "pending_approval",
+        title: "verify-manager overlapping draft",
+        triggerRules: { productIds: [product.id] },
+      },
+    ])
+    .returning();
+
+  if (live && pending) {
+    const activate = (input: Record<string, unknown>) =>
+      // biome-ignore lint/suspicious/noExplicitAny: exercising one tool directly.
+      (campaignTools(campaignCtx).activateCampaign as any).execute(
+        input,
+        {} as never
+      ) as Promise<{ activated: boolean; error?: string }>;
+
+    const warned = await activate({ campaignId: pending.id });
+
+    check(
+      "an overlapping activation is refused until acknowledged",
+      warned.activated === false && /overlaps/i.test(warned.error ?? ""),
+      warned.error?.slice(0, 90)
+    );
+
+    check(
+      "the warning explains that they will not stack",
+      /not stack|worth most/i.test(warned.error ?? ""),
+      "names the consequence, not just the collision"
+    );
+
+    const forced = await activate({
+      acknowledgeOverlap: true,
+      campaignId: pending.id,
+    });
+
+    check(
+      "the merchant can still activate once told",
+      forced.activated === true,
+      "a warning, not a wall"
+    );
+
+    await db
+      .delete(campaigns)
+      .where(inArray(campaigns.id, [live.id, pending.id]));
+  } else {
+    check("scratch campaigns could be created", false);
+  }
+
+  // -------------------------------------------------------------- case 15
+  //
+  // The real thing: Razorpay itself says no.
+  //
+  // Case 13 covers the refusal we can make locally. This one goes out to the
+  // gateway with a payment id it has never heard of and asserts what happens
+  // when the authority on the money declines — because that is the path a
+  // merchant actually hits, and the one where "it worked" would be a lie
+  // nobody catches until the customer calls.
+  console.log("\n15. When Razorpay refuses, nothing local moves");
+
+  const [captured] = await db
+    .insert(orders)
+    .values({
+      approvalStatus: "approved",
+      buyerIdentifier: "verify-refund-gateway@example.com",
+      buyerType: "human",
+      merchantId: store.id,
+      orderStatus: "paid",
+      subtotal: 199_900,
+      totalAmount: 199_900,
+    })
+    .returning();
+
+  if (captured) {
+    await db.insert(payments).values({
+      amount: 199_900,
+      orderId: captured.id,
+      // A payment id Razorpay has never issued. The call is real; the refusal
+      // is theirs, which is the whole point of exercising it this way.
+      razorpayOrderId: "order_verifymanager_nonexistent",
+      razorpayPaymentId: "pay_verifymanagerNOPE",
+      status: "captured",
+    });
+
+    const rejected = (await // biome-ignore lint/suspicious/noExplicitAny: exercising one tool directly.
+    (opsTools.refundOrder as any).execute(
+      {
+        orderId: captured.id,
+        reason: "Exercised by verify-manager against the live gateway.",
+      },
+      {} as never
+    )) as { error?: string; refunded: boolean; state?: string };
+
+    console.log(`  gateway said: ${rejected.error?.slice(0, 120)}`);
+
+    check(
+      "the gateway's refusal comes back as a refusal",
+      rejected.refunded === false,
+      rejected.error?.slice(0, 60)
+    );
+
+    check(
+      "it relays what the gateway actually said",
+      /razorpay/i.test(rejected.error ?? ""),
+      "the merchant hears the gateway, not a generic error"
+    );
+
+    check(
+      "it states plainly that nothing moved",
+      /nothing moved|exactly as they were/i.test(rejected.state ?? ""),
+      rejected.state
+    );
+
+    const afterGateway = await db.query.orders.findFirst({
+      where: eq(orders.id, captured.id),
+    });
+    const paymentAfter = await db.query.payments.findFirst({
+      where: eq(payments.orderId, captured.id),
+    });
+
+    check(
+      "the order and the payment keep the state they had",
+      afterGateway?.orderStatus === "paid" &&
+        paymentAfter?.status === "captured",
+      `order ${afterGateway?.orderStatus}, payment ${paymentAfter?.status}`
+    );
+
+    /*
+     * And it is legible afterwards. `explainDecision` reads this back, so a
+     * merchant asking "what happened to that refund" gets the gateway's own
+     * words rather than the agent's recollection of them.
+     */
+    const [failureRow] = await agentDb
+      .select()
+      .from(failures)
+      .where(eq(failures.orderId, captured.id));
+
+    check(
+      "the refusal is written to the failure trail",
+      failureRow?.errorType === "REFUND_REJECTED",
+      failureRow?.errorMessage?.slice(0, 60) ?? "nothing recorded"
+    );
+
+    const refundTrail = await latestAudit(
+      store.id,
+      AuditAction.REFUND_FAILED
+    );
+
+    check(
+      "and to the audit trail, with the reason",
+      refundTrail !== null && /refused/i.test(refundTrail.explanation),
+      refundTrail?.explanation.slice(0, 70) ?? "no entry"
+    );
+
+    await agentDb.delete(failures).where(eq(failures.orderId, captured.id));
+    await db.delete(payments).where(eq(payments.orderId, captured.id));
+    await db.delete(orders).where(eq(orders.id, captured.id));
+  } else {
+    check("a captured scratch order could be created", false);
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
