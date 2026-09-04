@@ -27,22 +27,22 @@ function PrebuiltRow({ prebuilt, primary = false }: PrebuiltRowProps) {
   const href = shellRoutes.prebuilt(prebuilt.slug);
 
   return (
-    <article className="group grid gap-9 py-8 transition-transform duration-[180ms] hover:-translate-y-0.5 lg:grid-cols-[44%_1fr]">
+    <article className="group grid gap-9 py-8 transition-transform duration-micro hover:-translate-y-0.5 lg:grid-cols-[44%_1fr]">
       <ImageGround className="aspect-[4/3] p-10">
         <ProductRender
           alt={`${prebuilt.name} tower`}
           category="case"
-          className="transition-transform duration-[420ms] group-hover:scale-[1.03]"
+          className="transition-transform duration-standard group-hover:scale-[1.03]"
         />
       </ImageGround>
 
       <div className="flex flex-col">
         <Link href={href}>
-          <h3 className="font-display font-medium text-[28px] text-bone uppercase leading-none tracking-[0.05em]">
+          <h3 className="t-model text-bone text-xl leading-none">
             {prebuilt.name}
           </h3>
         </Link>
-        <p className="mt-3 text-[14.5px] text-smoke">{prebuilt.tagline}</p>
+        <p className="t-body mt-3 text-smoke">{prebuilt.tagline}</p>
 
         <PriceBlock
           className="mt-6"
@@ -73,12 +73,9 @@ function PrebuiltRow({ prebuilt, primary = false }: PrebuiltRowProps) {
             href={href}
             variant={primary ? "solid" : "ghost"}
           >
-            Customize
+            See this machine
           </PillLink>
-          <PillLink href={href} variant="ghost">
-            Preconfigured
-          </PillLink>
-          <PillLink className="ml-1" href={href} variant="text">
+          <PillLink href={shellRoutes.prebuiltSpecs(prebuilt.slug)} variant="text">
             Specs →
           </PillLink>
         </div>

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { CompatibilityStatusBadge } from "@/components/build/compatibility-status";
 import { IssueList } from "@/components/build/issue-list";
 import { PowerSummary } from "@/components/build/power-summary";
-import { storeRoutes } from "@/lib/routes";
+import { shellRoutes } from "@/lib/routes";
 import { ToolCard } from "../primitives";
 
 /**
@@ -30,10 +30,8 @@ export interface BuildCheckShape {
 }
 
 export function BuildCheckCard({
-  slug,
   validation,
 }: {
-  slug?: string;
   validation: BuildCheckShape;
 }) {
   const blocking = validation.issues.filter(
@@ -63,10 +61,10 @@ export function BuildCheckCard({
         <IssueList issues={validation.issues} />
       </div>
 
-      {slug && validation.buildId ? (
+      {validation.buildId ? (
         <Link
           className="mt-3 inline-block font-medium text-primary text-xs underline underline-offset-4"
-          href={storeRoutes(slug).buildWith(validation.buildId)}
+          href={shellRoutes.build}
         >
           Open in the builder
         </Link>

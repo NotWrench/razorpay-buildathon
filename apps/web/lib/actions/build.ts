@@ -9,7 +9,7 @@ import {
 } from "@workspace/commerce/builds";
 import { db, products } from "@workspace/db";
 import { getCategoryDefinition } from "@workspace/db/taxonomy";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentBuyer, rememberGuest } from "@/lib/store/buyer";
@@ -230,6 +230,64 @@ export async function validateBuildAction(
   } catch (error) {
     return failed(
       error instanceof BuildError ? error.message : "Could not check the build."
+    );
+  }
+}
+
+const seedSchema = z.object({
+  name: z.string().min(1).max(80).default("My build"),
+  productIds: z.array(z.uuid()).min(1).max(24),
+  slug: z.string().min(1),
+});
+
+/**
+ * A build that starts life as somebody else's parts list.
+ *
+ * This is what "Configure" on a pre-built machine means: the manifest becomes
+ * a draft the shopper owns and can change, rather than a fixed SKU. It is one
+ * `createBuild` rather than a loop of `setBuildPartAction`, so the engine runs
+ * once over the finished set instead of firing completeness warnings at every
+ * intermediate state.
+ */
+export async function startBuildFromPartsAction(
+  input: z.input<typeof seedSchema>
+): Promise<ActionResult<{ buildId: string }>> {
+  const check = seedSchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That configuration could not be opened.");
+  }
+
+  const parsed = check.data;
+  const scope = await scopeFor(parsed.slug);
+
+  const available = await db.query.products.findMany({
+    where: and(
+      eq(products.merchantId, scope.merchantId),
+      eq(products.isActive, true),
+      inArray(products.id, parsed.productIds)
+    ),
+  });
+
+  if (available.length === 0) {
+    return failed("None of those parts are available in this store.");
+  }
+
+  try {
+    const { build } = await createBuild({
+      ...scope,
+      items: available.map((product) => ({ productId: product.id, quantity: 1 })),
+      name: parsed.name,
+    });
+
+    revalidateBuild(parsed.slug);
+
+    return ok({ buildId: build.id });
+  } catch (error) {
+    return failed(
+      error instanceof BuildError
+        ? error.message
+        : "Could not open that configuration."
     );
   }
 }

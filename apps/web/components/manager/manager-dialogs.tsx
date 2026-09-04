@@ -15,10 +15,10 @@ import { useCallback, useId, useState } from "react";
  */
 
 const POPUP =
-  "fixed top-1/2 left-1/2 z-71 w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] bg-panel p-7 shadow-float outline-none transition-opacity duration-[420ms] data-ending-style:opacity-0 data-ending-style:duration-[280ms] data-starting-style:opacity-0";
+  "fixed top-1/2 left-1/2 z-71 w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] bg-panel p-7 shadow-float outline-none transition-opacity duration-standard data-ending-style:opacity-0 data-ending-style:duration-exit data-starting-style:opacity-0";
 
 const BACKDROP =
-  "fixed inset-0 z-70 bg-void/80 backdrop-blur-[4px] transition-opacity duration-[280ms] data-ending-style:opacity-0 data-starting-style:opacity-0";
+  "fixed inset-0 z-70 bg-void/80 backdrop-blur-[4px] transition-opacity duration-exit data-ending-style:opacity-0 data-starting-style:opacity-0";
 
 /** A plain confirmation: two words and two ways out. */
 function ConfirmDialog({
@@ -48,10 +48,10 @@ function ConfirmDialog({
       <Dialog.Portal>
         <Dialog.Backdrop className={BACKDROP} />
         <Dialog.Popup className={POPUP}>
-          <Dialog.Title className="font-display font-semibold text-[21px] text-bone tracking-[-0.02em]">
+          <Dialog.Title className="t-display-sm text-bone">
             {title}
           </Dialog.Title>
-          <Dialog.Description className="mt-3 text-[15px] text-smoke leading-relaxed">
+          <Dialog.Description className="t-body mt-3 text-smoke leading-relaxed">
             {body}
           </Dialog.Description>
 
@@ -128,10 +128,10 @@ function TypedConfirmDialog({
       <Dialog.Portal>
         <Dialog.Backdrop className={BACKDROP} />
         <Dialog.Popup className={POPUP}>
-          <Dialog.Title className="font-display font-semibold text-[21px] text-bone tracking-[-0.02em]">
+          <Dialog.Title className="t-display-sm text-bone">
             {title}
           </Dialog.Title>
-          <Dialog.Description className="mt-3 text-[15px] text-smoke leading-relaxed">
+          <Dialog.Description className="t-body mt-3 text-smoke leading-relaxed">
             {body}
           </Dialog.Description>
 
@@ -139,7 +139,7 @@ function TypedConfirmDialog({
             <Label htmlFor={inputId}>Type {word} to confirm</Label>
             <input
               autoComplete="off"
-              className="mt-2 h-[52px] w-full rounded-full border border-hairline bg-void px-5 font-mono text-[15px] text-bone tracking-[0.08em] outline-none transition-colors duration-[180ms] focus:border-bone"
+              className="t-num-sm mt-2 h-[52px] w-full rounded-full border border-hairline bg-void px-5 text-bone tracking-[0.08em] outline-none transition-colors duration-micro focus:border-bone"
               id={inputId}
               onChange={onChange}
               value={typed}

@@ -68,10 +68,10 @@ export default async function PrebuiltsPage({
 
       <div className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
         <div className="relative -mt-20">
-          <h1 className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+          <h1 className="t-display-lg text-bone leading-none">
             Prebuilt systems
           </h1>
-          <p className="mt-4 max-w-[52ch] text-[17px] text-smoke">
+          <p className="t-body-lg mt-4 max-w-[52ch] text-smoke">
             Built, tested and validated by the compatibility engine.
           </p>
         </div>
@@ -81,7 +81,7 @@ export default async function PrebuiltsPage({
         </div>
 
         {machines.length === 0 ? (
-          <p className="py-24 text-[17px] text-bone">
+          <p className="t-body-lg py-24 text-bone">
             No machine is built for that yet.
           </p>
         ) : (

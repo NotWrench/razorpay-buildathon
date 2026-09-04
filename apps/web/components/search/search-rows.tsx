@@ -18,7 +18,7 @@ import type { ProductSummary } from "@/lib/data/types";
  */
 
 const ROW_BASE =
-  "-ml-3 flex w-full items-center gap-4 border-transparent border-l-2 py-3 pl-3 text-left transition-colors duration-[180ms]";
+  "-ml-3 flex w-full items-center gap-4 border-transparent border-l-2 py-3 pl-3 text-left transition-colors duration-micro";
 
 /*
  * The active row is bone and a lift, not red. Red on this site means "this
@@ -49,9 +49,9 @@ function TextRow({
         onClick={handleClick}
         type="button"
       >
-        <span className="flex-1 text-[15px] text-bone">{label}</span>
+        <span className="t-body flex-1 text-bone">{label}</span>
         {count === undefined ? null : (
-          <span className="font-mono text-[13px] text-smoke tabular-nums">
+          <span className="t-num-xs text-smoke">
             {count}
           </span>
         )}
@@ -72,7 +72,7 @@ function ProductTile({
     <li>
       <button
         className={cn(
-          "block w-full rounded-[20px] border-2 border-transparent p-1 text-left transition-colors duration-[180ms]",
+          "block w-full rounded-[20px] border-2 border-transparent p-1 text-left transition-colors duration-micro",
           active && ROW_ACTIVE
         )}
         onClick={handleClick}
@@ -81,8 +81,8 @@ function ProductTile({
         <ImageGround className="aspect-[4/3] p-4">
           <ProductRender alt={product.name} category={product.category} />
         </ImageGround>
-        <span className="mt-3 block text-[14px] text-bone">{product.name}</span>
-        <span className="mt-1 block font-mono text-[13px] text-smoke tabular-nums">
+        <span className="t-body-sm mt-3 block text-bone">{product.name}</span>
+        <span className="t-num-xs mt-1 block text-smoke">
           {formatPaise(product.pricePaise)}
         </span>
       </button>
@@ -107,10 +107,10 @@ function AssistantRow({
     >
       <Sparkles aria-hidden className="size-4 shrink-0 text-smoke" />
       <span>
-        <span className="block text-[15px] text-bone">
+        <span className="t-body block text-bone">
           {term ? `Ask the assistant: “${term}”` : "Ask the assistant"}
         </span>
-        <span className="mt-1 block text-[13px] text-smoke">
+        <span className="t-body-sm mt-1 block text-smoke">
           Compare, check compatibility, or get a recommendation.
         </span>
       </span>

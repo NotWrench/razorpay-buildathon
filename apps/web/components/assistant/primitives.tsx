@@ -24,14 +24,14 @@ export function ToolCard({
       className={cn(
         "rounded-md border bg-card p-3 text-sm",
         tone === "neutral" && "border-border",
-        tone === "warning" && "border-amber-500/50 bg-amber-500/5",
+        tone === "warning" && "border-amber/50 bg-amber/5",
         tone === "danger" && "border-destructive/50 bg-destructive/5",
-        tone === "success" && "border-emerald-500/50 bg-emerald-500/5",
+        tone === "success" && "border-verdant/50 bg-verdant/5",
         className
       )}
     >
       {title ? (
-        <p className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-widest">
+        <p className="t-label mb-2 text-muted-foreground">
           {title}
         </p>
       ) : null}
@@ -59,7 +59,7 @@ export function ConfidenceBadge({ value }: { value: number }) {
   if (!Number.isFinite(value)) {
     return (
       <span
-        className="rounded-sm bg-muted px-1.5 py-0.5 font-medium text-[10px] text-muted-foreground uppercase tracking-wider"
+        className="t-label rounded-sm bg-muted px-1.5 py-0.5 text-muted-foreground"
         title="No confidence score was reported for this match"
       >
         no score
@@ -72,12 +72,12 @@ export function ConfidenceBadge({ value }: { value: number }) {
   return (
     <span
       className={cn(
-        "rounded-sm px-1.5 py-0.5 font-medium text-[10px] uppercase tracking-wider",
+        "t-label rounded-sm px-1.5 py-0.5",
         percent >= 80 &&
-          "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+          "bg-verdant/10 text-verdant",
         percent >= 50 &&
           percent < 80 &&
-          "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          "bg-amber/10 text-amber",
         percent < 50 && "bg-muted text-muted-foreground"
       )}
       title="How confident the assistant is in this match"

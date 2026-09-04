@@ -44,7 +44,7 @@ function linkifyParts(check: CompatibilityCheck): ReactNode {
     nodes.push(remaining.slice(0, at));
     nodes.push(
       <Link
-        className="text-bone underline decoration-hairline underline-offset-4 transition-colors duration-[180ms] hover:decoration-smoke"
+        className="text-bone underline decoration-hairline underline-offset-4 transition-colors duration-micro hover:decoration-smoke"
         href={shellRoutes.product(product.id)}
         key={product.id}
       >
@@ -64,7 +64,7 @@ function CompatibilityStrip({ report }: { report?: CompatibilityReport }) {
     return (
       <div className="border-hairline border-t border-b py-6">
         <Label>Compatibility</Label>
-        <p className="mt-3 text-[15px] text-smoke">
+        <p className="t-body mt-3 text-smoke">
           No build open yet. Start one and this page will check every part
           against it.
         </p>
@@ -85,11 +85,11 @@ function CompatibilityStrip({ report }: { report?: CompatibilityReport }) {
       <div className="flex items-baseline justify-between gap-4">
         <Label>Compatibility</Label>
         {report.buildName ? (
-          <span className="text-[13px] text-smoke">{report.buildName}</span>
+          <span className="t-body-sm text-smoke">{report.buildName}</span>
         ) : null}
       </div>
 
-      <p className="mt-3 text-[15px] text-bone">{HEADLINE[report.overall]}</p>
+      <p className="t-body mt-3 text-bone">{HEADLINE[report.overall]}</p>
 
       {leading ? (
         <StatusLine
@@ -100,7 +100,7 @@ function CompatibilityStrip({ report }: { report?: CompatibilityReport }) {
       ) : null}
 
       {report.estimatedWattage && report.psuRatedWattage ? (
-        <p className="mt-3 font-mono text-[13px] text-smoke tabular-nums">
+        <p className="t-num-xs mt-3 text-smoke">
           {report.estimatedWattage} W estimated · {report.psuRatedWattage} W
           supply
         </p>

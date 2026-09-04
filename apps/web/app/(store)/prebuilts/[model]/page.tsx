@@ -7,6 +7,7 @@ import { ManifestTable } from "@/components/prebuilt/manifest-table";
 import { ModelGallery } from "@/components/prebuilt/model-gallery";
 import { ModelHero } from "@/components/prebuilt/model-hero";
 import { getPrebuilt } from "@/lib/data";
+import { storeSlug } from "@/lib/data/store";
 
 /**
  * One machine, the NEURON pattern: hero, named feature sections, gallery,
@@ -37,7 +38,7 @@ export async function generateMetadata({
 
 export default async function ModelPage({ params }: { params: Params }) {
   const { model } = await params;
-  const machine = await getPrebuilt(model);
+  const [machine, slug] = await Promise.all([getPrebuilt(model), storeSlug()]);
 
   if (!machine) {
     notFound();
@@ -45,7 +46,7 @@ export default async function ModelPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <ModelHero machine={machine} />
+      <ModelHero machine={machine} slug={slug} />
 
       {machine.features.map((feature, index) => (
         <FeatureBand feature={feature} index={index} key={feature.heading} />

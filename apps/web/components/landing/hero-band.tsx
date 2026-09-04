@@ -33,10 +33,17 @@ function HeroBand({ categoryCount, partCount }: HeroBandProps) {
       />
 
       <div className="relative mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-10 2xl:px-16">
-        <h1 className="max-w-[13ch] font-bold font-display text-[clamp(44px,5.6vw,76px)] text-bone leading-[0.98] tracking-[-0.035em]">
+        {/*
+          The plan budgets "one accent in the hero" and it was never drawn.
+          A short lacquer rule above the headline is an accent, not a border —
+          it outlines nothing and encloses nothing.
+        */}
+        <span aria-hidden className="block h-0.5 w-10 rounded-full bg-lacquer" />
+
+        <h1 className="t-display-xl mt-7 max-w-[13ch] text-[clamp(44px,5.6vw,76px)] text-bone leading-[0.98]">
           The store that checks the parts fit.
         </h1>
-        <p className="mt-7 max-w-[46ch] text-[17px] text-smoke">
+        <p className="t-body-lg mt-7 max-w-[46ch] text-smoke">
           Tell it the budget and the games. It reads the catalogue, runs the
           compatibility rules, and shows the working.
         </p>
@@ -49,9 +56,12 @@ function HeroBand({ categoryCount, partCount }: HeroBandProps) {
         </div>
       </div>
 
-      <p className="absolute bottom-10 left-8 font-mono text-[13px] text-smoke tabular-nums lg:left-16">
-        {categoryCount} categories · {partCount} parts · compatibility checked
-        on every build
+      <p className="t-num-xs absolute bottom-10 left-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-smoke lg:left-16">
+        <span className="text-bone">{categoryCount} categories</span>
+        <span aria-hidden>·</span>
+        <span className="text-bone">{partCount} parts</span>
+        <span aria-hidden>·</span>
+        <span>compatibility checked on every build</span>
       </p>
     </section>
   );

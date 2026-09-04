@@ -6,8 +6,10 @@ import { Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { setBuildPartAction } from "@/lib/actions/build";
 import { addToCartAction } from "@/lib/actions/storefront";
 import type { StockState } from "@/lib/data/types";
+import { shellRoutes } from "@/lib/routes";
 
 /**
  * Quantity, and the two things you can do with it.
@@ -18,8 +20,11 @@ import type { StockState } from "@/lib/data/types";
  *
  * "Add to build" adds the same line under the buyer's open build, which is
  * what makes the compatibility strip above it start applying to the basket.
- * Without a build open it is not offered — a button whose effect is invisible
- * teaches people not to press buttons.
+ *
+ * With no build open it used to disappear entirely, and nothing in the
+ * storefront could start one — so the affordance was invisible until you had
+ * been through the assistant. Now the same slot starts a build and opens it,
+ * which is a visible effect rather than a silent one.
  */
 
 const HARD_MAX = 9;
@@ -30,6 +35,8 @@ interface BuyControlsProps {
   buildName?: string;
   onHand: number;
   productId: string;
+  /** The store, for the build actions, which are slug-scoped. */
+  slug: string;
   stock: StockState;
 }
 
@@ -38,6 +45,7 @@ export function BuyControls({
   buildName,
   onHand,
   productId,
+  slug,
   stock,
 }: BuyControlsProps) {
   const router = useRouter();
@@ -86,6 +94,26 @@ export function BuyControls({
   const addLoose = useCallback(() => add(false), [add]);
   const addToBuild = useCallback(() => add(true), [add]);
 
+  /*
+   * No build yet: `setBuildPartAction` creates one around this part when it is
+   * given no build id, so starting a build and choosing its first component
+   * are the same click.
+   */
+  const startBuild = useCallback(() => {
+    startTransition(async () => {
+      const result = await setBuildPartAction({ productId, slug });
+
+      if (result.ok) {
+        toast.success("Build started.");
+        router.push(shellRoutes.build);
+
+        return;
+      }
+
+      toast.error(result.message);
+    });
+  }, [productId, router, slug]);
+
   return (
     <>
       <div className="mt-8 flex items-center gap-5">
@@ -93,19 +121,19 @@ export function BuyControls({
         <div className="inline-flex h-11 items-center gap-1 rounded-full border border-hairline px-2">
           <button
             aria-label="One fewer"
-            className="flex size-8 items-center justify-center rounded-full text-smoke transition-colors duration-[180ms] hover:text-bone disabled:opacity-40"
+            className="flex size-8 items-center justify-center rounded-full text-smoke transition-colors duration-micro hover:text-bone disabled:opacity-40"
             disabled={quantity === 1 || soldOut}
             onClick={decrease}
             type="button"
           >
             <Minus aria-hidden className="size-3.5" />
           </button>
-          <span className="w-8 text-center font-mono text-[15px] text-bone tabular-nums">
+          <span className="t-num-sm w-8 text-center text-bone">
             {quantity}
           </span>
           <button
             aria-label="One more"
-            className="flex size-8 items-center justify-center rounded-full text-smoke transition-colors duration-[180ms] hover:text-bone disabled:opacity-40"
+            className="flex size-8 items-center justify-center rounded-full text-smoke transition-colors duration-micro hover:text-bone disabled:opacity-40"
             disabled={quantity >= max || soldOut}
             onClick={increase}
             type="button"
@@ -115,7 +143,7 @@ export function BuyControls({
         </div>
 
         {stock === "low_stock" ? (
-          <span className="font-mono text-[13px] text-amber tabular-nums">
+          <span className="t-num-xs text-amber">
             {onHand} left
           </span>
         ) : null}
@@ -126,15 +154,13 @@ export function BuyControls({
           {pending ? "Adding…" : "Add to cart"}
         </Pill>
 
-        {buildId ? (
-          <Pill
-            disabled={soldOut || pending}
-            onClick={addToBuild}
-            variant="ghost"
-          >
-            Add to build
-          </Pill>
-        ) : null}
+        <Pill
+          disabled={soldOut || pending}
+          onClick={buildId ? addToBuild : startBuild}
+          variant="ghost"
+        >
+          {buildId ? "Add to build" : "Start a build with this"}
+        </Pill>
       </div>
     </>
   );

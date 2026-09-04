@@ -9,15 +9,15 @@ interface PriceBlockProps {
 }
 
 const PRICE_SIZE = {
-  lg: "text-[28px]",
-  md: "text-[21px]",
-  sm: "text-[15px]",
+  lg: "t-num-lg",
+  md: "t-num-md",
+  sm: "t-num-sm",
 } as const;
 
 const COMPARE_SIZE = {
-  lg: "text-[15px]",
-  md: "text-[13px]",
-  sm: "text-[13px]",
+  lg: "t-num-sm",
+  md: "t-num-xs",
+  sm: "t-num-xs",
 } as const;
 
 /**
@@ -43,20 +43,14 @@ function PriceBlock({
       className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-1", className)}
     >
       <span
-        className={cn(
-          "font-mono text-bone tabular-nums leading-none",
-          PRICE_SIZE[size]
-        )}
+        className={cn("text-bone", PRICE_SIZE[size])}
       >
         {formatPaise(pricePaise)}
       </span>
 
       {compareAtPaise ? (
         <span
-          className={cn(
-            "font-mono text-smoke tabular-nums line-through",
-            COMPARE_SIZE[size]
-          )}
+          className={cn("text-smoke line-through", COMPARE_SIZE[size])}
         >
           {formatPaise(compareAtPaise)}
         </span>
@@ -64,10 +58,7 @@ function PriceBlock({
 
       {saving ? (
         <span
-          className={cn(
-            "font-mono text-lacquer tabular-nums",
-            COMPARE_SIZE[size]
-          )}
+          className={cn("text-lacquer", COMPARE_SIZE[size])}
         >
           Save {formatPaise(saving)}
         </span>

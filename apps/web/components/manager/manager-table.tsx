@@ -240,7 +240,7 @@ function TableRow<T>({
     <>
       <tr
         className={cn(
-          "group border-hairline border-t transition-colors duration-[180ms]",
+          "group border-hairline border-t transition-colors duration-micro",
           "focus-within:bg-carbon hover:bg-carbon",
           open && "bg-carbon"
         )}
@@ -267,7 +267,7 @@ function TableRow<T>({
 
         {actions ? (
           <td className="rounded-r-[12px] px-3 py-3">
-            <div className="flex justify-end gap-1 opacity-0 transition-opacity duration-[180ms] focus-within:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100">
+            <div className="flex justify-end gap-1 opacity-0 transition-opacity duration-micro focus-within:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100">
               {actions(row)}
             </div>
           </td>
@@ -308,7 +308,7 @@ function SortButton({
     >
       <Label className={active ? "text-bone" : undefined}>{label}</Label>
       {active ? (
-        <span aria-hidden className="font-mono text-[11px] text-bone">
+        <span aria-hidden className="t-num-xs text-bone">
           {descending ? "▼" : "▲"}
         </span>
       ) : null}
@@ -341,7 +341,7 @@ function RowAction({
     <button
       aria-label={label}
       className={cn(
-        "flex size-7 items-center justify-center rounded-full transition-colors duration-[180ms]",
+        "flex size-7 items-center justify-center rounded-full transition-colors duration-micro",
         "outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-bone focus-visible:outline-offset-2",
         tone === "lacquer"
           ? "text-smoke hover:text-lacquer"

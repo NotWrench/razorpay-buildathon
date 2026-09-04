@@ -120,7 +120,7 @@ export default async function LandingPage() {
       <Reveal className={SECTION}>
         <section className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
           <Label>The lineup</Label>
-          <h2 className="mt-4 max-w-[24ch] font-display font-semibold text-[28px] text-bone tracking-[-0.02em]">
+          <h2 className="t-display-md mt-4 max-w-[24ch] text-bone">
             {prebuilts.length} machines, each built for one kind of evening.
           </h2>
 

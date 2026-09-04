@@ -133,7 +133,7 @@ function RangeAnswer({
           type="range"
           value={value}
         />
-        <span className="w-28 text-right font-mono text-[15px] text-bone tabular-nums">
+        <span className="t-num-sm w-28 text-right text-bone">
           ₹{value.toLocaleString("en-IN")}
         </span>
       </div>
@@ -211,7 +211,7 @@ function MultiPill({
     <button
       aria-pressed={picked}
       className={cn(
-        "h-9 rounded-full border px-4 text-[13px] transition-colors duration-[180ms]",
+        "t-body-sm h-9 rounded-full border px-4 transition-colors duration-micro",
         picked
           ? "border-bone bg-bone text-void"
           : "border-hairline text-smoke hover:border-smoke hover:text-bone"
@@ -237,7 +237,7 @@ function AskingQuestion({ onAnswer, question, shown, streaming }: AskingProps) {
       <Sparkles aria-hidden className="mt-1.5 size-4 shrink-0 text-smoke" />
       <div className="min-w-0 flex-1">
         <StreamedText
-          className="text-[17px] leading-relaxed"
+          className="t-body-lg leading-relaxed"
           id={question.id}
           shown={shown}
           streaming={streaming}
@@ -258,7 +258,7 @@ function AskingQuestion({ onAnswer, question, shown, streaming }: AskingProps) {
 
             <div className="mt-6 flex items-center gap-4">
               <span className="h-px flex-1 bg-hairline" />
-              <span className="text-[13px] text-smoke">or type an answer</span>
+              <span className="t-body-sm text-smoke">or type an answer</span>
               <span className="h-px flex-1 bg-hairline" />
             </div>
           </>
@@ -293,7 +293,7 @@ function AnsweredQuestion({
   return (
     <div className="answered-row flex items-baseline gap-6 border-hairline border-b py-3">
       <Label className="w-32 shrink-0">{label}</Label>
-      <span className="flex-1 font-mono text-[15px] text-bone tabular-nums">
+      <span className="t-num-sm flex-1 text-bone">
         {value}
       </span>
       <Pill onClick={handleEdit} size="sm" variant="text">

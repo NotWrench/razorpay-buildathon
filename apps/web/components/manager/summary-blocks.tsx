@@ -58,7 +58,7 @@ function Row({
         />
       </ImageGround>
 
-      <p className="min-w-0 flex-1 truncate text-[15px] text-bone">
+      <p className="t-body min-w-0 flex-1 truncate text-bone">
         {product.name}
       </p>
 
@@ -73,11 +73,11 @@ function Earnings({ summary }: { summary: ManagerSummary }) {
   return (
     <Block title="Earnings">
       <CountUp
-        className="text-[48px] text-bone"
+        className="t-num-lg text-2xl text-bone"
         format={wholeRupees}
         value={summary.earningsPaise}
       />
-      <p className="mt-2 text-[13px] text-smoke">
+      <p className="t-body-sm mt-2 text-smoke">
         <span className="font-mono tabular-nums">
           {rising ? "▲" : "▼"} {Math.abs(summary.earningsDeltaPercent)}%
         </span>{" "}
@@ -97,10 +97,10 @@ function OrderFigure({ count, title }: { count: number; title: string }) {
       <span className="block">
         <Label className="block">{title}</Label>
         <span className="mt-2 flex items-center gap-2">
-          <CountUp className="text-[28px] text-bone" value={count} />
+          <CountUp className="t-num-lg text-bone" value={count} />
           <ArrowUpRight
             aria-hidden
-            className="size-4 text-smoke transition-colors duration-[180ms] group-hover:text-bone"
+            className="size-4 text-smoke transition-colors duration-micro group-hover:text-bone"
           />
         </span>
       </span>
@@ -129,7 +129,7 @@ function SellingWell({ rows }: { rows: SellingRow[] }) {
             product={row.product}
             right={
               <>
-                <span className="font-mono text-[15px] text-bone tabular-nums">
+                <span className="t-num-sm text-bone">
                   {row.units}
                 </span>
                 <TrendLine points={row.trend} />
@@ -153,7 +153,7 @@ function SeenNotBought({ rows }: { rows: SeenNotBoughtRow[] }) {
             right={
               /* The one pairing on this page a merchant cannot get anywhere
                  else, so it is the one that gets colour. */
-              <span className="font-mono text-[13px] text-amber tabular-nums">
+              <span className="t-num-xs text-amber">
                 {row.carted} carted · {row.sold} sold
               </span>
             }
@@ -173,7 +173,7 @@ function NeverSeen({ rows }: { rows: NeverSeenRow[] }) {
             key={row.product.id}
             product={row.product}
             right={
-              <span className="font-mono text-[13px] text-smoke tabular-nums">
+              <span className="t-num-xs text-smoke">
                 listed {row.listedDaysAgo} days ago
               </span>
             }

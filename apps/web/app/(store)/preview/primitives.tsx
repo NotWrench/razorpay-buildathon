@@ -61,17 +61,17 @@ export function Primitives({ product }: { product?: ProductSummary }) {
       </Bay>
 
       <Bay title="Type — display, sans, and mono for numbers only">
-        <p className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+        <p className="t-display-lg text-bone leading-none">
           Archivo, set tight
         </p>
-        <p className="mt-3 font-display font-medium text-[28px] text-bone uppercase tracking-[0.04em]">
+        <p className="t-model mt-3 text-bone text-xl">
           Meridian
         </p>
-        <p className="mt-4 max-w-[66ch] text-[15px] text-smoke">
+        <p className="t-body mt-4 max-w-[66ch] text-smoke">
           Inter Tight carries everything functional — this paragraph, the nav,
           every button. It never sets a number.
         </p>
-        <p className="mt-4 font-mono text-[21px] text-bone tabular-nums">
+        <p className="t-num-md mt-4 text-bone">
           ₹3,34,900 · 780 W · 16GB GDDR7
         </p>
       </Bay>

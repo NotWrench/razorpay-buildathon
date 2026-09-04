@@ -39,7 +39,7 @@ interface CategoryBandProps {
 function FilterPill({ filter }: { filter: ActiveFilter }) {
   return (
     <button
-      className="inline-flex h-9 items-center gap-2 rounded-full border border-hairline px-4 text-[13px] text-smoke transition-colors duration-[180ms] hover:border-smoke hover:text-bone"
+      className="t-body-sm inline-flex h-9 items-center gap-2 rounded-full border border-hairline px-4 text-smoke transition-colors duration-micro hover:border-smoke hover:text-bone"
       onClick={filter.remove}
       type="button"
     >
@@ -61,7 +61,7 @@ function SortItem({
 
   return (
     <Menu.Item
-      className="rounded-[16px] px-4 py-2.5 text-[15px] text-bone outline-none transition-colors duration-[180ms] data-highlighted:bg-riser"
+      className="t-body rounded-[16px] px-4 py-2.5 text-bone outline-none transition-colors duration-micro data-highlighted:bg-riser"
       onClick={handleClick}
     >
       {SORT_LABELS[value]}
@@ -104,10 +104,10 @@ function CategoryBand({
       <div className="mx-auto w-full max-w-[1280px] px-8 lg:px-16">
         <div className="relative -mt-14 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+            <h1 className="t-display-lg text-bone leading-none">
               {name}
             </h1>
-            <p className="mt-3 h-5 font-mono text-[13px] text-smoke tabular-nums">
+            <p className="t-num-xs mt-3 h-5 text-smoke">
               {total === undefined
                 ? null
                 : `${total} ${total === 1 ? "part" : "parts"}`}
@@ -118,14 +118,14 @@ function CategoryBand({
             <Pill onClick={onOpenFilters} size="sm" variant="ghost">
               Filter
               {filterCount > 0 ? (
-                <span className="font-mono text-[13px] tabular-nums">
+                <span className="t-num-xs">
                   {filterCount}
                 </span>
               ) : null}
             </Pill>
 
             <Menu.Root>
-              <Menu.Trigger className="flex items-center gap-1.5 text-[15px] text-smoke transition-colors duration-[180ms] hover:text-bone data-popup-open:text-bone">
+              <Menu.Trigger className="t-body flex items-center gap-1.5 text-smoke transition-colors duration-micro hover:text-bone data-popup-open:text-bone">
                 {SORT_LABELS[sort]}
                 <ChevronDown aria-hidden className="size-3.5" />
               </Menu.Trigger>

@@ -26,7 +26,7 @@ export function SpecTable({
   return (
     <table className="w-full text-sm">
       {caption ? (
-        <caption className="pb-2 text-left text-muted-foreground text-xs uppercase tracking-widest">
+        <caption className="t-label pb-2 text-left text-muted-foreground">
           {caption}
         </caption>
       ) : null}

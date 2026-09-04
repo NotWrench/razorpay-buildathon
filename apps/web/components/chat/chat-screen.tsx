@@ -1,10 +1,11 @@
 "use client";
 
-import type { PageContextInput } from "@workspace/ai";
+import type { PageContextInput, StorefrontMessage } from "@workspace/ai";
 import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { cn } from "@workspace/ui/lib/utils";
-import { Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Cpu, GitCompare, Sparkles, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type {
@@ -70,10 +71,30 @@ type Entry =
   | { id: string; kind: "agent"; messageId: string };
 
 /** The opening rows, and the task each one actually is. */
-const STARTERS: { label: string; mode: ChatModeId }[] = [
-  { label: "Build me a PC", mode: "build" },
-  { label: "Compare two parts", mode: "compare" },
-  { label: "What should I upgrade?", mode: "recommend" },
+const STARTERS: {
+  blurb: string;
+  icon: LucideIcon;
+  label: string;
+  mode: ChatModeId;
+}[] = [
+  {
+    blurb: "A few questions, then a full parts list you can price and buy.",
+    icon: Cpu,
+    label: "Build me a PC",
+    mode: "build",
+  },
+  {
+    blurb: "Two parts, side by side, on the specs that decide it.",
+    icon: GitCompare,
+    label: "Compare two parts",
+    mode: "compare",
+  },
+  {
+    blurb: "Tell it what you have and it finds the part holding you back.",
+    icon: TrendingUp,
+    label: "What should I upgrade?",
+    mode: "recommend",
+  },
 ];
 
 const OPENING =
@@ -105,17 +126,39 @@ function report(error: unknown) {
 }
 
 interface ChatScreenProps {
+  /**
+   * A saved thread, replayed from `conversation_messages`. These go straight
+   * into the SDK's message list, so the shopper sees what was said *and* the
+   * model gets the same history rather than an empty context.
+   */
+  initialMessages?: StorefrontMessage[];
+  /**
+   * A question carried in from somewhere else — the search overlay's "Ask the
+   * assistant" row, or a link that already knows what is being asked. It
+   * seeds the composer rather than sending itself: arriving mid-sentence with
+   * an answer already streaming is disorienting, and a back button would send
+   * it a second time.
+   */
+  initialQuery?: string;
+  /** The row those messages came from, so a reply continues that thread. */
+  resumeConversationId?: string;
   /** The store this assistant shops in, for the agent endpoint. */
   slug: string;
   /** Shown on the payment window, which is the shopper's own bank statement. */
   storeName: string;
 }
 
-function ChatScreen({ slug, storeName }: ChatScreenProps) {
+function ChatScreen({
+  initialMessages,
+  initialQuery,
+  resumeConversationId,
+  slug,
+  storeName,
+}: ChatScreenProps) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [skipped, setSkipped] = useState<string[]>([]);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialQuery ?? "");
   const [pinned, setPinned] = useState(true);
   const [build, setBuild] = useState<RecommendedBuild | null>(null);
   const [rows, setRows] = useState<BuildSlotRow[]>([]);
@@ -138,7 +181,9 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
 
   const assistant = useStorefrontAssistant({
     context,
+    initialMessages,
     initialMode: "build",
+    resumeConversationId,
     slug,
   });
 
@@ -571,7 +616,7 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
               ))}
 
               {waiting ? (
-                <p className="flex items-center gap-2 text-[13px] text-smoke">
+                <p className="t-body-sm flex items-center gap-2 text-smoke">
                   <span aria-hidden className="stream-caret">
                     ▍
                   </span>
@@ -598,10 +643,25 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
             </div>
           ) : (
             <div className="py-16">
-              <h1 className="font-display font-semibold text-[40px] text-bone tracking-[-0.03em]">
+              <div className="flex items-center gap-2.5">
+                {/* The one red at rest: it says the thing is actually live. */}
+                <span
+                  aria-hidden
+                  className="size-[6px] rounded-full bg-lacquer"
+                />
+                <p className="t-label text-smoke">The assistant</p>
+              </div>
+
+              <h1 className="t-display-lg mt-4 text-bone">
                 What are you building?
               </h1>
-              <div className="mt-10">
+              <p className="t-body-lg mt-4 max-w-[52ch] text-smoke">
+                It reads this store&rsquo;s catalogue, runs the compatibility
+                rules on every part it picks, and shows the working. Nothing is
+                added to your cart without you pressing something.
+              </p>
+
+              <div className="mt-9">
                 <ChatComposer
                   mode={mode}
                   onModeChange={assistant.setMode}
@@ -613,19 +673,24 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
                   value={draft}
                 />
               </div>
-              <div className="mt-6 flex flex-wrap items-center">
-                {STARTERS.map((starter, index) => (
-                  <div className="flex items-center" key={starter.label}>
-                    {index > 0 ? (
-                      <span aria-hidden className="mx-4 h-4 w-px bg-hairline" />
-                    ) : null}
-                    <StarterPill
-                      label={starter.label}
-                      mode={starter.mode}
-                      onModeChange={assistant.setMode}
-                      onSend={send}
-                    />
-                  </div>
+
+              {/*
+                These were three text pills separated by hairlines — visually
+                identical to body copy, so the page's primary actions read as
+                nothing at all. They are cards now, and each one says what the
+                task actually does rather than only naming it.
+              */}
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                {STARTERS.map((starter) => (
+                  <StarterCard
+                    blurb={starter.blurb}
+                    icon={starter.icon}
+                    key={starter.label}
+                    label={starter.label}
+                    mode={starter.mode}
+                    onModeChange={assistant.setMode}
+                    onSend={send}
+                  />
                 ))}
               </div>
             </div>
@@ -726,7 +791,7 @@ function ThreadEntry({
 
   if (entry.kind === "user") {
     return (
-      <p className="pl-16 text-right text-[17px] text-smoke">{entry.text}</p>
+      <p className="t-body-lg pl-16 text-right text-smoke">{entry.text}</p>
     );
   }
 
@@ -735,7 +800,7 @@ function ThreadEntry({
       <div className="flex gap-3">
         <Sparkles aria-hidden className="mt-1.5 size-4 shrink-0 text-smoke" />
         <StreamedText
-          className="flex-1 text-[17px] leading-relaxed"
+          className="t-body-lg flex-1 leading-relaxed"
           id={entry.id}
           shown={
             askingId === entry.id ? stream.shown : entry.text.split(" ").length
@@ -795,12 +860,16 @@ function ThreadEntry({
  * "Compare two parts" is not a build request, so it sets the mode it means on
  * the way out — otherwise the first press of it would open the interview.
  */
-function StarterPill({
+function StarterCard({
+  blurb,
+  icon: Icon,
   label,
   mode,
   onModeChange,
   onSend,
 }: {
+  blurb: string;
+  icon: LucideIcon;
   label: string;
   mode: ChatModeId;
   onModeChange: (mode: ChatModeId) => void;
@@ -812,9 +881,18 @@ function StarterPill({
   }, [label, mode, onModeChange, onSend]);
 
   return (
-    <Pill className="px-0" onClick={handleClick} size="sm" variant="text">
-      {label}
-    </Pill>
+    <button
+      className="surface-card group flex h-full flex-col rounded-[20px] border border-hairline bg-panel p-5 text-left transition-[transform,border-color] duration-micro hover:-translate-y-0.5 hover:border-smoke"
+      onClick={handleClick}
+      type="button"
+    >
+      <Icon
+        aria-hidden
+        className="size-[18px] text-smoke transition-colors duration-micro group-hover:text-bone"
+      />
+      <span className="t-body mt-4 font-medium text-bone">{label}</span>
+      <span className="t-body-sm mt-2 text-smoke">{blurb}</span>
+    </button>
   );
 }
 

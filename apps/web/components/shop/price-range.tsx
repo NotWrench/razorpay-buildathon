@@ -2,7 +2,11 @@
 
 import { Label } from "@workspace/ui/components/label";
 import { cn } from "@workspace/ui/lib/utils";
-import type { ChangeEvent, PointerEvent as ReactPointerEvent } from "react";
+import type {
+  ChangeEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { useCallback, useRef, useState } from "react";
 
 /**
@@ -12,6 +16,14 @@ import { useCallback, useRef, useState } from "react";
  * pointer listener, and a dependency for it would arrive with its own theme
  * to fight. Both handles are real buttons, so the keyboard gets arrow keys
  * for free and the range is operable without a pointer at all.
+ *
+ * **Draft now, commit on settle.** `onCommit` reaches the shelf as a soft
+ * navigation and a catalogue query, so it used to fire on every pointer tick
+ * of a drag and on every keystroke in the two fields — dozens of round trips
+ * a second, and a field you could not actually type in, because 50000 was
+ * clamped to the floor the moment the first digit landed. The handles and the
+ * fields now move against local state and commit when the interaction ends:
+ * pointer up, key up, blur, or Enter.
  */
 
 interface PriceRangeProps {
@@ -20,6 +32,13 @@ interface PriceRangeProps {
   onCommit: (range: { max: number; min: number }) => void;
   value: { max: number; min: number };
 }
+
+interface Range {
+  max: number;
+  min: number;
+}
+
+type Handle = "min" | "max";
 
 const STEP = 500;
 
@@ -31,11 +50,54 @@ function rupees(value: number) {
   return `₹${value.toLocaleString("en-IN")}`;
 }
 
+/** One handle moved, with the other held and the two kept a step apart. */
+function moved(
+  current: Range,
+  handle: Handle,
+  next: number,
+  floor: number,
+  ceiling: number
+): Range {
+  return handle === "min"
+    ? { max: current.max, min: clamp(next, floor, current.max - STEP) }
+    : { max: clamp(next, current.min + STEP, ceiling), min: current.min };
+}
+
 function PriceRange({ ceiling, floor, onCommit, value }: PriceRangeProps) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState<"min" | "max" | null>(null);
-  const span = Math.max(ceiling - floor, 1);
+  const [dragging, setDragging] = useState<Handle | null>(null);
 
+  const [draft, setDraft] = useState<Range>(value);
+  const [text, setText] = useState({
+    max: String(value.max),
+    min: String(value.min),
+  });
+
+  /*
+   * The committed range is the prop, so when the URL moves underneath us — a
+   * cleared filter, a back button — the draft has to follow. Adjusting during
+   * render rather than in an effect keeps the two from disagreeing for a frame.
+   */
+  const [seen, setSeen] = useState(value);
+
+  if (seen.min !== value.min || seen.max !== value.max) {
+    setSeen(value);
+    setDraft(value);
+    setText({ max: String(value.max), min: String(value.min) });
+  }
+
+  /* The latest draft, readable from listeners bound before it existed. */
+  const draftRef = useRef(draft);
+
+  const apply = useCallback((next: Range) => {
+    draftRef.current = next;
+    setDraft(next);
+    setText({ max: String(next.max), min: String(next.min) });
+  }, []);
+
+  const commit = useCallback(() => onCommit(draftRef.current), [onCommit]);
+
+  const span = Math.max(ceiling - floor, 1);
   const percent = (amount: number) => ((amount - floor) / span) * 100;
 
   const positionToValue = useCallback(
@@ -58,32 +120,28 @@ function PriceRange({ ceiling, floor, onCommit, value }: PriceRangeProps) {
   const onPointerMove = useCallback(
     (event: PointerEvent) => {
       setDragging((handle) => {
-        if (!handle) {
-          return handle;
+        if (handle) {
+          const next = positionToValue(event.clientX);
+          const { current } = draftRef;
+
+          apply(moved(current, handle, next, floor, ceiling));
         }
-
-        const next = positionToValue(event.clientX);
-
-        onCommit(
-          handle === "min"
-            ? { max: value.max, min: clamp(next, floor, value.max - STEP) }
-            : { max: clamp(next, value.min + STEP, ceiling), min: value.min }
-        );
 
         return handle;
       });
     },
-    [ceiling, floor, onCommit, positionToValue, value.max, value.min]
+    [apply, ceiling, floor, positionToValue]
   );
 
   const stopDrag = useCallback(() => {
     setDragging(null);
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", stopDrag);
-  }, [onPointerMove]);
+    commit();
+  }, [commit, onPointerMove]);
 
   const startDrag = useCallback(
-    (handle: "min" | "max") => (event: ReactPointerEvent) => {
+    (handle: Handle) => (event: ReactPointerEvent) => {
       event.preventDefault();
       setDragging(handle);
       window.addEventListener("pointermove", onPointerMove);
@@ -92,70 +150,83 @@ function PriceRange({ ceiling, floor, onCommit, value }: PriceRangeProps) {
     [onPointerMove, stopDrag]
   );
 
-  const onMinKey = useCallback(
-    (event: React.KeyboardEvent) => {
-      const step = event.key === "ArrowRight" ? STEP : -STEP;
+  /*
+   * Arrows move the draft and the commit waits for key up, so holding an
+   * arrow scrubs the handle across the track and asks the server once.
+   */
+  const onHandleKeyDown = useCallback(
+    (handle: Handle) => (event: ReactKeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+        return;
+      }
 
+      event.preventDefault();
+
+      const step = event.key === "ArrowRight" ? STEP : -STEP;
+      const { current } = draftRef;
+
+      apply(
+        moved(
+          current,
+          handle,
+          (handle === "min" ? current.min : current.max) + step,
+          floor,
+          ceiling
+        )
+      );
+    },
+    [apply, ceiling, floor]
+  );
+
+  const onHandleKeyUp = useCallback(
+    (event: ReactKeyboardEvent) => {
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        event.preventDefault();
-        onCommit({
-          max: value.max,
-          min: clamp(value.min + step, floor, value.max - STEP),
-        });
+        commit();
       }
     },
-    [floor, onCommit, value.max, value.min]
+    [commit]
   );
 
-  const onMaxKey = useCallback(
-    (event: React.KeyboardEvent) => {
-      const step = event.key === "ArrowRight" ? STEP : -STEP;
+  /* Typing is unclamped: a half-typed number is not yet a wrong number. */
+  const onFieldChange = useCallback(
+    (handle: Handle) => (event: ChangeEvent<HTMLInputElement>) => {
+      const digits = event.target.value.replace(/[^0-9]/g, "");
 
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      setText((current) => ({ ...current, [handle]: digits }));
+    },
+    []
+  );
+
+  const settleField = useCallback(
+    (handle: Handle) => () => {
+      const parsed = Number.parseInt(text[handle], 10);
+      const { current } = draftRef;
+      const next = Number.isFinite(parsed)
+        ? moved(current, handle, parsed, floor, ceiling)
+        : current;
+
+      apply(next);
+      onCommit(next);
+    },
+    [apply, ceiling, floor, onCommit, text]
+  );
+
+  const onFieldKeyDown = useCallback(
+    (handle: Handle) => (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
         event.preventDefault();
-        onCommit({
-          max: clamp(value.max + step, value.min + STEP, ceiling),
-          min: value.min,
-        });
+        settleField(handle)();
       }
     },
-    [ceiling, onCommit, value.max, value.min]
-  );
-
-  const onMinInput = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const next = Number.parseInt(event.target.value.replace(/\D/g, ""), 10);
-
-      onCommit({
-        max: value.max,
-        min: Number.isFinite(next)
-          ? clamp(next, floor, value.max - STEP)
-          : floor,
-      });
-    },
-    [floor, onCommit, value.max]
-  );
-
-  const onMaxInput = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const next = Number.parseInt(event.target.value.replace(/\D/g, ""), 10);
-
-      onCommit({
-        max: Number.isFinite(next)
-          ? clamp(next, value.min + STEP, ceiling)
-          : ceiling,
-        min: value.min,
-      });
-    },
-    [ceiling, onCommit, value.min]
+    [settleField]
   );
 
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <Label>Price</Label>
-        <span className="font-mono text-[13px] text-smoke tabular-nums">
-          {rupees(value.min)} – {rupees(value.max)}
+        <span className="t-num-xs text-smoke">
+          {rupees(draft.min)} – {rupees(draft.max)}
         </span>
       </div>
 
@@ -168,38 +239,40 @@ function PriceRange({ ceiling, floor, onCommit, value }: PriceRangeProps) {
           aria-hidden
           className="absolute top-1/2 h-px -translate-y-1/2 bg-smoke"
           style={{
-            left: `${percent(value.min)}%`,
-            width: `${percent(value.max) - percent(value.min)}%`,
+            left: `${percent(draft.min)}%`,
+            width: `${percent(draft.max) - percent(draft.min)}%`,
           }}
         />
         <button
           aria-label="Minimum price"
-          aria-valuemax={value.max - STEP}
+          aria-valuemax={draft.max - STEP}
           aria-valuemin={floor}
-          aria-valuenow={value.min}
+          aria-valuenow={draft.min}
           className={cn(
-            "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-smoke bg-panel transition-transform duration-[180ms]",
+            "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-smoke bg-panel transition-transform duration-micro",
             dragging === "min" && "scale-110"
           )}
-          onKeyDown={onMinKey}
+          onKeyDown={onHandleKeyDown("min")}
+          onKeyUp={onHandleKeyUp}
           onPointerDown={startDrag("min")}
           role="slider"
-          style={{ left: `${percent(value.min)}%` }}
+          style={{ left: `${percent(draft.min)}%` }}
           type="button"
         />
         <button
           aria-label="Maximum price"
           aria-valuemax={ceiling}
-          aria-valuemin={value.min + STEP}
-          aria-valuenow={value.max}
+          aria-valuemin={draft.min + STEP}
+          aria-valuenow={draft.max}
           className={cn(
-            "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-smoke bg-panel transition-transform duration-[180ms]",
+            "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-smoke bg-panel transition-transform duration-micro",
             dragging === "max" && "scale-110"
           )}
-          onKeyDown={onMaxKey}
+          onKeyDown={onHandleKeyDown("max")}
+          onKeyUp={onHandleKeyUp}
           onPointerDown={startDrag("max")}
           role="slider"
-          style={{ left: `${percent(value.max)}%` }}
+          style={{ left: `${percent(draft.max)}%` }}
           type="button"
         />
       </div>
@@ -207,20 +280,24 @@ function PriceRange({ ceiling, floor, onCommit, value }: PriceRangeProps) {
       <div className="mt-5 flex items-center gap-3">
         <input
           aria-label="Minimum price in rupees"
-          className="h-10 w-full rounded-full border border-hairline bg-transparent px-4 font-mono text-[13px] text-bone tabular-nums focus:border-smoke focus:outline-none"
+          className="t-num-xs h-10 w-full rounded-full border border-hairline bg-transparent px-4 text-bone focus:border-smoke focus:outline-none"
           inputMode="numeric"
-          onChange={onMinInput}
-          value={value.min}
+          onBlur={settleField("min")}
+          onChange={onFieldChange("min")}
+          onKeyDown={onFieldKeyDown("min")}
+          value={text.min}
         />
         <span aria-hidden className="text-smoke">
           –
         </span>
         <input
           aria-label="Maximum price in rupees"
-          className="h-10 w-full rounded-full border border-hairline bg-transparent px-4 font-mono text-[13px] text-bone tabular-nums focus:border-smoke focus:outline-none"
+          className="t-num-xs h-10 w-full rounded-full border border-hairline bg-transparent px-4 text-bone focus:border-smoke focus:outline-none"
           inputMode="numeric"
-          onChange={onMaxInput}
-          value={value.max}
+          onBlur={settleField("max")}
+          onChange={onFieldChange("max")}
+          onKeyDown={onFieldKeyDown("max")}
+          value={text.max}
         />
       </div>
     </div>

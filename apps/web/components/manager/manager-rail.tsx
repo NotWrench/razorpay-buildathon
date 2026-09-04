@@ -43,7 +43,7 @@ function ManagerRail() {
           className="flex items-baseline gap-1"
           href={managerRoutes.assistant}
         >
-          <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
+          <span className="t-display-sm font-bold text-bone">
             NEXUS
           </span>
           <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
@@ -61,16 +61,18 @@ function ManagerRail() {
                 <Link
                   aria-current={current ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 whitespace-nowrap rounded-full py-2 text-[15px] transition-colors duration-[180ms]",
+                    "t-body flex items-center gap-3 whitespace-nowrap rounded-full py-2 transition-colors duration-micro",
                     current ? "text-bone" : "text-smoke hover:text-bone"
                   )}
                   href={item.href}
                 >
+                  {/* Same mark the storefront nav uses, for the same reason:
+                      red says where you are, bone says everything else. */}
                   <span
                     aria-hidden
                     className={cn(
-                      "hidden h-[2px] w-4 rounded-full transition-colors duration-[180ms] lg:block",
-                      current ? "bg-bone" : "bg-transparent"
+                      "hidden h-[2px] w-4 rounded-full transition-colors duration-micro lg:block",
+                      current ? "bg-lacquer" : "bg-transparent"
                     )}
                   />
                   {item.label}

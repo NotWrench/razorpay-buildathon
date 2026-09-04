@@ -30,10 +30,10 @@ function ProductRow({
           src={product.product.imageUrl || undefined}
         />
       </ImageGround>
-      <span className="min-w-0 flex-1 truncate text-[13px] text-bone">
+      <span className="t-body-sm min-w-0 flex-1 truncate text-bone">
         {product.product.name}
       </span>
-      <span className="font-mono text-[13px] text-bone tabular-nums">
+      <span className="t-num-xs text-bone">
         {formatPaise(product.product.pricePaise)}
       </span>
     </div>
@@ -53,10 +53,10 @@ function ComparisonTable({
     <div className="mt-4 border-hairline border-t">
       <div className="flex gap-3 border-hairline border-b py-3">
         <span className="w-20 shrink-0" />
-        <span className="flex-1 truncate text-[13px] text-bone">
+        <span className="t-body-sm flex-1 truncate text-bone">
           {comparison.left.name}
         </span>
-        <span className="flex-1 truncate text-[13px] text-bone">
+        <span className="t-body-sm flex-1 truncate text-bone">
           {comparison.right.name}
         </span>
       </div>
@@ -71,7 +71,7 @@ function ComparisonTable({
             <Label className="w-20 shrink-0">{row.label}</Label>
             <span
               className={cn(
-                "flex-1 font-mono text-[13px] tabular-nums",
+                "t-num-xs flex-1",
                 same ? "text-smoke" : "text-bone"
               )}
             >
@@ -79,7 +79,7 @@ function ComparisonTable({
             </span>
             <span
               className={cn(
-                "flex-1 font-mono text-[13px] tabular-nums",
+                "t-num-xs flex-1",
                 same ? "text-smoke" : "text-bone"
               )}
             >
@@ -108,10 +108,10 @@ function ListResult({ list }: { list: DockResult & { kind: "list" } }) {
               src={line.product.imageUrl || undefined}
             />
           </ImageGround>
-          <span className="min-w-0 flex-1 truncate text-[13px] text-smoke">
+          <span className="t-body-sm min-w-0 flex-1 truncate text-smoke">
             {line.product.name}
           </span>
-          <span className="font-mono text-[13px] text-smoke tabular-nums">
+          <span className="t-num-xs text-smoke">
             ×{line.quantity}
           </span>
         </div>
@@ -119,7 +119,7 @@ function ListResult({ list }: { list: DockResult & { kind: "list" } }) {
 
       <div className="flex items-baseline justify-between gap-4 py-3">
         <Label>Total</Label>
-        <span className="font-mono text-[15px] text-bone tabular-nums">
+        <span className="t-num-sm text-bone">
           {formatPaise(list.totalPaise)}
         </span>
       </div>

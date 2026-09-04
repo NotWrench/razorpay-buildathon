@@ -6,9 +6,13 @@ import type { HTMLAttributes } from "react";
  *
  * Never mono. Mono labels are the single thing that made an earlier version
  * of this design read as a terminal rather than a store.
+ *
+ * The type now comes from `.t-label` in globals.css, which is the one
+ * definition of this idiom — it had drifted into four spellings across the
+ * package. Colour stays here rather than in the class, since `.t-*` never
+ * carries colour.
  */
-const LABEL_CLASS =
-  "select-none font-medium font-sans text-[11px] text-smoke uppercase tracking-[0.14em]";
+const LABEL_CLASS = "t-label select-none text-smoke";
 
 type LabelProps = HTMLAttributes<HTMLElement> & {
   /**

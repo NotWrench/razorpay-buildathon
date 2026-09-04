@@ -37,7 +37,7 @@ function ToolLine({ tool }: { tool: DockTool }) {
     <div className="mt-3">
       <button
         aria-expanded={open}
-        className="flex items-center gap-1.5 font-mono text-[11px] text-smoke tabular-nums transition-colors duration-[180ms] hover:text-bone"
+        className="t-num-xs flex items-center gap-1.5 text-smoke transition-colors duration-micro hover:text-bone"
         onClick={toggle}
         type="button"
       >
@@ -45,7 +45,7 @@ function ToolLine({ tool }: { tool: DockTool }) {
         {tool.rules ? ` · ${tool.rules} rules` : ""}
         <ChevronDown
           aria-hidden
-          className="size-3 transition-transform duration-[280ms]"
+          className="size-3 transition-transform duration-exit"
           style={{ transform: open ? "rotate(180deg)" : "none" }}
         />
       </button>
@@ -57,14 +57,14 @@ function ToolLine({ tool }: { tool: DockTool }) {
               <Label as="dt" className="w-20 shrink-0">
                 {key}
               </Label>
-              <dd className="font-mono text-[11px] text-smoke">{value}</dd>
+              <dd className="t-num-xs text-smoke">{value}</dd>
             </div>
           ))}
           <div className="flex gap-3 py-0.5">
             <Label as="dt" className="w-20 shrink-0">
               result
             </Label>
-            <dd className="font-mono text-[11px] text-smoke">{tool.result}</dd>
+            <dd className="t-num-xs text-smoke">{tool.result}</dd>
           </div>
         </dl>
       ) : null}
@@ -75,7 +75,7 @@ function ToolLine({ tool }: { tool: DockTool }) {
 function Turn({ streaming, turn }: { streaming: boolean; turn: DockTurn }) {
   if (turn.role === "user") {
     return (
-      <p className="pl-8 text-right text-[13px] text-smoke">{turn.text}</p>
+      <p className="t-body-sm pl-8 text-right text-smoke">{turn.text}</p>
     );
   }
 
@@ -86,7 +86,7 @@ function Turn({ streaming, turn }: { streaming: boolean; turn: DockTurn }) {
       <Sparkles aria-hidden className="mt-1 size-3.5 shrink-0 text-smoke" />
       <div className="min-w-0 flex-1">
         <StreamedText
-          className="text-[13px] leading-relaxed"
+          className="t-body-sm leading-relaxed"
           id={turn.id}
           shown={turn.shown}
           streaming={streaming}

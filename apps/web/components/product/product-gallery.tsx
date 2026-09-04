@@ -50,7 +50,7 @@ function Thumbnail({
       aria-current={active}
       aria-label={`${alt}, view ${index + 1}`}
       className={cn(
-        "size-[72px] overflow-hidden rounded-[16px] border transition-colors duration-[180ms]",
+        "size-[72px] overflow-hidden rounded-[16px] border transition-colors duration-micro",
         active ? "border-bone" : "border-transparent hover:border-hairline"
       )}
       onClick={handleClick}
@@ -76,7 +76,7 @@ function ProductGallery({ alt, category, views }: ProductGalleryProps) {
       <ImageGround className="relative aspect-[4/3] rounded-[20px] p-16">
         {views.map((view, index) => (
           <div
-            className="absolute inset-0 flex items-center justify-center p-16 transition-opacity duration-[180ms]"
+            className="absolute inset-0 flex items-center justify-center p-16 transition-opacity duration-micro"
             key={view}
             style={{ opacity: index === active ? 1 : 0 }}
           >

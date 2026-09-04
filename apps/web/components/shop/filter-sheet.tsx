@@ -49,18 +49,18 @@ function FacetRow({
     <li>
       <button
         className={cn(
-          "flex w-full items-center justify-between gap-4 border-hairline border-b px-3 py-3 text-left transition-colors duration-[180ms] hover:bg-panel",
+          "flex w-full items-center justify-between gap-4 border-hairline border-b px-3 py-3 text-left transition-colors duration-micro hover:bg-panel",
           active && "bg-panel"
         )}
         onClick={handleClick}
         type="button"
       >
         <span
-          className={cn("text-[15px]", active ? "text-bone" : "text-smoke")}
+          className={cn("t-body", active ? "text-bone" : "text-smoke")}
         >
           {facet.value}
         </span>
-        <span className="font-mono text-[13px] text-smoke tabular-nums">
+        <span className="t-num-xs text-smoke">
           {facet.count}
         </span>
       </button>
@@ -81,7 +81,7 @@ function Toggle({
     <button
       aria-pressed={checked}
       className={cn(
-        "inline-flex h-11 items-center gap-3 rounded-full border px-5 text-[15px] transition-colors duration-[180ms]",
+        "t-body inline-flex h-11 items-center gap-3 rounded-full border px-5 transition-colors duration-micro",
         checked
           ? "border-smoke bg-panel text-bone"
           : "border-hairline text-smoke hover:border-smoke"
@@ -92,7 +92,7 @@ function Toggle({
       <span
         aria-hidden
         className={cn(
-          "size-2 rounded-full transition-colors duration-[180ms]",
+          "size-2 rounded-full transition-colors duration-micro",
           checked ? "bg-verdant" : "bg-hairline"
         )}
       />
@@ -166,10 +166,10 @@ function FilterSheet({
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-70 bg-void/55 backdrop-blur-[4px] transition-opacity duration-[280ms] data-ending-style:opacity-0 data-starting-style:opacity-0" />
-        <Dialog.Popup className="fixed inset-y-0 left-0 z-71 flex w-[380px] max-w-[92vw] flex-col rounded-r-[28px] bg-carbon shadow-float transition-transform duration-[420ms] ease-[cubic-bezier(.22,1,.36,1)] data-ending-style:-translate-x-full data-starting-style:-translate-x-full data-ending-style:duration-[280ms] data-ending-style:ease-[cubic-bezier(.65,0,.35,1)]">
+        <Dialog.Backdrop className="fixed inset-0 z-70 bg-void/55 backdrop-blur-[4px] transition-opacity duration-exit data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <Dialog.Popup className="fixed inset-y-0 left-0 z-71 flex w-[380px] max-w-[92vw] flex-col rounded-r-[28px] bg-carbon shadow-float transition-transform duration-standard ease-[cubic-bezier(.22,1,.36,1)] data-ending-style:-translate-x-full data-starting-style:-translate-x-full data-ending-style:duration-exit data-ending-style:ease-[cubic-bezier(.65,0,.35,1)]">
           <div className="flex items-center justify-between px-7 pt-7 pb-6">
-            <Dialog.Title className="font-display font-semibold text-[24px] text-bone tracking-[-0.02em]">
+            <Dialog.Title className="t-display-sm text-bone">
               Filter
             </Dialog.Title>
             <Pill onClick={close} size="sm" variant="text">
@@ -188,9 +188,9 @@ function FilterSheet({
                   label="Compatible with my build"
                   onToggle={onBuild}
                 />
-                <p className="mt-3 text-[13px] text-smoke">{page.buildName}</p>
+                <p className="t-body-sm mt-3 text-smoke">{page.buildName}</p>
                 {params.compatibleOnly ? (
-                  <p className="mt-2 font-mono text-[13px] text-smoke tabular-nums">
+                  <p className="t-num-xs mt-2 text-smoke">
                     {page.total} of {page.buildCompatible}
                   </p>
                 ) : null}

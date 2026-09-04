@@ -1,10 +1,6 @@
-"use client";
-
 import { Label } from "@workspace/ui/components/label";
 import { CountUp } from "@workspace/ui/components/motion/count-up";
-import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
-import { useCallback, useState } from "react";
 import { PillLink } from "@/components/common/pill-link";
 import { shellRoutes } from "@/lib/routes";
 
@@ -38,7 +34,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-6 py-2.5">
       <Label>{label}</Label>
-      <span className="font-mono text-[15px] text-bone tabular-nums">
+      <span className="t-num-sm text-bone">
         {value}
       </span>
     </div>
@@ -52,17 +48,14 @@ function CartSummary({
   taxPaise,
   totalPaise,
 }: CartSummaryProps) {
-  const [couponOpen, setCouponOpen] = useState(false);
-  const openCoupon = useCallback(() => setCouponOpen(true), []);
-
   return (
-    <div className="rounded-[20px] bg-panel p-7 shadow-card lg:sticky lg:top-[120px]">
+    <div className="surface-card rounded-[20px] bg-panel p-7 lg:sticky lg:top-[120px]">
       <Row label="Subtotal" value={formatPaise(subtotalPaise)} />
 
       {discountPaise > 0 ? (
         <div className="flex items-baseline justify-between gap-6 py-2.5">
           <Label>Discount</Label>
-          <span className="font-mono text-[15px] text-lacquer tabular-nums">
+          <span className="t-num-sm text-lacquer">
             −{formatPaise(discountPaise)}
           </span>
         </div>
@@ -72,12 +65,12 @@ function CartSummary({
         label="Shipping"
         value={shippingPaise === 0 ? "Free" : formatPaise(shippingPaise)}
       />
-      <Row label="Tax" value={formatPaise(taxPaise)} />
+      {taxPaise > 0 ? <Row label="Tax" value={formatPaise(taxPaise)} /> : null}
 
       <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
         <Label>Total</Label>
         <CountUp
-          className="text-[32px] text-bone"
+          className="t-num-lg text-bone"
           format={wholeRupees}
           value={totalPaise}
         />
@@ -91,21 +84,6 @@ function CartSummary({
       >
         Checkout
       </PillLink>
-
-      <div className="mt-4">
-        {couponOpen ? (
-          <input
-            aria-label="Coupon code"
-            autoFocus
-            className="h-11 w-full rounded-full border border-hairline bg-transparent px-5 text-[15px] text-bone uppercase tracking-[0.08em] placeholder:text-smoke placeholder:normal-case placeholder:tracking-normal focus:border-smoke focus:outline-none"
-            placeholder="Coupon code"
-          />
-        ) : (
-          <Pill onClick={openCoupon} size="sm" variant="text">
-            Add a coupon
-          </Pill>
-        )}
-      </div>
 
       {/* Marks, not logos: naming the methods is honest, drawing somebody
           else's trademark on a demo is not. */}
