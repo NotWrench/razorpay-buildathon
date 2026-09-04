@@ -33,15 +33,6 @@ export const storeRoutes = (slug: string) => ({
     route(`/store/${slug}/products?q=${encodeURIComponent(query)}`),
 });
 
-export const dashboardRoutes = {
-  assistant: route("/dashboard/assistant"),
-  insights: route("/dashboard/insights"),
-  inventory: route("/dashboard/inventory"),
-  orders: route("/dashboard/orders"),
-  overview: route("/dashboard"),
-  products: route("/dashboard/products"),
-};
-
 /**
  * The manager side.
  *

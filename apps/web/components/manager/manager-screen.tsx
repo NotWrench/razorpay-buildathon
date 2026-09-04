@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { toast } from "sonner";
-import { useWordStream } from "@/components/chat/use-word-stream";
 import { ConnectRazorpayNotice } from "@/components/manager/connect-razorpay-notice";
 import { FindingsList } from "@/components/manager/findings-list";
 import { ManagerComposer } from "@/components/manager/manager-composer";
-import type { ManagerTurn } from "@/components/manager/manager-thread";
 import { ManagerThread } from "@/components/manager/manager-thread";
 import { RangeMenu } from "@/components/manager/range-menu";
 import {
@@ -16,7 +13,7 @@ import {
   SeenNotBought,
   SellingWell,
 } from "@/components/manager/summary-blocks";
-import { managerReplyAction } from "@/lib/actions/manager";
+import { useMerchantAssistant } from "@/hooks/use-merchant-assistant";
 import type { ManagerRange, ManagerSummary } from "@/lib/data/types";
 
 /**
@@ -27,14 +24,30 @@ import type { ManagerRange, ManagerSummary } from "@/lib/data/types";
  * composer underneath is for the follow-up, and the thread grows below the
  * briefing rather than replacing it — the numbers stay on screen while you
  * interrogate them.
+ *
+ * The follow-up is the real merchant agent now, streaming from
+ * `/api/agent/merchant`: it pulls the store's own numbers through its tools,
+ * and every action that moves money suspends mid-turn for a card the merchant
+ * has to press. The briefing and the thread therefore agree by construction —
+ * the window selected above is sent with the turn, so the agent measures over
+ * the same period the operator is reading.
  */
 
+const SUGGESTIONS = [
+  "What should I discount this week?",
+  "Anything waiting on my approval?",
+  "What am I about to run out of?",
+] as const;
+
 function ManagerScreen({
+  merchantId,
   operator,
   ranges,
   razorpayConnected,
   summary,
 }: {
+  /** Which store the assistant's tools are pointed at. Re-checked server-side. */
+  merchantId: string;
   /** Whoever the store belongs to. The greeting is the whole page header. */
   operator: string;
   ranges: ManagerRange[];
@@ -43,37 +56,32 @@ function ManagerScreen({
   summary: ManagerSummary;
 }) {
   const [draft, setDraft] = useState("");
-  const [turns, setTurns] = useState<ManagerTurn[]>([]);
-  const stream = useWordStream();
 
-  const onSend = useCallback(async () => {
-    const question = draft.trim();
+  const {
+    addToolApprovalResponse,
+    busy,
+    error,
+    messages,
+    regenerate,
+    sendMessage,
+    stop,
+  } = useMerchantAssistant({ merchantId, rangeDays: summary.range.days });
 
-    if (question.length === 0) {
-      return;
-    }
+  const ask = useCallback(
+    (text: string) => {
+      const question = text.trim();
 
-    setDraft("");
+      if (question.length === 0 || busy) {
+        return;
+      }
 
-    const reply = await managerReplyAction(question, summary.range.id);
+      setDraft("");
+      sendMessage({ text: question });
+    },
+    [busy, sendMessage]
+  );
 
-    setTurns((current) => [
-      ...current,
-      {
-        id: `turn-${current.length}`,
-        question,
-        reply: reply.text,
-        result: reply.result,
-      },
-    ]);
-    stream.start(reply.text.split(" ").length);
-  }, [draft, stream, summary.range.id]);
-
-  const send = useCallback(() => {
-    onSend().catch(() =>
-      toast.error("The store's numbers could not be read just now.")
-    );
-  }, [onSend]);
+  const send = useCallback(() => ask(draft), [ask, draft]);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[820px] flex-col px-5 pt-16 pb-10 sm:px-8">
@@ -98,22 +106,40 @@ function ManagerScreen({
         <FindingsList findings={summary.findings} />
       </div>
 
-      {turns.length > 0 ? (
+      {messages.length > 0 ? (
         <div className="mt-14 border-hairline border-t pt-14">
           <ManagerThread
-            shown={stream.shown}
-            streaming={stream.streaming}
-            turns={turns}
+            busy={busy}
+            error={error}
+            messages={messages}
+            onApproval={addToolApprovalResponse}
+            onRetry={regenerate}
           />
         </div>
       ) : null}
 
       <div className="mt-14 pt-2">
+        {messages.length === 0 ? (
+          <ul className="mb-4 flex flex-wrap gap-x-6 gap-y-2">
+            {SUGGESTIONS.map((suggestion) => (
+              <li key={suggestion}>
+                <button
+                  className="text-[15px] text-smoke outline-none transition-colors duration-[180ms] hover:text-bone focus-visible:text-bone"
+                  onClick={() => ask(suggestion)}
+                  type="button"
+                >
+                  {suggestion}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
         <ManagerComposer
           onSend={send}
-          onStop={stream.stop}
+          onStop={stop}
           onValueChange={setDraft}
-          streaming={stream.streaming}
+          streaming={busy}
           value={draft}
         />
       </div>

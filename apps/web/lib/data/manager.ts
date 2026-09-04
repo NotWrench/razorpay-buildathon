@@ -92,6 +92,7 @@ function rangeFor(spec: RangeSpec): ManagerRange {
   const from = windowStart(spec.days);
 
   return {
+    days: spec.days,
     id: spec.id,
     label: `${SPAN.format(from)} – ${DAY.format(new Date())}`,
     previous: spec.previous,

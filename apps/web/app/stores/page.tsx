@@ -33,8 +33,8 @@ export default async function HomePage() {
         <span className="font-heading font-semibold">Agentic PC Commerce</span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <ButtonLink href="/dashboard" size="sm" variant="outline">
-            Merchant dashboard
+          <ButtonLink href="/manager" size="sm" variant="outline">
+            Manager
           </ButtonLink>
         </div>
       </header>

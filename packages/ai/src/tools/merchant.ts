@@ -259,8 +259,11 @@ export function merchantTools(ctx: AgentContext) {
         "Why orders did not complete: cancellations and failures grouped by " +
         "reason, with the value lost. Use this before speculating about why " +
         "conversion is down.",
-      execute: async ({ windowDays }) =>
-        await getCancellationSummary(ctx.merchantId, windowDays),
+      execute: async ({ windowDays }) => {
+        const summary = await getCancellationSummary(ctx.merchantId, windowDays);
+
+        return { ...summary, valueLost: formatPaise(summary.valueLostPaise) };
+      },
       inputSchema: z.object({
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
@@ -272,8 +275,21 @@ export function merchantTools(ctx: AgentContext) {
         "This is a recommendation to review with the merchant, never an " +
         "instruction — there is no tool that removes a product, by design. " +
         "Present the numbers and let them decide.",
-      execute: async ({ limit, windowDays }) =>
-        await getDiscontinueCandidates(ctx.merchantId, windowDays, limit),
+      execute: async ({ limit, windowDays }) => {
+        const result = await getDiscontinueCandidates(
+          ctx.merchantId,
+          windowDays,
+          limit
+        );
+
+        return {
+          ...result,
+          candidates: result.candidates.map((row) => ({
+            ...row,
+            revenue: formatPaise(row.revenuePaise),
+          })),
+        };
+      },
       inputSchema: z.object({
         limit: z.number().int().min(1).max(25).default(10),
         windowDays: z.number().int().min(30).max(365).default(90),
@@ -285,8 +301,21 @@ export function merchantTools(ctx: AgentContext) {
         "Stock that is not moving: weak sales against real quantity on hand, " +
         "with the capital tied up in each. Use this to ground a campaign in " +
         "evidence rather than picking products that feel slow.",
-      execute: async ({ limit, windowDays }) =>
-        await getDiscountCandidates(ctx.merchantId, windowDays, limit),
+      execute: async ({ limit, windowDays }) => {
+        const result = await getDiscountCandidates(
+          ctx.merchantId,
+          windowDays,
+          limit
+        );
+
+        return {
+          ...result,
+          candidates: result.candidates.map((row) => ({
+            ...row,
+            tiedUpCapital: formatPaise(row.stockValuePaise),
+          })),
+        };
+      },
       inputSchema: z.object({
         limit: z.number().int().min(1).max(25).default(15),
         windowDays: z.number().int().min(1).max(365).default(30),
@@ -301,12 +330,31 @@ export function merchantTools(ctx: AgentContext) {
       execute: async () => {
         const summary = await getInventorySummary(ctx.merchantId);
 
+        /*
+         * A ready-made sentence, not just a record of numbers.
+         *
+         * Handed a flat bag of counts, the model reliably answers "how is my
+         * stock" by reading the bag back out — "unconfiguredProducts = 0" —
+         * which is the database talking, not an assistant. The structured
+         * fields stay for the card that renders them; `headline` is what the
+         * model is told to say, in the words it should say it in.
+         */
+        const covered =
+          summary.unconfiguredProducts === 0
+            ? "every product has a low-stock threshold set"
+            : `${summary.unconfiguredProducts} product(s) have no low-stock threshold set, so they cannot show up in a low-stock report at all`;
+
         return {
           ...summary,
+          headline:
+            `${summary.distinctProducts} products, ${summary.unitsOnHand} units on hand, ` +
+            `${formatPaise(summary.stockValuePaise)} at retail. ` +
+            `${summary.outOfStock} out of stock, ${summary.belowThreshold} below their threshold, and ${covered}.`,
           note:
             summary.unconfiguredProducts > 0
-              ? `${summary.unconfiguredProducts} product(s) have no low-stock threshold set, so they cannot appear in a low-stock report. Say so rather than implying the store is fully covered.`
+              ? "Say the threshold gap out loud rather than implying the store is fully covered."
               : undefined,
+          stockValue: formatPaise(summary.stockValuePaise),
         };
       },
       inputSchema: z.object({}),
@@ -331,8 +379,17 @@ export function merchantTools(ctx: AgentContext) {
       description:
         "Orders by status over a window — counts and value — plus how many " +
         "are waiting on the merchant's approval.",
-      execute: async ({ windowDays }) =>
-        await getOrderSummary(ctx.merchantId, windowDays),
+      execute: async ({ windowDays }) => {
+        const summary = await getOrderSummary(ctx.merchantId, windowDays);
+
+        return {
+          ...summary,
+          byStatus: summary.byStatus.map((row) => ({
+            ...row,
+            value: formatPaise(row.valuePaise),
+          })),
+        };
+      },
       inputSchema: z.object({
         windowDays: z.number().int().min(1).max(365).default(30),
       }),

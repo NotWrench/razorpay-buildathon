@@ -1,7 +1,7 @@
 import type { Merchant } from "@workspace/db";
 import Link from "next/link";
 import { SearchField } from "@/components/product/search-field";
-import { dashboardRoutes, storeRoutes } from "@/lib/routes";
+import { managerRoutes, storeRoutes } from "@/lib/routes";
 import { AccountMenu } from "./account-menu";
 import { CartButton } from "./cart-button";
 import { StoreNav } from "./store-nav";
@@ -55,7 +55,7 @@ export function StoreHeader({
             email={email}
             links={[
               { href: routes.orders, label: "My orders" },
-              { href: dashboardRoutes.overview, label: "Merchant dashboard" },
+              { href: managerRoutes.assistant, label: "Manager" },
             ]}
           />
         </div>

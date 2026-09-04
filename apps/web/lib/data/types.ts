@@ -214,6 +214,8 @@ export interface NeverSeenRow {
 
 /** A window the manager can ask for. `id` is what the URL carries. */
 export interface ManagerRange {
+  /** The window in days, which is what the assistant is told to measure over. */
+  days: number;
   id: string;
   /** "1–31 August 2026" — what the dropdown shows. */
   label: string;

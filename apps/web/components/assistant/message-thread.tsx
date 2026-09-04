@@ -31,6 +31,7 @@ export function MessageThread<TMessage extends ThreadMessage>({
   onRetry,
   pendingLabel,
   renderOutput,
+  textVariant,
 }: {
   busy: boolean;
   deniedNote: string;
@@ -44,6 +45,8 @@ export function MessageThread<TMessage extends ThreadMessage>({
   onRetry?: () => void;
   pendingLabel: (type: string) => string;
   renderOutput: (part: ToolPartShape) => ReactNode;
+  /** How text parts are drawn. The manager's room does not use bubbles. */
+  textVariant?: "bubble" | "plain";
 }) {
   if (messages.length === 0) {
     return <>{empty}</>;
@@ -88,6 +91,7 @@ export function MessageThread<TMessage extends ThreadMessage>({
                   key={key}
                   role={message.role}
                   text={(part as unknown as { text: string }).text}
+                  variant={textVariant}
                 />
               );
             }

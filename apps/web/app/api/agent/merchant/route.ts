@@ -32,6 +32,12 @@ const bodySchema = z.object({
   conversationId: z.uuid().optional(),
   merchantId: z.uuid(),
   messages: z.array(z.any()),
+  /*
+   * The window open on the briefing screen. A number, not a figure — the agent
+   * re-derives everything it quotes from its own tools, so the worst a
+   * malformed value can do is name a window the resolver refuses.
+   */
+  rangeDays: z.number().int().positive().max(365).optional(),
 });
 
 /**
@@ -70,6 +76,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       abortSignal: request.signal,
       ctx,
       messages: body.messages as MerchantMessage[],
+      view: body.rangeDays ? { rangeDays: body.rangeDays } : undefined,
     });
   } catch (error) {
     return handleRouteError(error);

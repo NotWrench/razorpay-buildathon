@@ -201,3 +201,41 @@ export async function resolvePageContext(
     resolved,
   };
 }
+
+/**
+ * The window the merchant is looking at.
+ *
+ * Deliberately far simpler than the buyer's context above, and for the same
+ * reason it is safe: it carries no identifiers at all. The merchant's screen
+ * is a briefing over a window, so the only thing worth telling the agent is
+ * which window — everything else on that screen came from the same tools the
+ * agent can call for itself, and re-deriving a figure is cheaper than trusting
+ * one the client posted.
+ */
+export interface MerchantView {
+  /** The range selected on `/manager`, in days. */
+  rangeDays: number;
+}
+
+/** Windows the manager screen offers. Anything else is not a real view. */
+const MERCHANT_RANGE_DAYS = [7, 30, 90] as const;
+
+export function describeMerchantView(
+  view: MerchantView | undefined
+): string | null {
+  if (!view) {
+    return null;
+  }
+
+  const days = MERCHANT_RANGE_DAYS.find((value) => value === view.rangeDays);
+
+  if (!days) {
+    return null;
+  }
+
+  return (
+    `The merchant is reading the last ${days} days on their briefing screen. ` +
+    `Use windowDays: ${days} unless they name a different period, so your ` +
+    "numbers match the ones already in front of them."
+  );
+}

@@ -11,6 +11,7 @@ import {
 } from "ai";
 import { eq } from "drizzle-orm";
 import type { AgentContext } from "../context";
+import { describeMerchantView, type MerchantView } from "../page-context";
 import {
   persistAssistantMessage,
   persistReasoningStep,
@@ -48,6 +49,8 @@ export async function streamMerchantTurn(params: {
   abortSignal?: AbortSignal;
   ctx: AgentContext;
   messages: MerchantMessage[];
+  /** Which window the merchant has open on the briefing screen. */
+  view?: MerchantView;
 }): Promise<Response> {
   const { ctx, messages } = params;
 
@@ -74,6 +77,7 @@ export async function streamMerchantTurn(params: {
     abortSignal: turnSignal(params.abortSignal),
     experimental_toolApprovalSecret: approvalSigningSecret(),
     instructions: merchantPrompt({
+      pageContext: describeMerchantView(params.view) ?? undefined,
       storeName: merchant?.businessName ?? "your store",
     }),
     messages: await convertToModelMessages(cleanMessageHistory(messages)),

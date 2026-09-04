@@ -104,6 +104,8 @@ export {
 export {
   CONTEXT_PAGES,
   type ContextPage,
+  describeMerchantView,
+  type MerchantView,
   type PageContextInput,
   type ResolvedPageContext,
   resolvePageContext,
