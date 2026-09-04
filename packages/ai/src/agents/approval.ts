@@ -135,10 +135,23 @@ export function merchantApproval(_ctx: AgentContext) {
       "Change this product's stock thresholds? It changes which products get flagged for reordering."
     );
 
+  /*
+   * Enrichment writes to the catalogue, which is the one artefact external
+   * buying agents read. A wrong specification is worse than a missing one: a
+   * missing one returns `insufficient_data` and the buyer goes and checks, a
+   * wrong one produces a confident answer that sells somebody a part which
+   * does not fit. The merchant is the only one who actually knows.
+   */
+  const enrichProduct: ApprovalFor<{ productId: string }> = () =>
+    requireApproval(
+      "Save these details to the catalogue? Every buying agent reads them from now on, so a wrong figure travels."
+    );
+
   return {
     activateCampaign,
     approveAgentOrder,
     createReorderRequest,
+    enrichProduct,
     pauseCampaign,
     rejectAgentOrder,
     updateInventoryThreshold,

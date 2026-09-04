@@ -2,7 +2,7 @@ import { quoteForMerchant } from "@workspace/ai";
 import { createCheckoutOrder } from "@workspace/payments";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { resolveActor } from "@/lib/api/actor";
+import { assertKeyScope, resolveActor } from "@/lib/api/actor";
 import { handleRouteError, ok, unauthorized } from "@/lib/api/respond";
 
 const bodySchema = z.object({
@@ -45,6 +45,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const body = bodySchema.parse(await request.json());
+
+    // A key issued by one shop must not order from another. The merchantId
+    // arrives in the body, so without this the caller picks their own scope.
+    assertKeyScope(actor, body.merchantId);
 
     // Priced by the store, exactly as the in-app agent prices it.
     const quote = await quoteForMerchant(body.merchantId, body.items);

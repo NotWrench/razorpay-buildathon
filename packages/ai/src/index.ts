@@ -157,6 +157,13 @@ export {
   quoteForMerchant,
 } from "./quote";
 export {
+  type CatalogReadiness,
+  describeReadiness,
+  getCatalogReadiness,
+  type ProductReadiness,
+  type ReadinessGap,
+} from "./readiness";
+export {
   type DiscontinueCandidate,
   type DiscountCandidate,
   getDiscontinueCandidates,

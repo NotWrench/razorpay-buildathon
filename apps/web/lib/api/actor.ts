@@ -1,4 +1,6 @@
 import { auth } from "@workspace/auth";
+import type { ApiKeyMetadata } from "@workspace/db";
+import { PaymentError } from "@workspace/payments";
 import type { NextRequest } from "next/server";
 import { GUEST_COOKIE, isGuestIdentifier } from "@/lib/store/guest";
 
@@ -16,6 +18,17 @@ export interface Actor {
   identifier: string;
   /** True when the identity is a guest cookie rather than an account. */
   isGuest?: boolean;
+  /**
+   * The one store an API-key caller may trade with.
+   *
+   * Undefined for people, and for keys issued before scoping existed. Where it
+   * is set it is a hard boundary: a key issued by one shop must not be able to
+   * order from another, which is the difference between "you are an agent" and
+   * "you are *this shop's* agent".
+   */
+  merchantId?: string;
+  /** This key's own spend cap, when the merchant set one. */
+  spendCapPaise?: number;
   type: "human" | "ai_agent";
   userId: string | null;
 }
@@ -43,9 +56,13 @@ export async function resolveActor(
     const result = await auth.api.verifyApiKey({ body: { key: apiKey } });
 
     if (result.valid && result.key) {
+      const metadata = (result.key.metadata ?? {}) as ApiKeyMetadata;
+
       return {
         apiKeyId: result.key.id,
         identifier: result.key.id,
+        merchantId: metadata.merchantId,
+        spendCapPaise: metadata.spendCapPaise,
         type: "ai_agent",
         userId: result.key.referenceId ?? null,
       };
@@ -76,4 +93,30 @@ export async function resolveActor(
   }
 
   return null;
+}
+
+/**
+ * Refuses a buying agent that is reaching into a store it was not issued for.
+ *
+ * A key carries the one merchant it may trade with, and every entry point that
+ * takes a `merchantId` from the caller has to check it — otherwise the id in
+ * the request body decides which shop the agent is shopping at, which is the
+ * caller choosing their own scope.
+ *
+ * Keys issued before scoping existed carry no merchant and are left alone: a
+ * silent tightening that locks out a counterparty mid-integration is worse
+ * than the gap it closes, and `listAgentKeys` shows the merchant which of
+ * their keys are unscoped.
+ */
+export function assertKeyScope(actor: Actor, merchantId: string): void {
+  if (actor.type !== "ai_agent" || !actor.merchantId) {
+    return;
+  }
+
+  if (actor.merchantId !== merchantId) {
+    throw new PaymentError(
+      "MERCHANT_NOT_FOUND",
+      "This key was issued for a different store."
+    );
+  }
 }

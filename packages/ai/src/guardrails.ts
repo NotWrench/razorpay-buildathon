@@ -63,20 +63,88 @@ export function assertCartShape(items: CartInput[]): void {
   }
 }
 
-/** Total the agent has already committed in this conversation. */
+/** Total this buyer has already committed at this store. */
 export async function committedSpendPaise(ctx: AgentContext): Promise<number> {
+  return await committedSpendFor(ctx.merchantId, ctx.actor.identifier);
+}
+
+async function committedSpendFor(
+  merchantId: string,
+  identifier: string
+): Promise<number> {
   const [row] = await db
     .select({ total: sum(orders.totalAmount) })
     .from(orders)
     .where(
       and(
-        eq(orders.merchantId, ctx.merchantId),
-        eq(orders.buyerIdentifier, ctx.actor.identifier),
+        eq(orders.merchantId, merchantId),
+        eq(orders.buyerIdentifier, identifier),
         inArray(orders.orderStatus, ["created", "paid"])
       )
     );
 
   return Number(row?.total ?? 0);
+}
+
+export interface SpendCapSubject {
+  /** The buyer's own cap when the merchant set one, else the platform's. */
+  capPaise: number;
+  identifier: string;
+  merchantId: string;
+  type: "human" | "ai_agent";
+}
+
+/**
+ * The cap, addressed by buyer rather than by conversation.
+ *
+ * Enforcement used to live only inside the `createOrder` tool, which meant it
+ * applied to the in-app assistant and not to `POST /api/payments/orders` — the
+ * endpoint the discovery manifest points external buying agents at, while
+ * publishing a `per_conversation_cap_paise` nothing on that path checked. The
+ * rule is the same either way, so it is written once here and both paths call
+ * it.
+ */
+export async function assertSpendCapFor(
+  subject: SpendCapSubject,
+  amountPaise: number
+): Promise<void> {
+  const committed = await committedSpendFor(
+    subject.merchantId,
+    subject.identifier
+  );
+  const projected = committed + amountPaise;
+
+  if (projected <= subject.capPaise) {
+    return;
+  }
+
+  const message =
+    `This purchase would take the total committed at this store to ` +
+    `${formatPaise(projected)}, over the ${formatPaise(subject.capPaise)} cap. ` +
+    "Nothing was ordered and nothing was charged.";
+
+  await recordAudit({
+    action: AuditAction.BUDGET_CHECK_FAILED,
+    actorId: subject.identifier,
+    actorType: subject.type === "human" ? "human_buyer" : "external_ai_agent",
+    explanation: message,
+    merchantId: subject.merchantId,
+    metadata: {
+      attemptedPaise: amountPaise,
+      capPaise: subject.capPaise,
+      committedPaise: committed,
+    },
+  });
+
+  await recordFailure({
+    errorMessage: message,
+    errorType: "BUDGET_EXCEEDED",
+  });
+
+  throw violation(message, {
+    capPaise: subject.capPaise,
+    committedPaise: committed,
+  });
 }
 
 /**
@@ -90,40 +158,15 @@ export async function assertWithinSpendCap(
   ctx: AgentContext,
   amountPaise: number
 ): Promise<void> {
-  const committed = await committedSpendPaise(ctx);
-  const projected = committed + amountPaise;
-
-  if (projected <= ctx.spendCapPaise) {
-    return;
-  }
-
-  const message =
-    "This purchase would take the total committed in this conversation to " +
-    `${formatPaise(projected)}, over the ${formatPaise(ctx.spendCapPaise)} cap. ` +
-    "Nothing was ordered and nothing was charged.";
-
-  await recordAudit({
-    action: AuditAction.BUDGET_CHECK_FAILED,
-    actorId: ctx.actor.identifier,
-    actorType: ctx.actor.type === "human" ? "human_buyer" : "external_ai_agent",
-    explanation: message,
-    merchantId: ctx.merchantId,
-    metadata: {
-      attemptedPaise: amountPaise,
+  await assertSpendCapFor(
+    {
       capPaise: ctx.spendCapPaise,
-      committedPaise: committed,
+      identifier: ctx.actor.identifier,
+      merchantId: ctx.merchantId,
+      type: ctx.actor.type,
     },
-  });
-
-  await recordFailure({
-    errorMessage: message,
-    errorType: "BUDGET_EXCEEDED",
-  });
-
-  throw violation(message, {
-    capPaise: ctx.spendCapPaise,
-    committedPaise: committed,
-  });
+    amountPaise
+  );
 }
 
 export interface MarginBreach {
