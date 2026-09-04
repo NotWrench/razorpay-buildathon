@@ -14,7 +14,7 @@ import { compareProducts } from "../compare";
 import type { AgentContext } from "../context";
 import { describeMemories, recallMemories, rememberMemory } from "../memory";
 import { formatPaise, rupeesToPaise } from "../money";
-import { quoteCart } from "../quote";
+import { getPromotedPartners, quoteCart } from "../quote";
 import { optional } from "./schema";
 
 /**
@@ -447,12 +447,53 @@ export function shoppingTools(ctx: AgentContext) {
           ];
         });
 
+        /*
+         * What the merchant actually decided to promote.
+         *
+         * The two agents have shared a database and no strategy: this one
+         * suggested whatever the order history happened to correlate, while
+         * the merchant's approved bundles sat in `campaigns` affecting the
+         * price and nothing else. A bundle the merchant chose is a better
+         * suggestion than a pattern nobody endorsed — and it is the one the
+         * buyer will actually save money on, which is the honest reason to
+         * lead with it.
+         */
+        const promoted = await getPromotedPartners(ctx.merchantId, productId);
+
+        const promotedProducts = await getProductsByIds(
+          ctx.merchantId,
+          promoted.map((row) => row.productId)
+        );
+
+        const merchantPicks = promoted.flatMap((row) => {
+          const product = promotedProducts.get(row.productId);
+
+          if (!product || product.stock <= 0) {
+            return [];
+          }
+
+          return [
+            {
+              ...toModelProduct(product),
+              evidence: `Part of the store's "${row.campaignTitle}" bundle, so buying both is cheaper than buying them apart`,
+              merchantPromoted: true,
+            },
+          ];
+        });
+
+        const seen = new Set(merchantPicks.map((row) => row.id));
+
         return {
           note:
-            suggestions.length === 0
+            suggestions.length === 0 && merchantPicks.length === 0
               ? "No co-purchase history yet. Suggest a complement from the catalog on merit, and say that it is a suggestion rather than a pattern."
-              : undefined,
-          suggestions,
+              : merchantPicks.length > 0
+                ? "The merchantPromoted ones are in a live bundle the merchant approved — leading with those is both better for the buyer and what the store actually wants sold."
+                : undefined,
+          suggestions: [
+            ...merchantPicks,
+            ...suggestions.filter((row) => !seen.has(row.id)),
+          ],
         };
       },
       inputSchema: z.object({

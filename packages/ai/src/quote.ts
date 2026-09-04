@@ -126,6 +126,47 @@ export async function getActiveCampaigns(
  * `chargeCampaignBudget` in `settlement.ts`.
  */
 
+export interface PromotedPartner {
+  campaignTitle: string;
+  productId: string;
+}
+
+/**
+ * Products the merchant has bundled with this one, in a campaign that is live.
+ *
+ * The bridge between the two agents. The merchant approves a bundle because
+ * they want those two things sold together; the buyer's assistant should
+ * therefore offer it, and the buyer genuinely saves money by taking it — so
+ * this is not the shop pushing stock, it is the shop's decision reaching the
+ * conversation where it can be acted on.
+ *
+ * Only true bundles: `requiresAllProducts` means the discount fires when both
+ * are in the cart, which is exactly the case where suggesting the partner is
+ * worth real money to the buyer. A blanket percentage campaign across eight
+ * products is not a recommendation about any of them.
+ */
+export async function getPromotedPartners(
+  merchantId: string,
+  productId: string
+): Promise<PromotedPartner[]> {
+  const live = await getActiveCampaigns(merchantId);
+
+  return live.flatMap((campaign) => {
+    const rules = readRules(campaign);
+
+    if (
+      !rules.requiresAllProducts ||
+      !rules.productIds?.includes(productId)
+    ) {
+      return [];
+    }
+
+    return rules.productIds
+      .filter((id) => id !== productId)
+      .map((id) => ({ campaignTitle: campaign.title, productId: id }));
+  });
+}
+
 interface CampaignRules {
   categories?: string[];
   minSubtotalPaise?: number;

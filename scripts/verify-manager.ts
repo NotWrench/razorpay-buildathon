@@ -1182,6 +1182,90 @@ async function main() {
     check("a captured scratch order could be created", false);
   }
 
+  // -------------------------------------------------------------- case 16
+  //
+  // A bundle the merchant approved reaches the buyer's assistant.
+  //
+  // The two agents have shared a database and no strategy: the buyer's side
+  // suggested whatever the order history correlated, while approved bundles
+  // sat in `campaigns` affecting the price and nothing else. This is the one
+  // place the merchant's decision reaches the conversation where it can be
+  // acted on — and the buyer genuinely saves money by taking it, which is why
+  // it is a recommendation rather than the shop pushing stock.
+  console.log("\n16. An approved bundle reaches the buyer's assistant");
+
+  const { getPromotedPartners } = await import("@workspace/ai");
+
+  const [anchor, partner] = await db
+    .select()
+    .from(products)
+    .where(eq(products.merchantId, store.id))
+    .limit(2);
+
+  if (anchor && partner) {
+    const [bundle, blanket] = await db
+      .insert(campaigns)
+      .values([
+        {
+          approvedByMerchant: true,
+          discountType: "bundle",
+          discountValue: 50_000,
+          merchantId: store.id,
+          status: "active",
+          title: "verify-manager true bundle",
+          triggerRules: {
+            productIds: [anchor.id, partner.id],
+            requiresAllProducts: true,
+          },
+        },
+        {
+          approvedByMerchant: true,
+          discountType: "percentage",
+          discountValue: 5,
+          merchantId: store.id,
+          status: "active",
+          title: "verify-manager blanket sale",
+          triggerRules: {
+            productIds: [anchor.id, partner.id],
+            requiresAllProducts: false,
+          },
+        },
+      ])
+      .returning();
+
+    const partners = await getPromotedPartners(store.id, anchor.id);
+
+    check(
+      "the bundled partner is offered against the anchor",
+      partners.some((row) => row.productId === partner.id),
+      partners.map((row) => row.campaignTitle).join(", ") || "none found"
+    );
+
+    /*
+     * A blanket percentage across eight products is not a recommendation about
+     * any of them. Only a true bundle — where the discount fires because both
+     * are in the cart — is worth surfacing as "buy this too".
+     */
+    check(
+      "a blanket sale is not mistaken for a bundle",
+      partners.every((row) => row.campaignTitle.includes("true bundle")),
+      "only requiresAllProducts campaigns surface"
+    );
+
+    check(
+      "the anchor does not suggest itself",
+      partners.every((row) => row.productId !== anchor.id)
+    );
+
+    if (bundle && blanket) {
+      await db
+        .delete(campaigns)
+        .where(inArray(campaigns.id, [bundle.id, blanket.id]));
+    }
+  } else {
+    check("two products exist to bundle", false);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
 }

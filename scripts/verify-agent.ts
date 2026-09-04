@@ -95,6 +95,25 @@ function toolsUsed(steps: { toolCalls?: readonly { toolName: string }[] }[]) {
 }
 
 /**
+ * Comparison text, with the model's typography flattened.
+ *
+ * Models emit non-breaking hyphens and spaces inside names they are copying
+ * verbatim, so a literal `includes` reports "it invented a product" for an
+ * answer that quoted the catalogue exactly. That is a worse failure than the
+ * one the check exists to catch: it trains you to ignore a red line.
+ */
+function flatten(text: string): string {
+  return text
+    .replace(/[‐-―−]/g, "-")
+    .replace(/[    ]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function mentions(haystack: string, needle: string): boolean {
+  return flatten(haystack).includes(flatten(needle));
+}
+
+/**
  * Every product name anywhere in a tool's output.
  *
  * Walked rather than indexed by key, because these tools return their rows
@@ -214,10 +233,25 @@ async function main() {
     "records recommendations with reasons",
     searchTools.includes("recommendProducts")
   );
+  /*
+   * Grounded in what this run was handed, not in a list of names written when
+   * the seed looked different — the same reasoning scenario 4 already spells
+   * out. The catalogue has since grown, and the hardcoded list started failing
+   * runs where the agent recommended a perfectly good card that postdated it.
+   * What matters is that the product came out of the data rather than out of
+   * the model.
+   */
+  const offered = namesIn([
+    ...toolOutputs(search.steps, "searchProducts"),
+    ...toolOutputs(search.steps, "recommendProducts"),
+  ]);
+
+  const named = offered.filter((name) => mentions(search.text, name));
+
   check(
     "mentions a real catalogue product",
-    /4060|RX 7600|Zotac|Sapphire|Arc A750/i.test(search.text),
-    "grounded in retrieved products"
+    named.length > 0,
+    named[0] ?? `nothing from the ${offered.length} it was handed`
   );
   check(
     "does not claim to have ordered anything",
@@ -433,7 +467,7 @@ async function main() {
     ...toolOutputs(insight.steps, "getTopPerformers"),
   ]);
 
-  const cited = reported.filter((name) => insight.text.includes(name));
+  const cited = reported.filter((name) => mentions(insight.text, name));
 
   check(
     "names a genuinely slow product",
@@ -445,10 +479,18 @@ async function main() {
     toolOutputs(insight.steps, "activateCampaign").length === 0
   );
 
-  const drafted = toolOutputs(insight.steps, "draftCampaign") as {
-    drafted?: boolean;
-    projection?: { projectedIncrementalRevenue: string };
-  }[];
+  /*
+   * The *successful* draft, not the first call. Since the margin floor landed,
+   * a first attempt can be refused for selling below cost — which is the
+   * behaviour that guardrail exists to produce — and keying on `[0]` failed
+   * the run on exactly the outcome we want.
+   */
+  const drafted = (
+    toolOutputs(insight.steps, "draftCampaign") as {
+      drafted?: boolean;
+      projection?: { projectedIncrementalRevenue: string };
+    }[]
+  ).filter((row) => row.drafted === true);
 
   if (drafted.length > 0) {
     console.log(

@@ -167,6 +167,8 @@ export {
 export {
   type AppliedCampaign,
   getActiveCampaigns,
+  getPromotedPartners,
+  type PromotedPartner,
   type Quote,
   type QuoteCartInput,
   type QuoteLine,

@@ -11,6 +11,7 @@ import {
   recordMarginBreach,
 } from "../guardrails";
 import { getEffectivePolicy } from "../policy";
+import { closeTask, openTask } from "../tasks";
 import { formatPaise, percentageOff } from "../money";
 import { optional } from "./schema";
 
@@ -253,6 +254,17 @@ export function campaignTools(ctx: AgentContext) {
           return { drafted: false, error: "Could not save the draft." };
         }
 
+        /*
+         * A campaign is an intent with an outcome, which is exactly what
+         * `agent_tasks` is for — and until now no merchant flow opened one, so
+         * §24's question ("did the agent actually help") was only answerable
+         * on the buyer's side. It closes when the campaign is measured.
+         */
+        await openTask(ctx, {
+          intent: `Campaign: ${input.title}`,
+          mode: "campaign",
+        });
+
         await recordAudit({
           action: AuditAction.CAMPAIGN_DRAFTED,
           actorId: ctx.actor.userId ?? ctx.actor.identifier,
@@ -356,8 +368,25 @@ export function campaignTools(ctx: AgentContext) {
         "started, with the discount given away and the margin left after it. " +
         "Read the caveat it returns out loud — this is a before-and-after, " +
         "not a controlled experiment.",
-      execute: async ({ campaignId }) =>
-        await measureCampaign(ctx.merchantId, campaignId),
+      execute: async ({ campaignId }) => {
+        const measured = await measureCampaign(ctx.merchantId, campaignId);
+
+        /*
+         * The outcome, recorded against the intent. "More units than the
+         * window before" is a weak signal and the caveat says so — but it is
+         * the only outcome this database can observe, and a task left open
+         * forever is indistinguishable from one nobody looked at.
+         */
+        if (measured.found) {
+          await closeTask(
+            ctx,
+            measured.unitsChange > 0 ? "resolved" : "failed",
+            `${measured.title}: ${measured.unitsChange >= 0 ? "+" : ""}${measured.unitsChange} units against the window before, ${measured.givenAway} given away.`
+          );
+        }
+
+        return measured;
+      },
       inputSchema: z.object({ campaignId: z.uuid() }),
     }),
 

@@ -12,6 +12,40 @@
 
 ---
 
+## 0a. What shipped
+
+All six milestones are implemented and committed. The table below is what the
+plan asked for against what is actually in the tree.
+
+| Milestone | State | Deviations worth knowing |
+| --- | --- | --- |
+| **M0** Ship the agent | Done | Also had to move the window instruction to the top of the prompt — at the foot it lost to the tool schema's own `default(30)` on one run in three |
+| **M1** Stop lying | Done | `/manager` had **no authorization at all**; the own-store gate had to land first. "Mark fulfilled" was cut rather than backed by an invented column |
+| **M2** Measure money | Done | Found and fixed a real hole in passing: `POST /api/payments/orders` accepted `discountAmount` from the request body, so a buying agent could order at zero |
+| **M3** Sellable | Done | `enrichProduct` needed `sourcedFrom` provenance — the model invented specs across repeated runs and the gate alone was not enough |
+| **M4** Levers | Done | `draftBundle` was not added as a separate tool: `draftCampaign` already takes `requiresAllProducts` and `discountType: "bundle"`, so a wrapper would be a second name for one thing |
+| **M5** Orchestrate | Done | — |
+| **M6** Fail well | Done | Razorpay returns a bare `{statusCode: 404}` with no description; `toPaymentError` now maps statuses to something a merchant can act on |
+
+**Verification.** `bun run verify:manager` — 57 deterministic checks over the
+writes, the bounds and the failure paths. `bun run verify:merchant` — 33 checks
+against a live model, over evidence and restraint. Both green.
+
+**Known flakiness, pre-existing and not from this work.** `verify:agent`
+(the buyer suite) intermittently fails scenario 2's "quotes the cart" because
+the model sometimes searches twice instead of calling `quoteOrder`. Three
+harness bugs in that file *were* fixed here — Unicode look-alikes in copied
+product names, a first draft refused by the new margin floor being read as a
+missing projection, and a hardcoded product list that the grown catalogue had
+outlived. `quoteCart` itself was confirmed correct after the `quoteForMerchant`
+refactor.
+
+**Not done, deliberately.** Feeding accepted bundles into `suggestUpsell` is
+done; the storefront's own prompt was not otherwise touched. Shipping and
+fulfilment remain out of scope, as §12 states.
+
+---
+
 ## 0. The headline
 
 There is a merchant agent. It has twenty-two tools, an approval gate, an audit
