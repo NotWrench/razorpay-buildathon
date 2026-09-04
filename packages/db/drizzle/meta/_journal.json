@@ -78,6 +78,13 @@
       "when": 1788539049544,
       "tag": "0010_vengeful_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788558506925,
+      "tag": "0011_quiet_chat",
+      "breakpoints": true
     }
   ]
 }

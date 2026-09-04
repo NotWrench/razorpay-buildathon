@@ -222,6 +222,44 @@ export const payments = pgTable(
   ]
 );
 
+/**
+ * Every price this product has ever carried, and who moved it.
+ *
+ * A price change is not like other edits. It applies to every future order
+ * rather than one, it is invisible after the fact — the row simply holds a
+ * different number — and the question a merchant asks three weeks later is
+ * "why is this ₹4,000 more than it was?", which nothing in the schema could
+ * answer.
+ *
+ * So the old price is kept with the reason and the actor beside it. This is
+ * what makes `updateProductPrice` safe enough to exist: the change is bounded
+ * before it happens and legible afterwards.
+ */
+export const productPriceHistory = pgTable(
+  "product_price_history",
+  {
+    /** "merchant" | "ai_assistant" — who actually moved it. */
+    actorType: text("actor_type").notNull(),
+    changedBy: text("changed_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    merchantId: uuid("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    newPrice: integer("new_price").notNull(),
+    oldPrice: integer("old_price").notNull(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    /** Required. A price move with no stated basis is one nobody can check. */
+    reason: text("reason").notNull(),
+  },
+  (table) => [
+    index("product_price_history_productId_idx").on(table.productId),
+    index("product_price_history_merchantId_idx").on(table.merchantId),
+  ]
+);
+
 export const campaigns = pgTable(
   "campaigns",
   {

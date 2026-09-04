@@ -16,6 +16,7 @@ import { z } from "zod";
 import {
   getAgentBuyerActivity,
   getAttachRates,
+  getMissedAttachOpportunities,
   getPaymentHealth,
   getPendingAgentOrders,
   getProductPerformance,
@@ -281,6 +282,62 @@ export function merchantTools(ctx: AgentContext) {
       inputSchema: z.object({
         anchorProductId: optional(z.uuid()),
         limit: z.number().int().min(1).max(20).default(10),
+      }),
+    }),
+
+    getMissedAttachOpportunities: tool({
+      description:
+        "Orders that carried a product and left its usual companion behind, " +
+        "and what those orders would have been worth with it. This is the " +
+        "cross-sell number worth acting on — getAttachRate says how often " +
+        "they go together, this says how often they did not. Use it to pick " +
+        "what to bundle.",
+      execute: async ({ limit }) => {
+        const rows = await getMissedAttachOpportunities(ctx.merchantId, {
+          limit,
+        });
+
+        return {
+          note: "This is the size of the opportunity, not money that was lost. Nobody was going to add the companion to every one of those orders — say so rather than presenting it as a shortfall.",
+          opportunities: rows.map((row) => ({
+            ...row,
+            missedRevenue: formatPaise(row.missedRevenuePaise),
+          })),
+        };
+      },
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(20).default(8),
+      }),
+    }),
+
+    getFailedPayments: tool({
+      description:
+        "Payments that did not go through, grouped by the reason the gateway " +
+        "gave, with the value behind each. Use this before speculating about " +
+        "why conversion is down — a payment failure and a buyer changing " +
+        "their mind look identical in the order table and are entirely " +
+        "different problems.",
+      execute: async ({ windowDays }) => {
+        const health = await getPaymentHealth(ctx.merchantId);
+        const summary = await getCancellationSummary(
+          ctx.merchantId,
+          windowDays
+        );
+
+        return {
+          paymentHealth: health,
+          reasons: summary.reasons,
+          valueLost: formatPaise(summary.valueLostPaise),
+          windowDays,
+          ...(summary.reasons.length === 0 && summary.cancelledOrders > 0
+            ? {
+                note: `${summary.cancelledOrders} order(s) did not complete and nothing was recorded about why. That is a gap in the failure trail, not a clean sheet — say so.`,
+              }
+            : {}),
+        };
+      },
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
       }),
     }),
 

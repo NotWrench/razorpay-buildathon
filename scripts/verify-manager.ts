@@ -20,6 +20,7 @@ import {
   db,
   inventory,
   merchants,
+  productPriceHistory,
   productSpecs,
   products,
   reorderRequests,
@@ -623,6 +624,120 @@ async function main() {
     await db.delete(productSpecs).where(eq(productSpecs.productId, described.id));
   } else {
     check("a product has a description to cite", false, "none found");
+  }
+
+  // -------------------------------------------------------------- case 10
+  //
+  // The price tool's bounds. This is the riskiest thing in the system: it
+  // applies to every future order rather than one, and it is easy for a model
+  // to reach for. Each bound is asserted to refuse rather than to trim, and
+  // the daily count is asserted separately because a clamp on the step size is
+  // no protection at all against a sequence of steps.
+  console.log("\n10. Price moves are bounded, and refuse rather than trim");
+
+  const { pricingTools, LIMITS: PRICE_LIMITS } = await import("@workspace/ai");
+
+  const [priced] = await db
+    .select()
+    .from(products)
+    .where(
+      and(eq(products.merchantId, store.id), isNotNull(products.costPrice))
+    )
+    .limit(1);
+
+  if (priced?.costPrice) {
+    const tools = pricingTools({
+      actor: { identifier: actorId, type: "human", userId: actorId },
+      autoApproveCeilingPaise: 0,
+      conversationId: "00000000-0000-0000-0000-000000000000",
+      merchantId: store.id,
+      spendCapPaise: 0,
+      storeSlug: store.storeSlug,
+    });
+
+    const reprice = (newPricePaise: number) =>
+      // biome-ignore lint/suspicious/noExplicitAny: exercising one tool directly.
+      (tools.updateProductPrice as any).execute(
+        {
+          newPricePaise,
+          productId: priced.id,
+          reason: "Exercised by verify-manager to prove the bounds refuse.",
+        },
+        {} as never
+      ) as Promise<{ error?: string; updated: boolean }>;
+
+    const tooBig = await reprice(Math.round(priced.price * 1.5));
+
+    check(
+      "a 50% move is refused",
+      tooBig.updated === false && /over the/i.test(tooBig.error ?? ""),
+      tooBig.error?.slice(0, 70)
+    );
+
+    const belowCost = await reprice(Math.max(1, priced.costPrice - 1000));
+
+    check(
+      "a price below cost is refused",
+      belowCost.updated === false,
+      belowCost.error?.slice(0, 70)
+    );
+
+    // A small move inside every bound goes through, so the bounds are a gate
+    // rather than a wall.
+    const nudge = Math.round(priced.price * 1.05);
+    const first = await reprice(nudge);
+
+    check(
+      "a 5% move inside the bounds is allowed",
+      first.updated === true,
+      first.error ?? `moved to ${nudge}`
+    );
+
+    const second = await reprice(Math.round(nudge * 1.02));
+
+    check(
+      "a second small move is still allowed",
+      second.updated === true,
+      second.error ?? "within the daily count"
+    );
+
+    /*
+     * The bound that actually matters. Two moves are the limit, so the third
+     * must refuse — otherwise an assistant could walk a price anywhere over an
+     * afternoon in steps that each look reasonable.
+     */
+    const third = await reprice(Math.round(nudge * 1.03));
+
+    check(
+      `one move past the daily limit of ${PRICE_LIMITS.maxPriceMovesPerDay} is refused`,
+      third.updated === false && /24 hours/i.test(third.error ?? ""),
+      third.error?.slice(0, 70)
+    );
+
+    const historyRows = await db
+      .select()
+      .from(productPriceHistory)
+      .where(eq(productPriceHistory.productId, priced.id));
+
+    check(
+      "every accepted move left a row saying who and why",
+      historyRows.length === 2 &&
+        historyRows.every(
+          (row) => row.reason.length > 0 && row.changedBy.length > 0
+        ),
+      `${historyRows.length} history row(s)`
+    );
+
+    // Put the price back and clear the scratch history.
+    await db
+      .update(products)
+      .set({ price: priced.price })
+      .where(eq(products.id, priced.id));
+    await db
+      .delete(productPriceHistory)
+      .where(eq(productPriceHistory.productId, priced.id));
+  } else {
+    check("a costed product exists to reprice", false, "none found");
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);

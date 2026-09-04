@@ -30,6 +30,16 @@ export const LIMITS = {
    * product.
    */
   minMarginPercent: 0,
+  /**
+   * How far a single price move may go, as a percentage of the current price.
+   *
+   * `updateProductPrice` is the riskiest tool here: it applies to every future
+   * order rather than one, and it is easy for a model to reach for. This bounds
+   * one move; `maxPriceMovesPerDay` bounds the sequence, because a clamp on
+   * the step size does nothing against five steps in a row.
+   */
+  maxPriceMovePercent: 20,
+  maxPriceMovesPerDay: 2,
 } as const;
 
 /** Thrown as a `PaymentError` so route handlers map it to a clean HTTP status. */

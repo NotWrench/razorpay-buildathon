@@ -23,6 +23,8 @@ import { toolCallRecorder } from "../telemetry";
 import { campaignTools } from "../tools/campaigns";
 import { explainTools } from "../tools/explain";
 import { merchantTools } from "../tools/merchant";
+import { paymentOpsTools } from "../tools/payment-ops";
+import { pricingTools } from "../tools/pricing";
 import { readinessTools } from "../tools/readiness";
 import { merchantApproval } from "./approval";
 import { merchantPrompt } from "./prompts";
@@ -36,6 +38,8 @@ export function merchantToolSet(ctx: AgentContext) {
     ...campaignTools(ctx),
     ...explainTools(ctx),
     ...readinessTools(ctx),
+    ...pricingTools(ctx),
+    ...paymentOpsTools(ctx),
   };
 }
 

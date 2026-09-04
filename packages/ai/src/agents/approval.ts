@@ -155,13 +155,42 @@ export function merchantApproval(_ctx: AgentContext) {
         : "Save these details to the catalogue? Every buying agent reads them from now on, so a wrong figure travels."
     );
 
+  /**
+   * The riskiest tool here, and the card says why.
+   *
+   * A price change applies to every future order rather than one, so the
+   * merchant is shown the actual figures — the old price, the new one — rather
+   * than a generic "change this price?". The bounds around it live in the tool
+   * itself; this is the human seeing the number before it moves.
+   */
+  const updateProductPrice: ApprovalFor<{
+    newPricePaise: number;
+    reason: string;
+  }> = ({ newPricePaise }) =>
+    requireApproval(
+      `Change this product's price to ${formatPaise(newPricePaise)}? It applies to every order from now on, not just the next one.`
+    );
+
+  const refundOrder: ApprovalFor<{ orderId: string; reason: string }> = () =>
+    requireApproval(
+      "Refund this order in full? The money goes back to the buyer through Razorpay and it cannot be undone."
+    );
+
+  const issuePaymentLink: ApprovalFor<{ orderId: string }> = () =>
+    requireApproval(
+      "Issue a payment link for this order? Anyone holding the link can pay it."
+    );
+
   return {
     activateCampaign,
     approveAgentOrder,
     createReorderRequest,
     enrichProduct,
+    issuePaymentLink,
     pauseCampaign,
+    refundOrder,
     rejectAgentOrder,
     updateInventoryThreshold,
+    updateProductPrice,
   };
 }

@@ -307,6 +307,74 @@ export async function getPaymentHealth(
   return health;
 }
 
+export interface MissedAttach {
+  anchorName: string;
+  anchorProductId: string;
+  attachedName: string;
+  attachedProductId: string;
+  /** How often the attachment does come along, when it does. */
+  attachRatePercent: number;
+  /** Orders with the anchor and without the attachment. */
+  missedOrders: number;
+  /** What those orders would have been worth at the attachment's price. */
+  missedRevenuePaise: number;
+}
+
+/**
+ * The cross-sell number a merchant will actually act on.
+ *
+ * `getAttachRates` says "sleeves attach to laptops in 4% of orders", which is
+ * a fact and not yet a decision. This says the other 96% out loud and prices
+ * it: the orders that carried the anchor and left the attachment behind, and
+ * what they would have been worth. That is the gap a bundle is trying to close.
+ *
+ * Deliberately not a forecast. Nobody was going to buy the attachment on every
+ * one of those orders, and the number is the size of the opportunity rather
+ * than money anybody lost — which is what the tool says when it hands it over.
+ */
+export async function getMissedAttachOpportunities(
+  merchantId: string,
+  options: { limit?: number; minAttachRate?: number } = {}
+): Promise<MissedAttach[]> {
+  const rates = await getAttachRates(merchantId, { limit: 40 });
+
+  const attachedIds = [
+    ...new Set(rates.map((rate) => rate.attachedProductId)),
+  ];
+
+  if (attachedIds.length === 0) {
+    return [];
+  }
+
+  const priced = await db
+    .select({ id: products.id, price: products.price })
+    .from(products)
+    .where(inArray(products.id, attachedIds));
+
+  const priceById = new Map(priced.map((row) => [row.id, row.price]));
+  const floor = options.minAttachRate ?? 0.1;
+
+  return rates
+    .filter((rate) => rate.attachRate >= floor && rate.attachRate < 1)
+    .map((rate) => {
+      const missedOrders = rate.anchorOrders - rate.coOccurringOrders;
+
+      return {
+        anchorName: rate.anchorName,
+        anchorProductId: rate.anchorProductId,
+        attachedName: rate.attachedName,
+        attachedProductId: rate.attachedProductId,
+        attachRatePercent: Number((rate.attachRate * 100).toFixed(1)),
+        missedOrders,
+        missedRevenuePaise:
+          missedOrders * (priceById.get(rate.attachedProductId) ?? 0),
+      };
+    })
+    .filter((row) => row.missedOrders > 0)
+    .sort((a, b) => b.missedRevenuePaise - a.missedRevenuePaise)
+    .slice(0, options.limit ?? 10);
+}
+
 export interface AgentBuyerActivity {
   approvalRatePercent: number | null;
   approvedOrders: number;

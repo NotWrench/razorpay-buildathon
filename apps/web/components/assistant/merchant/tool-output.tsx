@@ -302,6 +302,161 @@ export function MerchantToolOutput({ part }: { part: ToolPartShape }) {
         </ToolCard>
       );
 
+    case "tool-updateProductPrice":
+      return output.updated ? (
+        <ToolCard title="Price changed" tone="success">
+          <p>{output.summary}</p>
+          <p className="mt-1 text-muted-foreground text-xs">
+            Margin now {output.marginAfter}.
+          </p>
+        </ToolCard>
+      ) : (
+        <ErrorCard message={output.error ?? "Could not change that price."} />
+      );
+
+    case "tool-getPriceHistory":
+      if (!output.found) {
+        return <ErrorCard message={output.error ?? "No such product."} />;
+      }
+
+      return (
+        <ToolCard title={`${output.name} · ${output.currentPrice}`}>
+          <p className="text-muted-foreground text-xs">
+            Margin {output.margin}.
+          </p>
+          {(output.changes ?? []).length === 0 ? (
+            <p className="mt-2 text-muted-foreground">
+              The price has never been changed here.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1">
+              {(output.changes ?? []).map((change: Output) => (
+                <li key={`${change.at}-${change.to}`}>
+                  <span className="font-medium tabular-nums">
+                    {change.from} → {change.to}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    — {change.by}: {change.reason}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ToolCard>
+      );
+
+    case "tool-refundOrder":
+      if (output.refunded) {
+        return (
+          <ToolCard title="Refunded" tone="success">
+            <p>{output.summary}</p>
+          </ToolCard>
+        );
+      }
+
+      /*
+       * The failure this system exists to handle well. The state line is
+       * rendered beside the gateway's message because "it failed" and "it
+       * failed and nothing moved" are different things to read at the moment
+       * money was supposed to go back to a customer.
+       */
+      return (
+        <ToolCard title="Razorpay refused the refund" tone="danger">
+          <p className="text-foreground">{output.error}</p>
+          {output.state ? (
+            <p className="mt-2 font-medium text-xs">{output.state}</p>
+          ) : null}
+        </ToolCard>
+      );
+
+    case "tool-issuePaymentLink":
+      return output.issued ? (
+        <ToolCard title={output.reused ? "Link already live" : "Payment link"}>
+          <p>{output.summary}</p>
+          {output.url ? (
+            <p className="mt-1 break-all font-mono text-xs">{output.url}</p>
+          ) : null}
+        </ToolCard>
+      ) : (
+        <ErrorCard message={output.error ?? "Could not issue a link."} />
+      );
+
+    case "tool-getOrderPaymentStatus":
+      if (!output.found) {
+        return (
+          <ToolCard title="Not found">
+            <p className="text-muted-foreground">
+              No order with that id in this store.
+            </p>
+          </ToolCard>
+        );
+      }
+
+      return (
+        <ToolCard title="Payment state">
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Stat label="Order" value={output.orderStatus} />
+            <Stat label="Approval" value={output.approvalStatus} />
+            <Stat label="Payment" value={output.paymentStatus} />
+            <Stat label="Total" value={output.total} />
+          </dl>
+        </ToolCard>
+      );
+
+    case "tool-getMissedAttachOpportunities":
+      return (
+        <ToolCard title="Left behind">
+          {(output.opportunities ?? []).length === 0 ? (
+            <p className="text-muted-foreground">
+              Nothing measurable yet — not enough repeat pairs.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {(output.opportunities ?? []).map((row: Output) => (
+                <li
+                  key={`${row.anchorProductId}-${row.attachedProductId}`}
+                  className="flex justify-between gap-2"
+                >
+                  <span>
+                    {row.anchorName} without {row.attachedName}
+                  </span>
+                  <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+                    {row.missedOrders} × · {row.missedRevenue}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 border-border border-t pt-2 text-muted-foreground text-xs">
+            {output.note}
+          </p>
+        </ToolCard>
+      );
+
+    case "tool-getFailedPayments":
+      return (
+        <ToolCard
+          title={`Payments · last ${output.windowDays} days`}
+          tone={(output.reasons ?? []).length > 0 ? "warning" : "neutral"}
+        >
+          <p>{output.valueLost} lost to orders that did not complete.</p>
+          <ul className="mt-2 space-y-1">
+            {(output.reasons ?? []).map((row: Output) => (
+              <li key={row.errorType}>
+                <span className="font-medium">
+                  {humanizeAction(row.errorType)} × {row.count}
+                </span>
+                <span className="text-muted-foreground"> — {row.sample}</span>
+              </li>
+            ))}
+          </ul>
+          {output.note ? (
+            <p className="mt-2 text-muted-foreground text-xs">{output.note}</p>
+          ) : null}
+        </ToolCard>
+      );
+
     case "tool-getAgentOrderQueue":
       return <AgentQueueCard orders={output.orders ?? []} />;
 
