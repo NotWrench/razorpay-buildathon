@@ -24,7 +24,7 @@ import {
   reorderRequests,
   user,
 } from "@workspace/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 
 let passed = 0;
 let failed = 0;
@@ -279,6 +279,122 @@ async function main() {
     "and still returns it under its own",
     ownReachable !== undefined,
     "the scope excludes, it does not just always fail"
+  );
+
+  // --------------------------------------------------------------- case 5
+  //
+  // The margin floor. A percentage cap cannot express "below cost", because
+  // 30% is generous on a case fan and ruinous on a card bought at 90% of list.
+  console.log("\n5. A discount below cost is refused, not trimmed");
+
+  const { checkMarginFloor, getMarginSummary, LIMITS } = await import(
+    "@workspace/ai"
+  );
+
+  const [costed] = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.merchantId, store.id), isNotNull(products.costPrice)))
+    .limit(1);
+
+  if (!costed?.costPrice) {
+    console.log("  (no costed product — run `bun run backfill:costs` first)");
+    check("a product has a cost recorded", false, "nothing to check against");
+  } else {
+    const ruinous = await checkMarginFloor(
+      store.id,
+      [costed.id],
+      (price) => Math.round(price * 0.95)
+    );
+
+    check(
+      "95% off breaches the floor",
+      ruinous.breaches.length === 1,
+      `${ruinous.breaches[0]?.name ?? "nothing"} flagged`
+    );
+
+    const fine = await checkMarginFloor(store.id, [costed.id], () => 0);
+
+    check(
+      "no discount does not",
+      fine.breaches.length === 0,
+      "the floor refuses discounts, not products"
+    );
+
+    /*
+     * The floor is the product's own cost, not a flat percentage. This is the
+     * property a percentage cap cannot have, and the reason both bounds exist.
+     */
+    const marginPaise = costed.price - costed.costPrice;
+    const justUnder = await checkMarginFloor(
+      store.id,
+      [costed.id],
+      () => marginPaise + 1
+    );
+    const justOver = await checkMarginFloor(
+      store.id,
+      [costed.id],
+      () => Math.max(0, marginPaise - 1)
+    );
+
+    check(
+      "the floor sits exactly at this product's cost",
+      justUnder.breaches.length === 1 && justOver.breaches.length === 0,
+      `margin is ${marginPaise} paise on a ${costed.price} paise product`
+    );
+  }
+
+  const [uncosted] = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.merchantId, store.id), isNull(products.costPrice)))
+    .limit(1);
+
+  if (uncosted) {
+    const unknown = await checkMarginFloor(
+      store.id,
+      [uncosted.id],
+      (price) => Math.round(price * 0.95)
+    );
+
+    check(
+      "a product with no cost is reported unchecked, not blocked",
+      unknown.breaches.length === 0 && unknown.unpriced.length === 1,
+      `${unknown.unpriced[0]} went unchecked`
+    );
+  }
+
+  console.log(`  (floor is ${LIMITS.minMarginPercent}% margin)`);
+
+  // --------------------------------------------------------------- case 6
+  //
+  // Coverage. A gross margin computed over the costed half of a catalogue and
+  // presented as the whole is worse than no figure at all.
+  console.log("\n6. Margin reports its own coverage");
+
+  const margin = await getMarginSummary(store.id, 90);
+
+  console.log(
+    `  revenue ${margin.revenuePaise}p, margin ${margin.grossMarginPercent}%, ${margin.productsWithoutCost} product(s) uncosted`
+  );
+
+  check(
+    "it counts the products it could not price",
+    margin.productsWithoutCost > 0,
+    `${margin.productsWithoutCost} have no cost — the catalogue is seeded with gaps on purpose`
+  );
+  check(
+    "the assumptions name the excluded revenue",
+    margin.assumptions.includes("no cost recorded") ||
+      margin.assumptions.includes("has a cost recorded"),
+    margin.assumptions.slice(-90)
+  );
+  check(
+    "gross margin is a plausible retail figure, not 100%",
+    margin.grossMarginPercent !== null &&
+      margin.grossMarginPercent > 0 &&
+      margin.grossMarginPercent < 50,
+    `${margin.grossMarginPercent}%`
   );
 
   console.log(`\n${passed} passed, ${failed} failed`);

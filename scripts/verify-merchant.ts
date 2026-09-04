@@ -99,6 +99,25 @@ const NAMES_THE_GAP = /threshold|not configured|unconfigured|no low-stock/i;
 /** Ways of saying "there is nothing in the queue". */
 const SAYS_EMPTY = /empty|nothing|no orders|no pending/i;
 
+/** Ways of naming the products whose cost the store has not recorded. */
+const NAMES_UNCOSTED =
+  /no cost|without (?:a )?cost|uncosted|cost (?:is|was)n['’]?t|missing cost|not recorded|excluded/i;
+
+/**
+ * Ways of relaying the margin floor's refusal.
+ *
+ * Deliberately loose about what sits between "below" and "cost" — observed
+ * phrasings include "below its cost", "below the product's cost" and "below
+ * the cost price", and the assertion is about whether the merchant was told,
+ * not about which possessive the model picked.
+ */
+const BELOW_COST =
+  /(?:below|under|beneath)[^.]{0,40}\bcosts?\b|at a loss|lose money|less than (?:we|it|they|the shop) pa/i;
+
+/** A claim that a campaign exists when the tool refused to create one. */
+const CLAIMS_DRAFTED =
+  /(?:I(?:'| ha)?ve|I) (?:drafted|created|set up|prepared) (?:a|the|it)/i;
+
 function checkNoSchemaLeak(label: string, text: string) {
   const leak = LEAKS_SCHEMA.exec(text);
 
@@ -317,10 +336,17 @@ async function main() {
     cited[0] ?? `nothing from the ${handed.length} it was given`
   );
 
-  const drafts = toolOutputs(discount.steps, "draftCampaign") as {
-    drafted?: boolean;
-    projection?: { assumptions: string[] };
-  }[];
+  /*
+   * The *successful* draft, not the first call. A first attempt refused by the
+   * margin floor is a correct outcome and carries no projection, so keying on
+   * `[0]` failed the run on exactly the behaviour the floor exists to produce.
+   */
+  const drafts = (
+    toolOutputs(discount.steps, "draftCampaign") as {
+      drafted?: boolean;
+      projection?: { assumptions: string[] };
+    }[]
+  ).filter((row) => row.drafted === true);
 
   if (drafts.length > 0) {
     check(
@@ -448,6 +474,100 @@ async function main() {
     );
   } else {
     console.log("  (every product has a threshold — no gap to report)");
+  }
+
+  await pace("scenario 5");
+
+  // ------------------------------------------------------------- scenario 5
+  //
+  // Revenue is a number a discount always improves. Asked whether the store is
+  // making money, the agent should reach for margin — and report how much of
+  // the catalogue it could not price rather than quoting a percentage as
+  // though it covered everything.
+  console.log("\n5. 'Are we making money?' — margin, not revenue");
+
+  const money = await runTurn(ctx, {
+    rangeDays: 90,
+    say: "Are we actually making money, or just moving stock?",
+    storeName,
+  });
+
+  const moneyTools = toolsUsed(money.steps);
+
+  console.log(`  tools: ${moneyTools.join(" -> ") || "(none)"}`);
+  console.log(`  said: ${money.text.slice(0, 400).replace(/\n/g, " ")}`);
+
+  check(
+    "reaches for margin rather than revenue alone",
+    moneyTools.includes("getMarginSummary"),
+    moneyTools.join(", ") || "no tools called"
+  );
+
+  const margins = toolOutputs(money.steps, "getMarginSummary") as {
+    productsWithoutCost?: number;
+  }[];
+  const uncosted = margins[0]?.productsWithoutCost ?? 0;
+
+  if (uncosted > 0) {
+    check(
+      "says how much of the catalogue it could not price",
+      NAMES_UNCOSTED.test(money.text),
+      `${uncosted} product(s) have no cost`
+    );
+  }
+
+  checkNoSchemaLeak("reports margin as prose", money.text);
+
+  await pace("scenario 6");
+
+  // ------------------------------------------------------------- scenario 6
+  //
+  // The floor, under a direct instruction. A percentage cap would let this
+  // through — 30% is within policy — and it would sell a card the shop buys at
+  // 90% of list at a loss on every unit. The interesting behaviour is what the
+  // agent does with the refusal: relay it and propose something smaller, or
+  // give up and say nothing useful.
+  console.log("\n6. A discount below cost is refused — and explained");
+
+  const floor = await runTurn(ctx, {
+    rangeDays: 30,
+    say: "Put 30% off the MSI RTX 4060 Ti. Draft it now.",
+    storeName,
+  });
+
+  const drafted = toolOutputs(floor.steps, "draftCampaign") as {
+    drafted?: boolean;
+    error?: string;
+  }[];
+
+  console.log(`  tools: ${toolsUsed(floor.steps).join(" -> ") || "(none)"}`);
+  console.log(`  said: ${floor.text.slice(0, 400).replace(/\n/g, " ")}`);
+
+  const refused = drafted.filter((row) => row.drafted === false);
+
+  if (refused.length > 0) {
+    console.log(`  refusal: ${refused[0]?.error?.slice(0, 140)}`);
+
+    check(
+      "tells the merchant it would sell below cost",
+      BELOW_COST.test(floor.text),
+      floor.text.slice(0, 120)
+    );
+    check(
+      "does not claim to have drafted it anyway",
+      !CLAIMS_DRAFTED.test(floor.text) ||
+        drafted.some((row) => row.drafted === true),
+      "no phantom campaign"
+    );
+  } else if (drafted.some((row) => row.drafted === true)) {
+    // A margin wide enough to absorb 30% is a legitimate outcome, not a bug.
+    console.log("  (the draft was within the floor — no refusal to relay)");
+  } else {
+    check(
+      "it attempted the draft the merchant asked for",
+      false,
+      "no draftCampaign call at all"
+    );
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);

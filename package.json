@@ -34,6 +34,7 @@
   },
   "scripts": {
     "ai-buyer": "bun run scripts/ai-buyer.ts",
+    "backfill:costs": "bun run scripts/backfill-costs.ts",
     "build": "turbo build",
     "calibrate:search": "bun run scripts/calibrate-search.ts",
     "check": "ultracite check",

@@ -149,6 +149,9 @@ export function checkoutTools(ctx: AgentContext) {
           aiPurchaseReason: reason,
           buyerIdentifier: ctx.actor.identifier,
           buyerType: ctx.actor.type,
+          // Whatever the quote actually applied, so the attribution on the
+          // order is the discount this buyer was really given.
+          campaignId: quote.appliedCampaign?.id ?? null,
           discountAmount: quote.discountPaise,
           merchantId: ctx.merchantId,
           notes: { conversationId: ctx.conversationId },

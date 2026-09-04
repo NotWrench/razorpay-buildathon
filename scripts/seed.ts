@@ -38,6 +38,7 @@ import {
   user,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { seedCostPaise } from "./data/costs";
 import {
   PC_CANCELLATIONS,
   PC_CATALOG,
@@ -198,6 +199,11 @@ async function main() {
           // the denormalised copy the search and display paths read.
           category: item.categorySlug,
           categoryId,
+          costPrice: seedCostPaise(
+            item.sku,
+            item.categorySlug,
+            item.priceRupees
+          ),
           createdAt: listedAt,
           description: item.description,
           imageUrl: item.imageUrl,

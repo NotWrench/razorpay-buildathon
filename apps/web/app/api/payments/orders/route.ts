@@ -1,3 +1,4 @@
+import { quoteForMerchant } from "@workspace/ai";
 import { createCheckoutOrder } from "@workspace/payments";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -7,7 +8,14 @@ import { handleRouteError, ok, unauthorized } from "@/lib/api/respond";
 const bodySchema = z.object({
   /** Required for agent purchases: why this cart was chosen. */
   aiPurchaseReason: z.string().max(2000).optional(),
-  discountAmount: z.number().int().min(0).optional(),
+  /*
+   * `discountAmount` used to be accepted here and passed straight through,
+   * clamped only to the subtotal. A buying agent holding an API key could
+   * therefore name its own discount and order at zero — the merchant still had
+   * to approve before money moved, but they were approving a total the buyer
+   * had chosen. The discount is now computed server-side from campaigns the
+   * merchant actually approved, and this field is gone.
+   */
   items: z
     .array(
       z.object({
@@ -38,11 +46,15 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     const body = bodySchema.parse(await request.json());
 
+    // Priced by the store, exactly as the in-app agent prices it.
+    const quote = await quoteForMerchant(body.merchantId, body.items);
+
     const result = await createCheckoutOrder({
       aiPurchaseReason: body.aiPurchaseReason,
       buyerIdentifier: actor.identifier,
       buyerType: actor.type,
-      discountAmount: body.discountAmount,
+      campaignId: quote.appliedCampaign?.id ?? null,
+      discountAmount: quote.discountPaise,
       items: body.items,
       merchantId: body.merchantId,
       notes: body.notes,

@@ -72,10 +72,13 @@ export {
 export {
   assertCartShape,
   assertWithinSpendCap,
+  checkMarginFloor,
   clampDiscountPercent,
   clampFlatDiscount,
   committedSpendPaise,
   LIMITS,
+  type MarginBreach,
+  recordMarginBreach,
 } from "./guardrails";
 export {
   type CancellationSummary,
@@ -138,12 +141,20 @@ export {
   toColumnVector,
 } from "./provider";
 export {
+  describeMargin,
+  getMarginSummary,
+  getProductMargin,
+  type MarginSummary,
+  type ProductMargin,
+} from "./margin";
+export {
   type AppliedCampaign,
   getActiveCampaigns,
   type Quote,
   type QuoteCartInput,
   type QuoteLine,
   quoteCart,
+  quoteForMerchant,
 } from "./quote";
 export {
   type DiscontinueCandidate,

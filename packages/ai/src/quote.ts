@@ -6,7 +6,7 @@ import {
   products,
 } from "@workspace/db";
 import { PaymentError } from "@workspace/payments";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { AgentContext } from "./context";
 import {
   assertCartShape,
@@ -56,11 +56,23 @@ export interface QuoteCartInput extends CartInput {
   isUpsell?: boolean;
 }
 
-/** Active, merchant-approved campaigns only. A draft never affects a price. */
+/**
+ * Campaigns that may discount an order right now.
+ *
+ * "Active and approved" is necessary and no longer sufficient. A campaign also
+ * has to be inside its window and inside its budget, and both are checked here
+ * rather than by a job that runs on a schedule — a campaign that keeps
+ * discounting for six hours after it expired because nothing swept it is
+ * exactly the failure `ends_at` was added to prevent. Reading is the moment
+ * the answer has to be right, so reading is where it is decided.
+ *
+ * A campaign found past its end or over its budget is expired on the spot, so
+ * the state on screen catches up the first time anybody prices a cart.
+ */
 export async function getActiveCampaigns(
   merchantId: string
 ): Promise<Campaign[]> {
-  return await db
+  const rows = await db
     .select()
     .from(campaigns)
     .where(
@@ -70,7 +82,49 @@ export async function getActiveCampaigns(
         eq(campaigns.approvedByMerchant, true)
       )
     );
+
+  const now = new Date();
+  const live: Campaign[] = [];
+  const finished: Campaign[] = [];
+
+  for (const campaign of rows) {
+    if (campaign.startsAt && campaign.startsAt > now) {
+      continue;
+    }
+
+    const over =
+      campaign.budgetPaise !== null &&
+      campaign.spentPaise >= campaign.budgetPaise;
+
+    if ((campaign.endsAt && campaign.endsAt <= now) || over) {
+      finished.push(campaign);
+      continue;
+    }
+
+    live.push(campaign);
+  }
+
+  if (finished.length > 0) {
+    await db
+      .update(campaigns)
+      .set({ status: "expired" })
+      .where(
+        inArray(
+          campaigns.id,
+          finished.map((campaign) => campaign.id)
+        )
+      );
+  }
+
+  return live;
 }
+
+/*
+ * Charging a campaign's budget lives in `@workspace/payments`, next to the
+ * capture that triggers it — `payments` cannot import this package, and the
+ * moment money is confirmed is the moment the discount is really spent. See
+ * `chargeCampaignBudget` in `settlement.ts`.
+ */
 
 interface CampaignRules {
   categories?: string[];
@@ -197,6 +251,31 @@ export async function quoteCart(
   items: QuoteCartInput[],
   options: { currency?: string } = {}
 ): Promise<Quote> {
+  return await quoteForMerchant(ctx.merchantId, items, options);
+}
+
+/**
+ * The same pricing, addressed by store rather than by conversation.
+ *
+ * Pricing never needed a conversation — `quoteCart` only ever read
+ * `ctx.merchantId` out of the context it was handed. Naming that explicitly
+ * lets the HTTP order endpoint price a cart the same way the agent does, which
+ * is what closes the hole underneath it: that route used to take
+ * `discountAmount` from the request body and clamp it to the subtotal, so a
+ * buying agent holding an API key could post its own discount and order at
+ * zero. The order still needed a merchant's approval before money moved, but
+ * the merchant was being shown a total the buyer had chosen.
+ *
+ * A discount is now something the store decides, computed here from campaigns
+ * the merchant actually approved, on every path into an order.
+ */
+export async function quoteForMerchant(
+  merchantId: string,
+  items: QuoteCartInput[],
+  options: { currency?: string } = {}
+): Promise<Quote> {
+  const ctx = { merchantId } as AgentContext;
+
   assertCartShape(items);
 
   const productIds = [...new Set(items.map((item) => item.productId))];

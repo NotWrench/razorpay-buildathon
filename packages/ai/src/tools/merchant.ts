@@ -30,6 +30,7 @@ import {
   getOrderSummary,
   getStockRisk,
 } from "../inventory";
+import { getMarginSummary } from "../margin";
 import { formatPaise } from "../money";
 import {
   getDiscontinueCandidates,
@@ -318,6 +319,30 @@ export function merchantTools(ctx: AgentContext) {
       },
       inputSchema: z.object({
         limit: z.number().int().min(1).max(25).default(15),
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
+
+    getMarginSummary: tool({
+      description:
+        "What the store actually kept: revenue, cost of goods and gross " +
+        "margin over a window. Use this rather than getSalesSummary whenever " +
+        "the question is whether something made money — revenue is a number " +
+        "a discount can always improve. Quote the assumptions field: some " +
+        "products have no cost recorded and their revenue is excluded, and " +
+        "the merchant needs to know how much.",
+      execute: async ({ windowDays }) => {
+        const summary = await getMarginSummary(ctx.merchantId, windowDays);
+
+        return {
+          ...summary,
+          costOfGoods: formatPaise(summary.costOfGoodsPaise),
+          grossMargin: formatPaise(summary.grossMarginPaise),
+          revenue: formatPaise(summary.revenuePaise),
+          uncostedRevenue: formatPaise(summary.uncostedRevenuePaise),
+        };
+      },
+      inputSchema: z.object({
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
     }),

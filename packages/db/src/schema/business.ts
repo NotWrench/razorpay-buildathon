@@ -57,6 +57,20 @@ export const products = pgTable(
     categoryId: uuid("category_id").references(() => productCategories.id, {
       onDelete: "set null",
     }),
+    /**
+     * What the merchant paid for one unit, in paise.
+     *
+     * Nullable on purpose, following the same rule as the specs: a product
+     * with no cost has not been configured, which is a different fact from one
+     * that costs nothing. Every tool that reports margin also reports how many
+     * products it could not price, because a gross margin computed over half
+     * the catalogue and presented as the whole is worse than no figure at all.
+     *
+     * Without this column "grow revenue" is measured by a number that a 30%
+     * discount can always improve. With it there is a floor a discount cannot
+     * cross and a question — did that campaign make money — with an answer.
+     */
+    costPrice: integer("cost_price"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     description: text("description"),
     embedding: vector("embedding", { dimensions: 1536 }),
@@ -109,6 +123,17 @@ export const orders = pgTable(
       .notNull(),
     buyerIdentifier: text("buyer_identifier").notNull(), // Email or Agent API Key ID
     buyerType: text("buyer_type", { enum: ["human", "ai_agent"] }).notNull(),
+    /**
+     * Which campaign discounted this order, if one did.
+     *
+     * `discount_amount` recorded that a discount happened and nothing about
+     * where it came from, so "did that campaign work?" had no answer: there
+     * was no way to separate orders the campaign touched from orders placed
+     * the same week. Written at checkout from whatever `quoteCart` actually
+     * applied, so the attribution is the discount the buyer was really given
+     * rather than a later guess from dates.
+     */
+    campaignId: uuid("campaign_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     currency: text("currency").default("INR").notNull(),
     discountAmount: integer("discount_amount").default(0).notNull(),
@@ -204,6 +229,19 @@ export const campaigns = pgTable(
     approvedByMerchant: boolean("approved_by_merchant")
       .default(false)
       .notNull(),
+    /**
+     * The most this campaign may ever give away, in paise.
+     *
+     * A campaign that can be started and not stopped is the one genuinely
+     * dangerous object in this system: it discounts every matching order from
+     * now until somebody notices. The budget is the bound that does not depend
+     * on anybody noticing — `spent_paise` climbs as orders are captured, and
+     * the campaign stops applying the moment it is exhausted.
+     *
+     * Null means no cap, which is a decision the merchant makes explicitly
+     * rather than a default they never saw.
+     */
+    budgetPaise: integer("budget_paise"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     description: text("description"),
     discountType: text("discount_type", {
@@ -214,8 +252,21 @@ export const campaigns = pgTable(
     merchantId: uuid("merchant_id")
       .notNull()
       .references(() => merchants.id, { onDelete: "cascade" }),
+    /** When it may begin discounting. Null means "as soon as it is active". */
+    startsAt: timestamp("starts_at"),
+    /** When it stops. Null means it runs until paused or its budget runs out. */
+    endsAt: timestamp("ends_at"),
+    /** Discount actually given away so far, in paise. */
+    spentPaise: integer("spent_paise").default(0).notNull(),
     status: text("status", {
-      enum: ["draft", "pending_approval", "active", "rejected", "expired"],
+      enum: [
+        "draft",
+        "pending_approval",
+        "active",
+        "paused",
+        "rejected",
+        "expired",
+      ],
     })
       .default("draft")
       .notNull(),

@@ -1,4 +1,4 @@
-import { db, orders } from "@workspace/db";
+import { db, orders, products } from "@workspace/db";
 import { PaymentError } from "@workspace/payments";
 import { and, eq, inArray, sum } from "drizzle-orm";
 import { AuditAction, recordAudit, recordFailure } from "./audit";
@@ -19,6 +19,17 @@ export const LIMITS = {
   maxDiscountPercent: 30,
   maxLineItems: 20,
   maxQuantityPerLine: 10,
+  /**
+   * The thinnest margin a discount may leave, as a percentage of the price.
+   *
+   * Zero means "never sell below cost". It is a separate bound from the
+   * discount cap and it has to be, because the two catch different mistakes: a
+   * 30% cap is generous on a case fan and ruinous on a graphics card the shop
+   * buys at 90% of list. The percentage cap protects against a model being
+   * silly; this protects against a model being reasonable about the wrong
+   * product.
+   */
+  minMarginPercent: 0,
 } as const;
 
 /** Thrown as a `PaymentError` so route handlers map it to a clean HTTP status. */
@@ -113,6 +124,111 @@ export async function assertWithinSpendCap(
     capPaise: ctx.spendCapPaise,
     committedPaise: committed,
   });
+}
+
+export interface MarginBreach {
+  costPaise: number;
+  discountedPricePaise: number;
+  name: string;
+  productId: string;
+}
+
+/**
+ * Refuses a discount that would sell a product below its floor.
+ *
+ * Checked against every product a campaign names, before the campaign is
+ * written. A breach is not a crash: it is logged as a `MARGIN_FLOOR_BREACHED`
+ * failure and surfaced to the agent as an explainable error it can relay — the
+ * same shape as the spend cap, for the same reason. The agent should be able
+ * to say "30% off the 4060 Ti would sell it under cost, so I capped it at 9%"
+ * rather than silently producing a campaign that loses money on every unit.
+ *
+ * Products with no recorded cost are skipped rather than blocked. An unknown
+ * margin is not a breach, and refusing every discount on an uncosted product
+ * would make the missing data look like a policy. They come back in
+ * `unpriced` so the caller can say which ones went unchecked.
+ */
+export async function checkMarginFloor(
+  merchantId: string,
+  productIds: string[],
+  discountFor: (pricePaise: number) => number
+): Promise<{ breaches: MarginBreach[]; unpriced: string[] }> {
+  if (productIds.length === 0) {
+    return { breaches: [], unpriced: [] };
+  }
+
+  const rows = await db
+    .select({
+      costPrice: products.costPrice,
+      id: products.id,
+      name: products.name,
+      price: products.price,
+    })
+    .from(products)
+    .where(
+      and(
+        eq(products.merchantId, merchantId),
+        inArray(products.id, productIds)
+      )
+    );
+
+  const breaches: MarginBreach[] = [];
+  const unpriced: string[] = [];
+
+  for (const row of rows) {
+    if (row.costPrice === null) {
+      unpriced.push(row.name);
+      continue;
+    }
+
+    const discounted = row.price - discountFor(row.price);
+    const floor = Math.ceil(
+      row.costPrice / (1 - LIMITS.minMarginPercent / 100)
+    );
+
+    if (discounted < floor) {
+      breaches.push({
+        costPaise: row.costPrice,
+        discountedPricePaise: discounted,
+        name: row.name,
+        productId: row.id,
+      });
+    }
+  }
+
+  return { breaches, unpriced };
+}
+
+/** Records a refused discount where the merchant can find it later. */
+export async function recordMarginBreach(
+  ctx: AgentContext,
+  breaches: MarginBreach[]
+): Promise<string> {
+  const message =
+    `That discount would sell ${breaches.length} product(s) below cost: ` +
+    breaches
+      .map(
+        (breach) =>
+          `${breach.name} at ${formatPaise(breach.discountedPricePaise)} against a cost of ${formatPaise(breach.costPaise)}`
+      )
+      .join("; ") +
+    ". Nothing was drafted.";
+
+  await recordAudit({
+    action: AuditAction.MARGIN_FLOOR_BREACHED,
+    actorId: ctx.actor.userId ?? ctx.actor.identifier,
+    actorType: "ai_assistant",
+    explanation: message,
+    merchantId: ctx.merchantId,
+    metadata: { breaches },
+  });
+
+  await recordFailure({
+    errorMessage: message,
+    errorType: "MARGIN_FLOOR_BREACHED",
+  });
+
+  return message;
 }
 
 /** Clamps an AI-proposed discount to something a merchant would sign off on. */

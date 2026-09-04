@@ -100,6 +100,19 @@ export function merchantApproval(_ctx: AgentContext) {
       "Activate this campaign? It will discount every matching order from now on."
     );
 
+  /*
+   * Stopping is gated too. It is not a money action in the dangerous
+   * direction — nothing is given away — but it changes what every buyer sees
+   * at checkout from the next order onward, and an assistant that can quietly
+   * end a promotion the merchant is running is as surprising as one that can
+   * quietly start it.
+   */
+  const pauseCampaign: ApprovalFor<{ campaignId: string; reason: string }> =
+    () =>
+      requireApproval(
+        "Stop this campaign? Matching orders stop being discounted from now on."
+      );
+
   /**
    * §12's inventory mutations.
    *
@@ -126,6 +139,7 @@ export function merchantApproval(_ctx: AgentContext) {
     activateCampaign,
     approveAgentOrder,
     createReorderRequest,
+    pauseCampaign,
     rejectAgentOrder,
     updateInventoryThreshold,
   };

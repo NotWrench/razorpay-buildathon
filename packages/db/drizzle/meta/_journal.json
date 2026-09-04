@@ -71,6 +71,13 @@
       "when": 1788339259492,
       "tag": "0009_light_marvel_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788539049544,
+      "tag": "0010_vengeful_callisto",
+      "breakpoints": true
     }
   ]
 }
