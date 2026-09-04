@@ -155,6 +155,20 @@ export async function streamStorefrontTurn(params: {
 
           return describeTurnFailure(error);
         },
+        /*
+         * The model's thinking, forwarded to the buyer. It defaults to off,
+         * which is a sound default for a library and the wrong one here: this
+         * agent reasons for far longer than it speaks — measured at 214
+         * reasoning deltas against 27 of content — and a turn that shows only
+         * the 27 reads as an answer arrived at without thought. What the
+         * buyer is owed is not the tokens themselves but the evidence that
+         * the machine weighed their budget against a real catalog.
+         *
+         * Nothing private travels here. The reasoning is about products and
+         * prices the buyer can already see, and the tool results it reasons
+         * over were fetched under the buyer's own scope.
+         */
+        sendReasoning: true,
         stream: result.stream,
       })
     ),

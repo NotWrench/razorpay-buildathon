@@ -116,6 +116,13 @@ export async function streamMerchantTurn(params: {
 
           return describeTurnFailure(error);
         },
+        /*
+         * Shown for the same reason as on the storefront, and with more force:
+         * a merchant is being told to discount stock or reorder against a
+         * forecast, and the working behind that number is what makes it
+         * arguable rather than something to take on faith.
+         */
+        sendReasoning: true,
         stream: result.stream,
       })
     ),

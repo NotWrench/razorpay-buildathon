@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ToolCard, ToolStatus } from "./primitives";
+import { ReasoningNote } from "./reasoning-note";
 import { TextMessage } from "./text-message";
 import { asToolPart, ToolPart, type ToolPartShape } from "./tool-part";
 
@@ -68,6 +69,15 @@ export function MessageThread<TMessage extends ThreadMessage>({
         <div className="space-y-2" key={message.id}>
           {message.parts.map((part, index) => {
             const key = `${message.id}-${index}`;
+
+            if (part.type === "reasoning") {
+              return (
+                <ReasoningNote
+                  key={key}
+                  text={(part as unknown as { text: string }).text}
+                />
+              );
+            }
 
             if (part.type === "text") {
               return (

@@ -7,6 +7,7 @@ import { formatPaise } from "@workspace/ui/lib/money";
 import { Sparkles } from "lucide-react";
 import { useCallback } from "react";
 import { storefrontPendingLabel } from "@/components/assistant/storefront/pending-labels";
+import { ReasoningTrail } from "@/components/chat/reasoning-trail";
 import { StreamedText } from "@/components/chat/streamed-text";
 import { PillLink } from "@/components/common/pill-link";
 import { shellRoutes } from "@/lib/routes";
@@ -33,6 +34,12 @@ import { shellRoutes } from "@/lib/routes";
 
 interface Part {
   type: string;
+}
+
+/** The model's own thinking, forwarded by `sendReasoning`. */
+interface ReasoningPart extends Part {
+  state?: "streaming" | "done";
+  text: string;
 }
 
 export interface AgentMessage {
@@ -350,6 +357,24 @@ export function AgentTurn({
       <div className="flex min-w-0 flex-1 flex-col gap-5">
         {message.parts.map((part, index) => {
           const key = `${message.id}-${index}`;
+
+          if (part.type === "reasoning") {
+            const reasoning = part as ReasoningPart;
+
+            return (
+              <ReasoningTrail
+                key={key}
+                /*
+                 * The part's own state, not the turn's. Reasoning ends well
+                 * before the turn does — tools run after it — and reading
+                 * `busy` here would leave the live view open, scrolling an
+                 * unchanging block, for the rest of the turn.
+                 */
+                streaming={reasoning.state !== "done"}
+                text={reasoning.text}
+              />
+            );
+          }
 
           if (part.type === "text") {
             const text = textOf(part);
