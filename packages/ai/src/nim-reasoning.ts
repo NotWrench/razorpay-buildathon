@@ -1,3 +1,5 @@
+import { cleanToolName } from "./agents/repair";
+
 /**
  * Recovering the reasoning NVIDIA NIM already sends.
  *
@@ -63,10 +65,16 @@ function sanitise(text: string): string {
   return text.replace(TAG_PATTERN, "").replace(HARMONY_TOKEN, "");
 }
 
+/** One tool call, as it streams: the name whole, the arguments in pieces. */
+interface ToolCallDelta {
+  function?: { arguments?: string; name?: string };
+}
+
 interface Delta {
   content?: string | null;
   reasoning?: string | null;
   reasoning_content?: string | null;
+  tool_calls?: ToolCallDelta[] | null;
 }
 
 interface Choice {
@@ -81,6 +89,37 @@ interface Envelope {
 }
 
 /**
+ * Strips the control tokens from a tool call's name as it goes past.
+ *
+ * The same leak as the text above, and the more expensive one. A name arrives
+ * as `searchProducts<|channel|>commentary`, and `agents/repair.ts` recovers it
+ * so the right tool runs — but only for that dispatch. The mangled name is
+ * what gets recorded on the message, so it goes back to NIM as history on the
+ * next turn, NIM renders it into its own prompt header, and its own parser
+ * then rejects it: 400, "unexpected tokens remaining in message header". One
+ * leak therefore kills every later turn of the conversation.
+ *
+ * Fixing it here rather than downstream is what makes that impossible instead
+ * of merely recoverable: the SDK never sees the mangled name, so nothing
+ * persists it, nothing renders it, and nothing sends it back. The repair in
+ * `agents/repair.ts` stays as the backstop for anything this misses.
+ *
+ * Truncating at the first `<|` is safe even though the name may in principle
+ * arrive in pieces. A fragment with no control token is left exactly as it is,
+ * and a fragment that is nothing but the token truncates to the empty string —
+ * so a split name still concatenates back to the right one either way.
+ */
+function cleanToolNames(delta: Delta): void {
+  for (const call of delta.tool_calls ?? []) {
+    const name = call.function?.name;
+
+    if (call.function && name?.includes("<|")) {
+      call.function.name = cleanToolName(name);
+    }
+  }
+}
+
+/**
  * Rewrites one delta in place, and reports whether the block is still open.
  *
  * Separate from the stream plumbing so the state machine — which is where the
@@ -90,6 +129,8 @@ export function foldDelta(
   delta: Delta,
   options: { finished: boolean; open: boolean }
 ): { open: boolean } {
+  cleanToolNames(delta);
+
   const reasoning = delta.reasoning_content ?? delta.reasoning ?? "";
   const content = delta.content ?? "";
 

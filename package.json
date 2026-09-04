@@ -49,6 +49,7 @@
     "fix": "ultracite fix",
     "format": "ultracite fix",
     "lint": "ultracite check",
+    "models:probe": "bun run scripts/probe-models.ts",
     "seed": "bun run scripts/seed.ts",
     "test": "turbo test",
     "typecheck": "turbo typecheck",

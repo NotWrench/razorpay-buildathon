@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { NoSuchToolError } from "ai";
 import {
+  cleanMessageHistory,
   cleanToolName,
   cleanToolPartType,
   repairHarmonyToolName,
@@ -199,5 +200,51 @@ describe("repairHarmonyToolName argument repair", () => {
 
   test("declines when neither the name nor the arguments need fixing", async () => {
     expect(await repair("searchProducts", '{"query":"gpu"}')).toBeNull();
+  });
+});
+
+/**
+ * Rescuing a thread that was poisoned before the boundary started cleaning.
+ *
+ * The fetch boundary stops new leaks, but conversations that already carry a
+ * mangled name — open in a tab, or replayed out of the audit trail — would
+ * otherwise stay dead: the poison goes back as history, NIM refuses to parse
+ * its own token in a prompt header, and every retry resends it. The buyer's
+ * only escape is abandoning the conversation, which is the outcome worth
+ * spending a few lines to avoid.
+ */
+describe("cleanMessageHistory", () => {
+  test("cleans a mangled tool part so the thread can continue", () => {
+    const [message] = cleanMessageHistory([
+      {
+        parts: [
+          { type: "step-start" },
+          { type: "tool-askBuyer<|channel|>commentary" },
+        ],
+      },
+    ]);
+
+    expect(message?.parts.map((part) => part.type)).toEqual([
+      "step-start",
+      "tool-askBuyer",
+    ]);
+  });
+
+  test("returns untouched messages as they are", () => {
+    // Identity matters: a new object every turn would defeat any memoisation
+    // downstream for a thread that never had a problem.
+    const messages = [{ parts: [{ type: "text" }, { type: "tool-askBuyer" }] }];
+
+    expect(cleanMessageHistory(messages)[0]).toBe(messages[0]);
+  });
+
+  test("leaves every other part of a poisoned message alone", () => {
+    const reasoning = { text: "thinking", type: "reasoning" };
+    const [message] = cleanMessageHistory([
+      { parts: [reasoning, { type: "tool-createOrder<|channel|>commentary" }] },
+    ]);
+
+    expect(message?.parts[0]).toBe(reasoning);
+    expect(message?.parts[1]?.type).toBe("tool-createOrder");
   });
 });

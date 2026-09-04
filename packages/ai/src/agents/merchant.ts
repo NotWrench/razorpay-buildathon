@@ -23,8 +23,8 @@ import { campaignTools } from "../tools/campaigns";
 import { explainTools } from "../tools/explain";
 import { merchantTools } from "../tools/merchant";
 import { merchantApproval } from "./approval";
-import { repairHarmonyToolName } from "./repair";
 import { merchantPrompt } from "./prompts";
+import { cleanMessageHistory, repairHarmonyToolName } from "./repair";
 import { summariseStep } from "./steps";
 import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
@@ -76,7 +76,7 @@ export async function streamMerchantTurn(params: {
     instructions: merchantPrompt({
       storeName: merchant?.businessName ?? "your store",
     }),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(cleanMessageHistory(messages)),
     model: chatModel(),
     onAbort: async ({ steps }) => {
       // `onFinish` does not run on an abort, so without this a turn stopped by

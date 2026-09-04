@@ -91,6 +91,39 @@ export function cleanToolPartType(type: string): string {
   return UI_PART_PREFIX + cleanToolName(type.slice(UI_PART_PREFIX.length));
 }
 
+/**
+ * The same clean, applied to a whole thread on its way back to the model.
+ *
+ * A conversation that was poisoned before the fetch boundary started cleaning
+ * names — one already in a browser tab, or replayed out of the audit trail —
+ * still carries `tool-askBuyer<|channel|>commentary` in its parts. Sent as
+ * history that becomes a prompt header NIM refuses to parse, and the thread is
+ * dead for good: every retry resends the same poison, so the buyer's only way
+ * out is to start over and lose the conversation.
+ *
+ * Applied server-side, on what arrives, because that is the last point that
+ * sees every message and the only one that does not depend on the client
+ * having been reloaded.
+ */
+export function cleanMessageHistory<
+  TMessage extends { parts: { type: string }[] },
+>(messages: TMessage[]): TMessage[] {
+  return messages.map((message) => {
+    if (!message.parts.some((part) => part.type.includes("<|"))) {
+      return message;
+    }
+
+    return {
+      ...message,
+      parts: message.parts.map((part) => {
+        const type = cleanToolPartType(part.type);
+
+        return type === part.type ? part : { ...part, type };
+      }),
+    };
+  });
+}
+
 /** Whether a string is a JSON document in its entirety. */
 function parses(text: string): boolean {
   try {

@@ -25,9 +25,9 @@ import { explainTools } from "../tools/explain";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
 import { storefrontApproval } from "./approval";
-import { repairHarmonyToolName } from "./repair";
 import { activeToolsFor, type ChatMode, modeInstructions } from "./modes";
 import { storefrontPrompt } from "./prompts";
+import { cleanMessageHistory, repairHarmonyToolName } from "./repair";
 import { summariseStep } from "./steps";
 import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
@@ -103,7 +103,7 @@ export async function streamStorefrontTurn(params: {
       pageContext: pageContext?.description,
       storeName: merchant.businessName,
     }),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(cleanMessageHistory(messages)),
     model: chatModel(),
     onAbort: async ({ steps }) => {
       // `onFinish` does not run on an abort, so without this a turn stopped by

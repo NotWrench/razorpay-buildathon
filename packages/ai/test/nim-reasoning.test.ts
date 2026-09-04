@@ -144,3 +144,74 @@ describe("foldDelta", () => {
     });
   });
 });
+
+/**
+ * Cleaning the tool name at the boundary, before anything can record it.
+ *
+ * This is the expensive half of the leak. `agents/repair.ts` recovers the name
+ * for dispatch, so the right tool runs and the turn looks fine — but the
+ * mangled name is what gets written onto the message, and the message comes
+ * back as history on the next turn. NIM renders it into its own prompt header
+ * and its own parser then refuses it with a 400. So the turn that leaks is
+ * never the turn that fails: every *later* turn does, for good, and the buyer
+ * has no way past it but abandoning the conversation.
+ *
+ * Cleaning it here is what makes that unreachable rather than survivable —
+ * the SDK never sees the mangled name, so nothing persists it and nothing
+ * sends it back.
+ */
+describe("foldDelta tool names", () => {
+  test("strips the control tokens NIM leaves on a tool name", () => {
+    const delta = {
+      tool_calls: [
+        { function: { arguments: "", name: "askBuyer<|channel|>commentary" } },
+      ],
+    };
+
+    fold(delta);
+
+    expect(delta.tool_calls.map((call) => call.function.name)).toEqual([
+      "askBuyer",
+    ]);
+  });
+
+  test("leaves a well-formed name alone", () => {
+    const delta = {
+      tool_calls: [{ function: { arguments: "", name: "searchProducts" } }],
+    };
+
+    fold(delta);
+
+    expect(delta.tool_calls.map((call) => call.function.name)).toEqual([
+      "searchProducts",
+    ]);
+  });
+
+  test("survives a name split across deltas", () => {
+    // Truncating at the first `<|` concatenates back to the right name whether
+    // the token arrives attached to the name or in a fragment of its own.
+    const head = {
+      tool_calls: [{ function: { arguments: "", name: "search" } }],
+    };
+    const tail = {
+      tool_calls: [
+        { function: { arguments: "", name: "Products<|channel|>commentary" } },
+      ],
+    };
+
+    fold(head);
+    fold(tail);
+
+    expect(
+      [...head.tool_calls, ...tail.tool_calls]
+        .map((call) => call.function.name)
+        .join("")
+    ).toBe("searchProducts");
+  });
+
+  test("leaves a delta with no tool calls untouched", () => {
+    const delta = { content: "Here are three options." };
+
+    expect(fold(delta).content).toBe("Here are three options.");
+  });
+});
