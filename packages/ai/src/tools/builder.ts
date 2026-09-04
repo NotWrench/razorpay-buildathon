@@ -15,6 +15,7 @@ import type { BuildValidation } from "@workspace/commerce/compatibility";
 import { validateBuild } from "@workspace/commerce/compatibility";
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
+import { assembleBuild } from "../build-assembly";
 import type { AgentContext } from "../context";
 import { formatPaise } from "../money";
 
@@ -115,6 +116,91 @@ export function builderTools(ctx: AgentContext) {
           .describe("Set only when this line belongs to a build."),
         productId: z.uuid(),
         quantity: z.number().int().min(1).max(10).default(1),
+      }),
+    }),
+
+    /**
+     * A whole machine, chosen deterministically.
+     *
+     * Before this the agent had `recommendProducts` per category and nothing
+     * that assembled a machine, so a build was eight searches, eight
+     * compatibility questions and a running total the model had to keep in its
+     * head — inside a twelve-step budget. It mostly ran out of steps, and the
+     * storefront worked around it by doing the whole thing client-side and
+     * never calling the agent for a build at all.
+     *
+     * The choosing stays out of the model's hands on purpose (§4): the budget
+     * split, the socket and form-factor rules and the compatibility engine
+     * decide, exactly as they do for the storefront's own screen — it is
+     * literally the same function. What the model does with the result is the
+     * part it is good at: saying which part it would change and why.
+     */
+    assembleBuild: tool({
+      description:
+        "Put together a complete, compatible PC for a budget and a use case, " +
+        "in one call. Use this the moment you know roughly what they want to " +
+        "spend and what it is for — do not assemble a machine by searching " +
+        "for parts one category at a time. Returns every slot with the part " +
+        "chosen, the running total, the compatibility verdict and, on some " +
+        "rows, one upgrade with the measured reason it costs more. Narrate " +
+        "it; do not recompute it. Save it with createBuild once they are happy.",
+      execute: async ({ budgetPaise, targetResolution, useCase }) => {
+        const assembled = await assembleBuild({
+          budgetPaise,
+          merchantId: ctx.merchantId,
+          targetResolution,
+          useCase,
+        });
+
+        return {
+          basis: assembled.basis,
+          /* The engine's words, so the model narrates rather than judges. */
+          compatibility: assembled.message,
+          estimatedWattage: assembled.wattage,
+          slots: assembled.slots.map((slot) => ({
+            category: slot.slug,
+            name: slot.candidate.product.name,
+            pricePaise: slot.candidate.product.price,
+            productId: slot.candidate.product.id,
+            required: slot.required,
+            slot: slot.label,
+            stock: slot.candidate.product.stock,
+            upgrade: slot.upgrade
+              ? {
+                  extraPaise: slot.upgrade.deltaPaise,
+                  name: slot.upgrade.candidate.product.name,
+                  productId: slot.upgrade.candidate.product.id,
+                  /* From the spec columns. Never "better performance". */
+                  reason: slot.upgrade.reason,
+                }
+              : null,
+          })),
+          totalPaise: assembled.totalPaise,
+        };
+      },
+      inputSchema: z.object({
+        budgetPaise: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "What they can spend, in paise. ₹80,000 is 8000000. Omit if " +
+              "they have not said — you will get a mid-range machine to react to."
+          ),
+        targetResolution: z
+          .string()
+          .max(40)
+          .optional()
+          .describe('As they said it: "1080p", "1440p", "4K".'),
+        useCase: z
+          .string()
+          .max(200)
+          .optional()
+          .describe(
+            "Gaming, streaming, editing, development, CAD. Moves the budget " +
+              "split — editing spends on cores, gaming on the card."
+          ),
       }),
     }),
 

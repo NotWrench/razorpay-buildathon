@@ -21,6 +21,13 @@ export {
   recordFailure,
 } from "./audit";
 export {
+  assembleBuild,
+  type AssembledBuild,
+  type AssembledSlot,
+  type BuildUpgrade,
+  type Candidate,
+} from "./build-assembly";
+export {
   type CatalogEntry,
   type CatalogScope,
   describeCatalogScope,

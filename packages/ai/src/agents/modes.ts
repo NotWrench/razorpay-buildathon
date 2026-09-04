@@ -52,6 +52,7 @@ const MODE_TOOLS: Record<ChatMode, ToolName[]> = {
   about: ["compareProducts", "suggestUpsell"],
 
   build: [
+    "assembleBuild",
     "checkBuildCompatibility",
     "createBuild",
     "updateBuild",
@@ -76,6 +77,7 @@ const MODE_TOOLS: Record<ChatMode, ToolName[]> = {
   orders: ["getOrderStatus", "createPaymentLink", "cancelOrder", "getCart"],
 
   recommend: [
+    "assembleBuild",
     "getRequirements",
     "captureRequirements",
     "recommendProducts",
