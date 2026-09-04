@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { StoreShell } from "@/components/layout/store-shell";
 import { countCart } from "@/lib/data";
+import { currentUser } from "@/lib/session";
 
 /**
  * The storefront. Every page in this group inherits the header, the footer and
@@ -15,7 +16,11 @@ export default async function StoreLayout({
 }: {
   children: ReactNode;
 }) {
-  const cartCount = await countCart();
+  const [cartCount, user] = await Promise.all([countCart(), currentUser()]);
 
-  return <StoreShell cartCount={cartCount}>{children}</StoreShell>;
+  return (
+    <StoreShell cartCount={cartCount} user={user}>
+      {children}
+    </StoreShell>
+  );
 }

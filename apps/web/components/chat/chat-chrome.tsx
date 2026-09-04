@@ -8,9 +8,11 @@ import { ArrowLeft, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { HeaderAccount } from "@/components/layout/header-account";
 import { lastStorePath } from "@/components/layout/route-memory";
 import type { ConversationSummary } from "@/lib/data/conversations";
 import { route, shellRoutes } from "@/lib/routes";
+import type { CurrentUser } from "@/lib/session";
 
 /**
  * The chat page's chrome — one thin bar, and history behind it.
@@ -136,9 +138,11 @@ function isToday(date: Date): boolean {
 function ChatChrome({
   cartCount = 0,
   conversations = [],
+  initialUser,
 }: {
   cartCount?: number;
   conversations?: ConversationSummary[];
+  initialUser?: CurrentUser;
 }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const openHistory = useCallback(() => setHistoryOpen(true), []);
@@ -185,13 +189,7 @@ function ChatChrome({
             ) : null}
           </Link>
 
-          <Link
-            aria-label="Account"
-            className="flex size-7 items-center justify-center rounded-full bg-riser transition-colors duration-micro hover:bg-hairline"
-            href={shellRoutes.account}
-          >
-            <Label className="text-2xs text-bone">S</Label>
-          </Link>
+          <HeaderAccount initialUser={initialUser} />
         </div>
       </div>
 

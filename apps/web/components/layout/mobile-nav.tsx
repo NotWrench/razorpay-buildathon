@@ -36,15 +36,30 @@ const PRIMARY: { href: Route; label: string }[] = [
   { href: shellRoutes.assistant, label: "Assistant" },
 ];
 
-const SECONDARY: { href: Route; label: string }[] = [
-  { href: shellRoutes.cart, label: "Cart" },
-  { href: shellRoutes.account, label: "Orders" },
-  { href: shellRoutes.contact, label: "Contact" },
-];
+import { useSession } from "@/lib/auth-client";
+import type { HeaderAccountUser } from "./header-account";
 
-function MobileNav() {
+interface MobileNavProps {
+  initialUser?: HeaderAccountUser | null;
+}
+
+function MobileNav({ initialUser }: MobileNavProps = {}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const user = session?.user ?? initialUser;
+
+  const secondary: { href: Route; label: string }[] = user
+    ? [
+        { href: shellRoutes.account, label: "Orders & Account" },
+        { href: shellRoutes.cart, label: "Cart" },
+        { href: shellRoutes.contact, label: "Contact" },
+      ]
+    : [
+        { href: shellRoutes.login, label: "Sign in" },
+        { href: shellRoutes.cart, label: "Cart" },
+        { href: shellRoutes.contact, label: "Contact" },
+      ];
 
   /* Any navigation closes the panel, including a back button. */
   // biome-ignore lint/correctness/useExhaustiveDependencies: closing is the effect of the path changing
@@ -106,10 +121,10 @@ function MobileNav() {
 
             <Label className="mt-9 block">Your account</Label>
             <ul className="mt-3">
-              {SECONDARY.map((item) => (
+              {secondary.map((item) => (
                 <li key={item.label}>
                   <Link
-                    className="t-body flex min-h-[44px] items-center text-smoke"
+                    className="t-body flex min-h-[44px] items-center text-smoke hover:text-bone"
                     href={item.href}
                   >
                     {item.label}
