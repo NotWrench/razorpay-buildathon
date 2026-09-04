@@ -1,5 +1,6 @@
 "use client";
 
+import { stepFor } from "@workspace/ai/client";
 import { cn } from "@workspace/ui/lib/utils";
 import { useCallback, useState } from "react";
 import { ToolCard } from "./primitives";
@@ -37,10 +38,91 @@ interface Choice {
 /** Chosen alone or not at all. */
 const EXCLUSIVE = /^(nothing|none|no)$/i;
 
+/**
+ * The choices that are actually ready to draw.
+ *
+ * A tool's input streams a token at a time, so the first few frames carry
+ * half-built entries — a label still arriving, or an empty slot where the next
+ * one will be. Drawing those gives blank buttons that answer nothing.
+ *
+ * Shorthand is a different matter and is drawn as-is: the model sends a bare
+ * `"Gaming"` as readily as a `{label, value}` pair, and the tool's schema
+ * accepts both. See `tools/requirements.ts`.
+ */
 function choicesOf(input: Record<string, unknown> | undefined): Choice[] {
   const raw = input?.choices;
 
-  return Array.isArray(raw) ? (raw as Choice[]) : [];
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const choices = raw as (string | { label?: string; value?: string } | null)[];
+
+  return choices.flatMap((choice) => {
+    if (typeof choice === "string") {
+      return choice ? [{ label: choice, value: choice }] : [];
+    }
+
+    return choice?.label
+      ? [{ label: choice.label, value: choice.value ?? choice.label }]
+      : [];
+  });
+}
+
+interface Range {
+  max: number;
+  min: number;
+  step: number;
+  unit?: string;
+}
+
+/**
+ * The range, but only once every number in it has arrived.
+ *
+ * `input.range` is truthy the moment the opening brace streams, so without
+ * this the slider mounts on `{min: 30000}` and takes its midpoint from an
+ * undefined `max` — `₹NaN`, and frozen there, because a `useState` initial
+ * value is read once and the rest of the range lands a frame later.
+ */
+function rangeOf(input: Record<string, unknown> | undefined): Range | null {
+  const raw = input?.range as Partial<Range> | [number, number] | undefined;
+
+  if (!raw) {
+    return null;
+  }
+
+  /* `[low, high]` is shorthand the tool's schema accepts, so this must too. */
+  const { max, min, step, unit } = Array.isArray(raw)
+    ? {
+        max: Math.max(...raw),
+        min: Math.min(...raw),
+        step: undefined,
+        unit: undefined,
+      }
+    : raw;
+
+  if (
+    !(Number.isFinite(min) && Number.isFinite(max)) ||
+    (max as number) <= (min as number)
+  ) {
+    return null;
+  }
+
+  const ends = { max: max as number, min: min as number };
+
+  /*
+   * A missing step is not a half-built range — the model routinely sends the
+   * two ends alone, and the tool's schema fills the rest in with this same
+   * default. See `tools/ask-buyer-schema.ts`.
+   */
+  return {
+    ...ends,
+    step:
+      Number.isFinite(step) && (step as number) > 0
+        ? (step as number)
+        : stepFor(ends),
+    unit,
+  };
 }
 
 function OptionButton({
@@ -104,9 +186,10 @@ function MultiOptions({
   return (
     <>
       <div className="mt-2 flex flex-wrap gap-2">
-        {choices.map((choice) => (
+        {choices.map((choice, index) => (
           <OptionButton
-            key={choice.value}
+            // biome-ignore lint/suspicious/noArrayIndexKey: position is the stable identity while the choices stream in
+            key={`${index}-${choice.value}`}
             label={choice.label}
             onPick={toggle}
             picked={picked.includes(choice.value)}
@@ -125,21 +208,31 @@ function MultiOptions({
   );
 }
 
+/** The middle of the range, snapped to a step the slider can actually sit on. */
+function midpoint(range: Range): number {
+  return Math.round((range.min + range.max) / 2 / range.step) * range.step;
+}
+
 function RangeOption({
   onPick,
   range,
 }: {
   onPick: (value: string) => void;
-  range: { max: number; min: number; step: number; unit?: string };
+  range: Range;
 }) {
   const unit = range.unit ?? "";
-  const [value, setValue] = useState(
-    Math.round((range.min + range.max) / 2 / range.step) * range.step
-  );
+
+  /*
+   * Null until the buyer moves it, rather than a number fixed at mount: the
+   * range can still widen by a digit after the first render, and a frozen
+   * initial value would keep showing the midpoint of a budget nobody offered.
+   */
+  const [picked, setPicked] = useState<number | null>(null);
+  const value = picked ?? midpoint(range);
 
   const onInput = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
-      setValue(Number(event.target.value)),
+      setPicked(Number(event.target.value)),
     []
   );
 
@@ -189,6 +282,7 @@ export function AskBuyerCard({ onAnswer, part }: AskBuyerCardProps) {
   const prompt = typeof input?.prompt === "string" ? input.prompt.trim() : "";
   const kind = input?.kind;
   const choices = choicesOf(input);
+  const range = rangeOf(input);
 
   if (part.state === "output-available") {
     return (
@@ -209,9 +303,10 @@ export function AskBuyerCard({ onAnswer, part }: AskBuyerCardProps) {
 
       {kind === "choice" && choices.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
-          {choices.map((choice) => (
+          {choices.map((choice, index) => (
             <OptionButton
-              key={choice.value}
+              // biome-ignore lint/suspicious/noArrayIndexKey: same
+              key={`${index}-${choice.value}`}
               label={choice.label}
               onPick={answer}
               value={choice.value}
@@ -224,18 +319,8 @@ export function AskBuyerCard({ onAnswer, part }: AskBuyerCardProps) {
         <MultiOptions choices={choices} onPick={answer} />
       ) : null}
 
-      {kind === "range" && input?.range ? (
-        <RangeOption
-          onPick={answer}
-          range={
-            input.range as {
-              max: number;
-              min: number;
-              step: number;
-              unit?: string;
-            }
-          }
-        />
+      {kind === "range" && range ? (
+        <RangeOption onPick={answer} range={range} />
       ) : null}
 
       <p className="mt-3 text-muted-foreground text-xs">or type an answer</p>

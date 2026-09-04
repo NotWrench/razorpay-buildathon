@@ -17,7 +17,8 @@ import { type ToolSet, tool } from "ai";
 import { z } from "zod";
 import { assembleBuild } from "../build-assembly";
 import type { AgentContext } from "../context";
-import { formatPaise } from "../money";
+import { formatPaise, rupeesToPaise } from "../money";
+import { optional } from "./schema";
 
 /**
  * The build and cart tools.
@@ -110,10 +111,9 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z
-          .uuid()
-          .optional()
-          .describe("Set only when this line belongs to a build."),
+        buildId: optional(z.uuid()).describe(
+          "Set only when this line belongs to a build."
+        ),
         productId: z.uuid(),
         quantity: z.number().int().min(1).max(10).default(1),
       }),
@@ -144,9 +144,19 @@ export function builderTools(ctx: AgentContext) {
         "chosen, the running total, the compatibility verdict and, on some " +
         "rows, one upgrade with the measured reason it costs more. Narrate " +
         "it; do not recompute it. Save it with createBuild once they are happy.",
-      execute: async ({ budgetPaise, targetResolution, useCase }) => {
+      execute: async ({ budgetRupees, targetResolution, useCase }) => {
         const assembled = await assembleBuild({
-          budgetPaise,
+          /*
+           * Converted here rather than by the model, which asked for paise
+           * multiplied a ₹1,25,000 budget by ten and built to ₹12,500. A
+           * tenth of a budget is indistinguishable from a real one to
+           * everything downstream, so the mistake surfaces as nothing worse
+           * than a cheap machine. See `tools/requirements.ts`.
+           */
+          budgetPaise:
+            budgetRupees === undefined
+              ? undefined
+              : rupeesToPaise(budgetRupees),
           merchantId: ctx.merchantId,
           targetResolution,
           useCase,
@@ -179,28 +189,18 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        budgetPaise: z
-          .number()
-          .int()
-          .positive()
-          .optional()
-          .describe(
-            "What they can spend, in paise. ₹80,000 is 8000000. Omit if " +
-              "they have not said — you will get a mid-range machine to react to."
-          ),
-        targetResolution: z
-          .string()
-          .max(40)
-          .optional()
-          .describe('As they said it: "1080p", "1440p", "4K".'),
-        useCase: z
-          .string()
-          .max(200)
-          .optional()
-          .describe(
-            "Gaming, streaming, editing, development, CAD. Moves the budget " +
-              "split — editing spends on cores, gaming on the card."
-          ),
+        budgetRupees: optional(z.number().positive()).describe(
+          "What they can spend, in rupees, exactly as they said it. 80000 " +
+            "for ₹80,000 — do not convert to paise. Omit if they have not " +
+            "said, and you will get a mid-range machine to react to."
+        ),
+        targetResolution: optional(z.string().max(40)).describe(
+          'As they said it: "1080p", "1440p", "4K".'
+        ),
+        useCase: optional(z.string().max(200)).describe(
+          "Gaming, streaming, editing, development, CAD. Moves the budget " +
+            "split — editing spends on cores, gaming on the card."
+        ),
       }),
     }),
 
@@ -233,8 +233,8 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z.uuid().optional(),
-        items: z.array(selectionSchema).max(20).optional(),
+        buildId: optional(z.uuid()),
+        items: optional(z.array(selectionSchema).max(20)),
       }),
     }),
 
@@ -353,21 +353,14 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z
-          .uuid()
-          .optional()
-          .describe(
-            "The buildId getCart shows against this line. Omit it only for a " +
-              "line whose buildId is null."
-          ),
+        buildId: optional(z.uuid()).describe(
+          "The buildId getCart shows against this line. Omit it only for a " +
+            "line whose buildId is null."
+        ),
         productId: z.uuid(),
-        quantity: z
-          .number()
-          .int()
-          .min(1)
-          .max(10)
-          .optional()
-          .describe("Omit to remove the line entirely."),
+        quantity: optional(z.number().int().min(1).max(10)).describe(
+          "Omit to remove the line entirely."
+        ),
       }),
     }),
 
@@ -389,7 +382,7 @@ export function builderTools(ctx: AgentContext) {
       inputSchema: z.object({
         buildId: z.uuid(),
         items: z.array(selectionSchema).min(1).max(20),
-        name: z.string().min(2).max(120).optional(),
+        name: optional(z.string().min(2).max(120)),
       }),
     }),
   } satisfies ToolSet;

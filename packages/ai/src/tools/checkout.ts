@@ -23,6 +23,7 @@ import type { AgentContext } from "../context";
 import { assertWithinSpendCap } from "../guardrails";
 import { formatPaise } from "../money";
 import { quoteCart } from "../quote";
+import { optional } from "./schema";
 
 /**
  * The money path.
@@ -199,21 +200,21 @@ export function checkoutTools(ctx: AgentContext) {
       },
       inputSchema: z
         .object({
-          cartId: z
-            .uuid()
-            .optional()
-            .describe("Order the buyer's saved cart. Omit to pass items."),
-          items: z
-            .array(
-              z.object({
-                isUpsell: z.boolean().default(false),
-                productId: z.uuid(),
-                quantity: z.number().int().min(1).max(10),
-              })
-            )
-            .min(1)
-            .max(20)
-            .optional(),
+          cartId: optional(z.uuid()).describe(
+            "Order the buyer's saved cart. Omit to pass items."
+          ),
+          items: optional(
+            z
+              .array(
+                z.object({
+                  isUpsell: z.boolean().default(false),
+                  productId: z.uuid(),
+                  quantity: z.number().int().min(1).max(10),
+                })
+              )
+              .min(1)
+              .max(20)
+          ),
           reason: z
             .string()
             .min(20)

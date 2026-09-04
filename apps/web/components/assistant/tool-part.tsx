@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanToolPartType } from "@workspace/ai/client";
 import type { ReactNode } from "react";
 import { AskBuyerCard } from "./ask-buyer-card";
 import { ApprovalCard } from "./cards";
@@ -28,11 +29,25 @@ export interface ToolPartShape {
   type: string;
 }
 
-/** Narrows a message part to a tool part, or null when it is something else. */
+/**
+ * Narrows a message part to a tool part, or null when it is something else.
+ *
+ * The type is cleaned on the way through. The model's control tokens are
+ * already attached when `tool-input-start` streams, so a mangled call reaches
+ * the browser as `tool-askBuyer<|channel|>commentary`; repairing it on the
+ * server fixes which tool runs and nothing about which component draws. For a
+ * question that is the whole conversation — it never appears, so it is never
+ * answered, and the turn waits on a pending line for good.
+ */
 export function asToolPart(part: { type: string }): ToolPartShape | null {
-  return part.type.startsWith("tool-")
-    ? (part as unknown as ToolPartShape)
-    : null;
+  if (!part.type.startsWith("tool-")) {
+    return null;
+  }
+
+  const shape = part as unknown as ToolPartShape;
+  const type = cleanToolPartType(shape.type);
+
+  return type === shape.type ? shape : { ...shape, type };
 }
 
 export function ToolPart({

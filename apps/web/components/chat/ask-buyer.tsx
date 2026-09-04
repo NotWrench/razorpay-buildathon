@@ -1,5 +1,6 @@
 "use client";
 
+import { stepFor } from "@workspace/ai/client";
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { cn } from "@workspace/ui/lib/utils";
@@ -24,22 +25,112 @@ import { useCallback, useRef, useState } from "react";
  */
 
 export interface AskBuyerInput {
-  choices?: { label: string; value: string }[];
+  choices?: (string | { label?: string; value?: string } | null)[] | null;
   field?: string;
   kind?: "choice" | "multi" | "range";
   label?: string;
   prompt?: string;
-  range?: { max: number; min: number; step: number; unit?: string };
+  range?:
+    | [number, number]
+    | { max?: number; min?: number; step?: number; unit?: string };
 }
 
 /** Chosen alone or not at all — "nothing", "none", and the like. */
 const EXCLUSIVE = /^(nothing|none|no)$/i;
 
+interface Choice {
+  label: string;
+  value: string;
+}
+
+/**
+ * The choices that are actually ready to draw.
+ *
+ * A tool's input streams in a token at a time, so for the first few frames
+ * `choices` holds half-built entries — a label still arriving, or an empty
+ * slot where the next one will be. Rendering those gives blank pills that
+ * answer nothing, so anything without a label is held back. That wait costs a
+ * few hundred milliseconds and is invisible; the alternative is not.
+ *
+ * What is *not* held back is a choice the model wrote in shorthand. It sends
+ * a bare `"Gaming"` as often as a `{label, value}` pair, and both mean the
+ * same thing — the tool's schema reads either, so this has to as well, or the
+ * question arrives with nothing to tap. See `tools/requirements.ts`.
+ */
+function readyChoices(input: AskBuyerInput): Choice[] {
+  const choices = input.choices ?? [];
+
+  return choices.flatMap((choice) => {
+    if (typeof choice === "string") {
+      return choice ? [{ label: choice, value: choice }] : [];
+    }
+
+    return choice?.label
+      ? [{ label: choice.label, value: choice.value ?? choice.label }]
+      : [];
+  });
+}
+
+interface Range {
+  max: number;
+  min: number;
+  step: number;
+  unit?: string;
+}
+
+/**
+ * The range, but only once every number in it has arrived.
+ *
+ * `input.range` is truthy the moment the opening brace streams, so without
+ * this the slider mounts on `{min: 30000}` and computes its midpoint from an
+ * undefined `max` — `₹NaN`, frozen there for good, because the initial value
+ * of a `useState` is read once and the rest of the range lands a frame later.
+ * A partly-streamed number is the same hazard in slower motion: `150` is a
+ * valid number on the way to `150000`.
+ */
+function readyRange(range: AskBuyerInput["range"]): Range | null {
+  if (!range) {
+    return null;
+  }
+
+  /* `[low, high]` is shorthand the tool's schema accepts, so this must too. */
+  const { max, min, step, unit } = Array.isArray(range)
+    ? {
+        max: Math.max(...range),
+        min: Math.min(...range),
+        step: undefined,
+        unit: undefined,
+      }
+    : range;
+
+  if (
+    !(Number.isFinite(min) && Number.isFinite(max)) ||
+    Number(max) <= Number(min)
+  ) {
+    return null;
+  }
+
+  const ends = { max: Number(max), min: Number(min) };
+
+  /*
+   * A missing step is not a half-built range — the model routinely sends the
+   * two ends and nothing else, and the tool's schema fills the rest in. The
+   * same default is used here so the slider does not shift under the buyer
+   * when the validated input replaces the streamed one.
+   */
+  return {
+    ...ends,
+    step:
+      Number.isFinite(step) && Number(step) > 0 ? Number(step) : stepFor(ends),
+    unit,
+  };
+}
+
 function ChoiceRow({
   choices,
   onPick,
 }: {
-  choices: { label: string; value: string }[];
+  choices: Choice[];
   onPick: (value: string) => void;
 }) {
   const row = useRef<HTMLDivElement>(null);
@@ -71,7 +162,8 @@ function ChoiceRow({
       {choices.map((choice, index) => (
         <ChoicePill
           delay={index * 40}
-          key={choice.value}
+          // biome-ignore lint/suspicious/noArrayIndexKey: the list only ever grows by append while the input streams, and two options may legitimately share a value
+          key={`${index}-${choice.value}`}
           label={choice.label}
           onPick={onPick}
           value={choice.value}
@@ -107,21 +199,31 @@ function ChoicePill({
   );
 }
 
+/** The middle of the range, snapped to a step the slider can actually sit on. */
+function midpoint(range: Range): number {
+  return Math.round((range.min + range.max) / 2 / range.step) * range.step;
+}
+
 function RangeAnswer({
   onPick,
   range,
 }: {
   onPick: (value: string) => void;
-  range: NonNullable<AskBuyerInput["range"]>;
+  range: Range;
 }) {
   const unit = range.unit ?? "";
-  const [value, setValue] = useState(
-    Math.round((range.min + range.max) / 2 / range.step) * range.step
-  );
+
+  /*
+   * Null until the buyer moves it, rather than a number fixed at mount. The
+   * range can still widen by a digit after the first render, and a frozen
+   * initial value would keep showing the midpoint of a budget nobody offered.
+   */
+  const [picked, setPicked] = useState<number | null>(null);
+  const value = picked ?? midpoint(range);
 
   const onInput = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
-      setValue(Number(event.target.value)),
+      setPicked(Number(event.target.value)),
     []
   );
 
@@ -159,7 +261,7 @@ function MultiAnswer({
   choices,
   onPick,
 }: {
-  choices: { label: string; value: string }[];
+  choices: Choice[];
   onPick: (value: string) => void;
 }) {
   const [picked, setPicked] = useState<string[]>([]);
@@ -191,9 +293,10 @@ function MultiAnswer({
   return (
     <div className="mt-5">
       <div className="flex flex-wrap gap-3">
-        {choices.map((choice) => (
+        {choices.map((choice, index) => (
           <MultiPill
-            key={choice.value}
+            // biome-ignore lint/suspicious/noArrayIndexKey: same — position is the stable identity while the choices stream in
+            key={`${index}-${choice.value}`}
             label={choice.label}
             onToggle={toggle}
             picked={picked.includes(choice.value)}
@@ -254,7 +357,8 @@ export function AskBuyerQuestion({
   input: AskBuyerInput;
   onAnswer: (value: string) => void;
 }) {
-  const choices = input.choices ?? [];
+  const choices = readyChoices(input);
+  const range = readyRange(input.range);
   const prompt = input.prompt?.trim();
 
   /* The prompt streams in a token at a time; there is nothing to answer yet. */
@@ -274,8 +378,8 @@ export function AskBuyerQuestion({
         {input.kind === "multi" && choices.length > 0 ? (
           <MultiAnswer choices={choices} onPick={onAnswer} />
         ) : null}
-        {input.kind === "range" && input.range ? (
-          <RangeAnswer onPick={onAnswer} range={input.range} />
+        {input.kind === "range" && range ? (
+          <RangeAnswer onPick={onAnswer} range={range} />
         ) : null}
 
         <div className="mt-6 flex items-center gap-4">

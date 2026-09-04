@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanToolPartType } from "@workspace/ai/client";
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
@@ -89,6 +90,23 @@ const NAMED_PARTS = 4;
 
 function isToolPart(part: Part): part is ToolPart {
   return part.type.startsWith("tool-");
+}
+
+/**
+ * A tool part under the name its tool actually has.
+ *
+ * The model's control tokens are already attached when `tool-input-start`
+ * streams, so a mangled call arrives here as `tool-askBuyer<|channel|>
+ * commentary` and matches none of the cases below. Repairing the call
+ * server-side fixes which tool runs and nothing about which component draws,
+ * and for `askBuyer` that is the whole conversation: the question never
+ * appears, so it can never be answered, so the turn waits on "Working…" for
+ * an answer the buyer was never offered the chance to give.
+ */
+function drawnAs(part: ToolPart): ToolPart {
+  const type = cleanToolPartType(part.type);
+
+  return type === part.type ? part : { ...part, type };
 }
 
 function textOf(part: Part): string {
@@ -460,7 +478,7 @@ export function AgentTurn({
           }
 
           return isToolPart(part) ? (
-            <ToolLine handlers={handlers} key={key} part={part} />
+            <ToolLine handlers={handlers} key={key} part={drawnAs(part)} />
           ) : null;
         })}
       </div>

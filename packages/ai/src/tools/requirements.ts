@@ -1,6 +1,7 @@
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
 import type { AgentContext } from "../context";
+import { paiseToRupees, rupeesToPaise } from "../money";
 import type { BuildRequirements } from "../requirements";
 import {
   canRecommend,
@@ -8,6 +9,7 @@ import {
   getRequirements,
   missingFields,
 } from "../requirements";
+import { askBuyerInput, captureRequirementsInput } from "./ask-buyer-schema";
 
 /**
  * The requirement interview.
@@ -33,7 +35,15 @@ function requirementState(requirements: BuildRequirements | null) {
   return {
     captured: requirements
       ? {
-          budgetPaise: requirements.budgetPaise,
+          /*
+           * Rupees, because rupees are what the tools take. Handing paise back
+           * would put the model straight into the conversion that cost a build
+           * its budget — see `ask-buyer-schema.ts`.
+           */
+          budgetRupees:
+            requirements.budgetPaise === null
+              ? null
+              : paiseToRupees(requirements.budgetPaise),
           constraints: requirements.constraints,
           ownedParts: requirements.ownedParts,
           targetRefreshHz: requirements.targetRefreshHz,
@@ -63,15 +73,6 @@ function requirementState(requirements: BuildRequirements | null) {
     stillMissing: enough ? [] : unanswered,
   };
 }
-/**
- * The most answers a question may offer.
- *
- * Six is where a row of pills stops being a glance and starts being a menu. A
- * model that wants to offer ten options has not narrowed the question enough,
- * and the cap makes it do that work rather than pushing it onto the buyer.
- */
-const MAX_CHOICES = 6;
-
 export function requirementTools(ctx: AgentContext) {
   return {
     /**
@@ -103,62 +104,7 @@ export function requirementTools(ctx: AgentContext) {
         "ignore the options and type something else — expect that. Ask only " +
         "what would change your recommendation, and call captureRequirements " +
         "with the answer once it comes back.",
-      inputSchema: z.object({
-        choices: z
-          .array(
-            z.object({
-              label: z
-                .string()
-                .max(40)
-                .describe(
-                  "What the pill reads. A short phrase to tap — no prices."
-                ),
-              value: z
-                .string()
-                .max(60)
-                .describe("What you want back when it is tapped."),
-            })
-          )
-          .max(MAX_CHOICES)
-          .optional()
-          .describe("Required for kind 'choice' and 'multi'. Two to six."),
-        field: z
-          .string()
-          .max(40)
-          .describe(
-            "Which requirement this fills, for your own reference on the " +
-              "next turn: budget, useCase, targetResolution, targetRefreshHz, " +
-              "workloads, ownedParts or constraints."
-          ),
-        kind: z
-          .enum(["choice", "multi", "range"])
-          .describe(
-            "'choice' picks one, 'multi' picks several, 'range' drags a " +
-              "number. Anything that needs a sentence back should be asked " +
-              "as ordinary text in your reply instead of with this tool."
-          ),
-        label: z
-          .string()
-          .max(24)
-          .describe('The answer\'s heading once given, e.g. "Budget".'),
-        prompt: z
-          .string()
-          .max(200)
-          .describe("The question itself, in your words. One sentence."),
-        range: z
-          .object({
-            max: z.number(),
-            min: z.number(),
-            step: z.number().positive(),
-            unit: z
-              .string()
-              .max(8)
-              .optional()
-              .describe('Rendered against the number, e.g. "₹".'),
-          })
-          .optional()
-          .describe("Required for kind 'range'. Rupees, not paise."),
-      }),
+      inputSchema: askBuyerInput,
       /*
        * Declared even though nothing here validates it: the output is produced
        * by the browser, so this is the only place the answer's shape is
@@ -175,46 +121,22 @@ export function requirementTools(ctx: AgentContext) {
         "soon as they say something concrete — a budget, a game, a resolution " +
         "— rather than waiting until the end. Pass only the fields they " +
         "actually mentioned; anything you omit is left as it was.",
-      execute: async (input) =>
-        requirementState(await captureRequirements(ctx, input)),
-      inputSchema: z.object({
-        budgetPaise: z
-          .number()
-          .int()
-          .positive()
-          .optional()
-          .describe(
-            "What they said they can spend, in paise. ₹80,000 is 8000000."
-          ),
-        constraints: z
-          .record(z.string(), z.unknown())
-          .optional()
-          .describe(
-            'Hard limits in their own terms, e.g. { "formFactor": "must be small", "noise": "quiet" }.'
-          ),
-        ownedParts: z
-          .record(z.string(), z.unknown())
-          .optional()
-          .describe(
-            'Parts they already have and want to keep, e.g. { "monitor": "1440p 165Hz" }.'
-          ),
-        targetRefreshHz: z.number().int().positive().max(1000).optional(),
-        targetResolution: z
-          .string()
-          .max(40)
-          .optional()
-          .describe('As they said it: "1080p", "1440p", "4K".'),
-        useCase: z
-          .string()
-          .max(200)
-          .optional()
-          .describe("Gaming, editing, development, office work, mixed."),
-        workloads: z
-          .array(z.string().max(120))
-          .max(12)
-          .optional()
-          .describe("Named games or software. Specifics beat categories."),
-      }),
+      execute: async ({ budgetRupees, ...rest }) =>
+        requirementState(
+          await captureRequirements(ctx, {
+            ...rest,
+            /*
+             * Converted here, never by the model. Asked for paise it turned a
+             * ₹1,25,000 budget into ₹12,500, and the build came back cheap
+             * with nothing to show that anything had gone wrong.
+             */
+            budgetPaise:
+              budgetRupees === undefined
+                ? undefined
+                : rupeesToPaise(budgetRupees),
+          })
+        ),
+      inputSchema: captureRequirementsInput,
     }),
 
     getRequirements: tool({

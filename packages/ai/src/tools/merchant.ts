@@ -36,6 +36,7 @@ import {
   getDiscountCandidates,
   getReorderCandidates,
 } from "../recommendations";
+import { optional } from "./schema";
 
 /**
  * Merchant-facing tools: read the business, then act on it.
@@ -248,7 +249,7 @@ export function merchantTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        anchorProductId: z.uuid().optional(),
+        anchorProductId: optional(z.uuid()),
         limit: z.number().int().min(1).max(20).default(10),
       }),
     }),
@@ -542,11 +543,11 @@ export function merchantTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        lowStockThreshold: z.number().int().min(0).max(100_000).optional(),
+        lowStockThreshold: optional(z.number().int().min(0).max(100_000)),
         productId: z.uuid(),
-        reorderPoint: z.number().int().min(0).max(100_000).optional(),
-        reorderQuantity: z.number().int().min(1).max(100_000).optional(),
-        supplierLeadTimeDays: z.number().int().min(0).max(365).optional(),
+        reorderPoint: optional(z.number().int().min(0).max(100_000)),
+        reorderQuantity: optional(z.number().int().min(1).max(100_000)),
+        supplierLeadTimeDays: optional(z.number().int().min(0).max(365)),
       }),
     }),
   } satisfies ToolSet;

@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import type { BuildSlotRow } from "@/lib/data/recommend";
+import type { BuildSlotRow, SheetSlot } from "@/lib/data/recommend";
 import { buildRowsFor } from "@/lib/data/recommend";
 
 /**
@@ -24,14 +24,23 @@ import { buildRowsFor } from "@/lib/data/recommend";
 /** Eight slots, and a little room for a schema that grows. */
 const MAX_SLOTS = 12;
 
+/**
+ * The tool's slot shape, named as the tool names it.
+ *
+ * `category` rather than `slug` because that is what the model is shown, and
+ * this schema's whole job is to describe what actually arrives. Getting that
+ * wrong is silent in the worst way: the parse fails, the sheet comes back
+ * empty, and the only symptom is a build the agent clearly assembled and
+ * talked about that never appears on screen.
+ */
 const slotSchema = z.object({
+  category: z.string().max(40),
   productId: z.string().max(64),
   required: z.boolean().default(false),
   slot: z.string().max(40),
-  slug: z.string().max(40),
   upgrade: z
     .object({
-      deltaPaise: z.number().int(),
+      extraPaise: z.number().int(),
       productId: z.string().max(64),
       reason: z.string().max(200),
     })
@@ -39,6 +48,22 @@ const slotSchema = z.object({
 });
 
 const inputSchema = z.array(slotSchema).max(MAX_SLOTS);
+
+function toSheetSlot(slot: z.infer<typeof slotSchema>): SheetSlot {
+  return {
+    productId: slot.productId,
+    required: slot.required,
+    slot: slot.slot,
+    slug: slot.category,
+    upgrade: slot.upgrade
+      ? {
+          deltaPaise: slot.upgrade.extraPaise,
+          productId: slot.upgrade.productId,
+          reason: slot.upgrade.reason,
+        }
+      : null,
+  };
+}
 
 export async function buildSheetAction(
   slots: unknown
@@ -55,5 +80,5 @@ export async function buildSheetAction(
     return [];
   }
 
-  return await buildRowsFor(parsed.data);
+  return await buildRowsFor(parsed.data.map(toSheetSlot));
 }

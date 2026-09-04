@@ -13,8 +13,9 @@ import {
 import { compareProducts } from "../compare";
 import type { AgentContext } from "../context";
 import { describeMemories, recallMemories, rememberMemory } from "../memory";
-import { formatPaise } from "../money";
+import { formatPaise, rupeesToPaise } from "../money";
 import { quoteCart } from "../quote";
+import { optional } from "./schema";
 
 /**
  * Discovery, recommendation and pricing tools.
@@ -259,8 +260,8 @@ export function shoppingTools(ctx: AgentContext) {
                     "Why this product, tied to what the buyer actually asked for."
                   ),
               }),
-              upgrade: z
-                .object({
+              upgrade: optional(
+                z.object({
                   benefit: z
                     .string()
                     .min(15)
@@ -280,7 +281,7 @@ export function shoppingTools(ctx: AgentContext) {
                         "upgrade — that is the right answer, not a failure."
                     ),
                 })
-                .optional(),
+              ),
             })
           )
           .min(1)
@@ -329,7 +330,19 @@ export function shoppingTools(ctx: AgentContext) {
         "returns what it does sell so you can say so and offer something " +
         "genuinely relevant. Do not retry the same search hoping for a " +
         "different list.",
-      execute: async ({ budgetMaxPaise, category, limit, query }) => {
+      execute: async ({ budgetMaxRupees, category, limit, query }) => {
+        /*
+         * Converted here, never by the model. Asked to turn rupees into paise
+         * it drops or adds a zero — an observed ₹1,25,000 budget reached the
+         * build assembler as ₹12,500 — and a price filter an order of
+         * magnitude out returns a plausible-looking page of the wrong parts.
+         * See `tools/schema.ts` for the other half of this lesson.
+         */
+        const budgetMaxPaise =
+          budgetMaxRupees === undefined
+            ? undefined
+            : rupeesToPaise(budgetMaxRupees);
+
         const result = await searchCatalog(ctx.merchantId, {
           budgetMaxPaise,
           category,
@@ -379,24 +392,18 @@ export function shoppingTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        budgetMaxPaise: z
-          .number()
-          .int()
-          .positive()
-          .optional()
-          .describe("Upper price limit in paise. ₹5,000 is 500000."),
-        category: z
-          .string()
-          .max(80)
-          .optional()
-          .describe(
-            "Narrow to one catalog category. This store uses short trade " +
-              "names — gpu, cpu, motherboard, ram, storage, psu, cooler, " +
-              "case, fan, monitor, peripheral — though common English names " +
-              'such as "graphics card" are understood too. Omit it unless ' +
-              "the buyer clearly wants one kind of part; the query alone " +
-              "already searches every category."
-          ),
+        budgetMaxRupees: optional(z.number().positive()).describe(
+          "Upper price limit in rupees, exactly as the buyer said it. 5000 " +
+            "for ₹5,000 — do not convert to paise."
+        ),
+        category: optional(z.string().max(80)).describe(
+          "Narrow to one catalog category. This store uses short trade " +
+            "names — gpu, cpu, motherboard, ram, storage, psu, cooler, " +
+            "case, fan, monitor, peripheral — though common English names " +
+            'such as "graphics card" are understood too. Omit it unless ' +
+            "the buyer clearly wants one kind of part; the query alone " +
+            "already searches every category."
+        ),
         limit: z.number().int().min(1).max(12).default(6),
         query: z
           .string()

@@ -7,6 +7,7 @@ import { AuditAction, recordAudit } from "../audit";
 import type { AgentContext } from "../context";
 import { clampDiscountPercent, clampFlatDiscount, LIMITS } from "../guardrails";
 import { formatPaise, percentageOff } from "../money";
+import { optional } from "./schema";
 
 /**
  * Campaign drafting and activation.
@@ -165,8 +166,8 @@ export function campaignTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        basedOn: z
-          .object({
+        basedOn: optional(
+          z.object({
             /** The measured figures, so the claim is checkable. */
             evidence: z.string().min(10).max(600),
             tool: z.enum([
@@ -178,11 +179,10 @@ export function campaignTools(ctx: AgentContext) {
             ]),
             windowDays: z.number().int().min(1).max(365),
           })
-          .optional()
-          .describe(
-            "Which tool produced the evidence, over what window, and the numbers it returned."
-          ),
-        description: z.string().max(1000).optional(),
+        ).describe(
+          "Which tool produced the evidence, over what window, and the numbers it returned."
+        ),
+        description: optional(z.string().max(1000)),
         discountType: z.enum(["percentage", "flat", "bundle"]),
         discountValue: z
           .number()

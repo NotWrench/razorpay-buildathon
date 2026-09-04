@@ -1,4 +1,5 @@
 import { isToolUIPart, type UIMessage } from "ai";
+import { cleanToolPartType } from "../agents/repair";
 
 /**
  * When a suspended turn should be handed back to the model.
@@ -49,8 +50,16 @@ const CLIENT_TOOLS = new Set(["tool-askBuyer"]);
  * definition something a person answered. The same standard holds here.
  */
 function answeredByPerson(part: { state: string; type: string }): boolean {
+  /*
+   * Cleaned, because a question the model mangled the name of is still a
+   * question the buyer answered. Matching the raw type would leave the turn
+   * unresumed with the answer already on screen.
+   */
   /* Settledness is the caller's check; this one is only about provenance. */
-  return part.state === "approval-responded" || CLIENT_TOOLS.has(part.type);
+  return (
+    part.state === "approval-responded" ||
+    CLIENT_TOOLS.has(cleanToolPartType(part.type))
+  );
 }
 
 export function lastAssistantTurnIsAnswered<TMessage extends UIMessage>({

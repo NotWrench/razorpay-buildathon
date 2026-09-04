@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { NoSuchToolError } from "ai";
-import { cleanToolName, repairHarmonyToolName } from "../src/agents/repair";
+import {
+  cleanToolName,
+  cleanToolPartType,
+  repairHarmonyToolName,
+  repairToolInput,
+} from "../src/agents/repair";
 
 /**
  * Recovering a tool name the model wrapped in its own control tokens.
@@ -20,7 +25,7 @@ const TOOLS = {
 
 const run = repairHarmonyToolName<typeof TOOLS>();
 
-function repair(toolName: string) {
+function repair(toolName: string, input = "{}") {
   // The handler reads four of these fields; the rest of the SDK's option bag
   // is filled in only so the shape type-checks.
   return run({
@@ -30,7 +35,7 @@ function repair(toolName: string) {
     messages: [],
     system: undefined,
     toolCall: {
-      input: "{}",
+      input,
       toolCallId: "call-1",
       toolName,
       type: "tool-call",
@@ -52,6 +57,32 @@ describe("cleanToolName", () => {
 
   test("leaves a well-formed name alone", () => {
     expect(cleanToolName("searchProducts")).toBe("searchProducts");
+  });
+});
+
+/**
+ * The browser's half of the same repair.
+ *
+ * The control tokens are attached before `tool-input-start` streams, so the
+ * part exists under the mangled type no matter what the server does with the
+ * call. For `askBuyer` that decides whether the buyer is ever shown the
+ * question, which decides whether the turn can ever finish.
+ */
+describe("cleanToolPartType", () => {
+  test("strips the tokens from a part's tool name", () => {
+    expect(cleanToolPartType("tool-askBuyer<|channel|>commentary")).toBe(
+      "tool-askBuyer"
+    );
+  });
+
+  test("leaves a well-formed part type alone", () => {
+    expect(cleanToolPartType("tool-askBuyer")).toBe("tool-askBuyer");
+  });
+
+  test("leaves parts that are not tool calls alone", () => {
+    // `reasoning` and `text` go through the same list.
+    expect(cleanToolPartType("reasoning")).toBe("reasoning");
+    expect(cleanToolPartType("step-start")).toBe("step-start");
   });
 });
 
@@ -83,5 +114,90 @@ describe("repairHarmonyToolName", () => {
     // Nothing to fix means the original error stands, rather than a pointless
     // retry of a call that will fail the same way.
     expect(await repair("searchProducts")).toBeNull();
+  });
+});
+
+/**
+ * Trimming what the adapter wrote past the end of the arguments.
+ *
+ * The observed failure was one surplus `}` on an otherwise perfect `askBuyer`
+ * call, which cost the buyer the question. The half worth pinning down is
+ * again the refusals: this only ever truncates, so anything it cannot fix by
+ * deleting a tail must be left to fail rather than reshaped into something
+ * that parses.
+ */
+describe("repairToolInput", () => {
+  test("trims a surplus closing brace", () => {
+    // Exactly what NIM sent: a complete object, then one more `}`.
+    expect(repairToolInput('{"kind":"choice","field":"useCase"}}')).toBe(
+      '{"kind":"choice","field":"useCase"}'
+    );
+  });
+
+  test("trims a control token written past the arguments", () => {
+    expect(repairToolInput('{"query":"rtx 4070"}<|call|>')).toBe(
+      '{"query":"rtx 4070"}'
+    );
+  });
+
+  test("keeps a brace that is inside a string", () => {
+    // A product name may contain one, and cutting there would truncate the
+    // value rather than the junk.
+    const input = '{"name":"Case {RGB} Edition","note":"ok"}}';
+
+    expect(repairToolInput(input)).toBe(
+      '{"name":"Case {RGB} Edition","note":"ok"}'
+    );
+  });
+
+  test("keeps an escaped quote from ending the string early", () => {
+    const input = '{"name":"22\\" monitor","ok":true}}';
+
+    expect(repairToolInput(input)).toBe('{"name":"22\\" monitor","ok":true}');
+  });
+
+  test("leaves well-formed arguments alone", () => {
+    // Nothing to fix means the original validation error stands, rather than
+    // a retry of a call that will fail the same way.
+    expect(repairToolInput('{"amountPaise":120000}')).toBeNull();
+  });
+
+  test("refuses arguments that were cut off rather than overrun", () => {
+    // A truncated call is missing something the model meant to send, and half
+    // an order is far worse than a failed one.
+    expect(repairToolInput('{"productId":"abc","quantity":')).toBeNull();
+    expect(repairToolInput('{"productId":"abc"')).toBeNull();
+  });
+
+  test("refuses arguments that are not JSON at all", () => {
+    expect(repairToolInput("commentary to=functions.createOrder")).toBeNull();
+    expect(repairToolInput("")).toBeNull();
+  });
+
+  test("refuses a stray closer before anything opened", () => {
+    expect(repairToolInput('}{"quantity":1}')).toBeNull();
+  });
+});
+
+describe("repairHarmonyToolName argument repair", () => {
+  test("trims the tail on a call whose name was already right", async () => {
+    const result = await repair("searchProducts", '{"query":"gpu"}}');
+
+    expect(result?.toolName).toBe("searchProducts");
+    expect(result?.input).toBe('{"query":"gpu"}');
+  });
+
+  test("repairs a mangled name and its arguments in one pass", async () => {
+    const result = await repair(
+      "searchProducts<|channel|>commentary",
+      '{"query":"gpu"}}'
+    );
+
+    expect(result?.toolName).toBe("searchProducts");
+    expect(result?.input).toBe('{"query":"gpu"}');
+  });
+
+  test("declines when neither the name nor the arguments need fixing", async () => {
+    expect(await repair("searchProducts", '{"query":"gpu"}')).toBeNull();
   });
 });
