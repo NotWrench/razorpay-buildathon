@@ -358,6 +358,24 @@ export interface ManagerOrder {
   totalPaise: Money;
 }
 
+/** A campaign as the merchant reviews it: state, spend, and what it did. */
+export interface ManagerCampaign {
+  approvedByMerchant: boolean;
+  /** Null when it may give away as much as it likes. */
+  budgetPaise: Money | null;
+  /** Null while it has never been activated. */
+  endsAt: Date | null;
+  id: string;
+  productNames: string[];
+  /** The assistant's stated business case, shown in full. */
+  reason: string | null;
+  spentPaise: Money;
+  startsAt: Date | null;
+  status: string;
+  summary: string;
+  title: string;
+}
+
 /**
  * One credential a merchant issued to a buying agent.
  *

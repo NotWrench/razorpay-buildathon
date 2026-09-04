@@ -33,6 +33,7 @@ import {
   getStockRisk,
 } from "../inventory";
 import { getMarginSummary } from "../margin";
+import { describePolicy, getEffectivePolicy } from "../policy";
 import { formatPaise } from "../money";
 import {
   getDiscontinueCandidates,
@@ -407,6 +408,28 @@ export function merchantTools(ctx: AgentContext) {
         limit: z.number().int().min(1).max(25).default(15),
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
+    }),
+
+    getPolicy: tool({
+      description:
+        "The bounds that actually apply to this store: discount cap, price " +
+        "move cap, margin floor, spend cap, and whether agent orders wait for " +
+        "a human. Read this rather than answering 'what are you allowed to " +
+        "do' from these instructions — the merchant may have set stricter " +
+        "limits than the platform default, and the record is the truth.",
+      execute: async () => {
+        const policy = await getEffectivePolicy(ctx.merchantId);
+
+        return {
+          ...policy,
+          rules: describePolicy(policy),
+          source: policy.merchantConfigured
+            ? "This store has set its own limits. They can only ever be stricter than the platform's."
+            : "This store has not set its own limits, so the platform defaults apply. The merchant can tighten any of them on the account screen.",
+          spendCap: formatPaise(policy.spendCapPaise),
+        };
+      },
+      inputSchema: z.object({}),
     }),
 
     getMarginSummary: tool({

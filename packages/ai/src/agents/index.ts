@@ -1,4 +1,5 @@
 export { merchantApproval, storefrontApproval } from "./approval";
+export { type BriefingResult, runMerchantBriefing } from "./briefing";
 export {
   type MerchantMessage,
   type MerchantTools,

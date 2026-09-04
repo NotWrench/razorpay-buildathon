@@ -7,11 +7,10 @@ import { AuditAction, recordAudit } from "../audit";
 import type { AgentContext } from "../context";
 import {
   checkMarginFloor,
-  clampDiscountPercent,
   clampFlatDiscount,
-  LIMITS,
   recordMarginBreach,
 } from "../guardrails";
+import { getEffectivePolicy } from "../policy";
 import { formatPaise, percentageOff } from "../money";
 import { optional } from "./schema";
 
@@ -131,9 +130,18 @@ export function campaignTools(ctx: AgentContext) {
           };
         }
 
+        // The merchant's own cap where they set one, the platform's otherwise.
+        const policy = await getEffectivePolicy(ctx.merchantId);
+
         const clampedValue =
           input.discountType === "percentage"
-            ? clampDiscountPercent(input.discountValue)
+            ? Math.max(
+                0,
+                Math.min(
+                  Math.round(input.discountValue),
+                  policy.maxDiscountPercent
+                )
+              )
             : input.discountValue;
 
         const wasClamped = clampedValue !== input.discountValue;
@@ -228,7 +236,7 @@ export function campaignTools(ctx: AgentContext) {
           note:
             [
               wasClamped
-                ? `The discount was capped at ${LIMITS.maxDiscountPercent}% by policy (you proposed ${input.discountValue}%). Tell the merchant this.`
+                ? `The discount was capped at ${policy.maxDiscountPercent}% — ${policy.merchantConfigured ? "this store's own limit" : "the platform limit"} — against the ${input.discountValue}% you proposed. Tell the merchant this.`
                 : null,
               input.basedOn
                 ? null

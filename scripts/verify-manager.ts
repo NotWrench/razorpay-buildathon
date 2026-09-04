@@ -19,6 +19,7 @@ import {
   auditLogs,
   db,
   inventory,
+  merchantPolicy,
   merchants,
   productPriceHistory,
   productSpecs,
@@ -739,6 +740,172 @@ async function main() {
   } else {
     check("a costed product exists to reprice", false, "none found");
   }
+
+  // -------------------------------------------------------------- case 11
+  //
+  // Merchant policy. Letting a merchant set their own bounds is only safe if
+  // the platform ceiling still wins — otherwise "my limit is 80%" is a limit
+  // anyone reaching the account screen can grant themselves.
+  console.log("\n11. A store's own bounds can tighten, never loosen");
+
+  const { getEffectivePolicy, describePolicy, LIMITS: PLATFORM } = await import(
+    "@workspace/ai"
+  );
+
+  const defaults = await getEffectivePolicy(store.id);
+
+  check(
+    "with no row set, the platform defaults apply",
+    defaults.maxDiscountPercent === PLATFORM.maxDiscountPercent,
+    `${defaults.maxDiscountPercent}%`
+  );
+
+  await db
+    .insert(merchantPolicy)
+    .values({
+      maxDiscountPercent: 15,
+      maxPriceMovePercent: 5,
+      merchantId: store.id,
+    })
+    .onConflictDoUpdate({
+      set: { maxDiscountPercent: 15, maxPriceMovePercent: 5 },
+      target: merchantPolicy.merchantId,
+    });
+
+  const tightened = await getEffectivePolicy(store.id);
+
+  check(
+    "a stricter discount cap is honoured",
+    tightened.maxDiscountPercent === 15,
+    `${tightened.maxDiscountPercent}% against a platform ${PLATFORM.maxDiscountPercent}%`
+  );
+  check(
+    "a stricter price-move cap is honoured",
+    tightened.maxPriceMovePercent === 5,
+    `${tightened.maxPriceMovePercent}%`
+  );
+  check(
+    "it reports that the store configured itself",
+    tightened.merchantConfigured
+  );
+
+  /*
+   * The property that makes the whole thing safe. A merchant asking for more
+   * than the platform allows is clamped rather than refused — they meant "as
+   * high as you'll let me" — but they never get it.
+   */
+  await db
+    .update(merchantPolicy)
+    .set({ maxDiscountPercent: 80, maxPriceMovePercent: 99 })
+    .where(eq(merchantPolicy.merchantId, store.id));
+
+  const loosened = await getEffectivePolicy(store.id);
+
+  check(
+    "an attempt to loosen past the platform ceiling is clamped",
+    loosened.maxDiscountPercent === PLATFORM.maxDiscountPercent &&
+      loosened.maxPriceMovePercent === PLATFORM.maxPriceMovePercent,
+    `asked for 80%/99%, got ${loosened.maxDiscountPercent}%/${loosened.maxPriceMovePercent}%`
+  );
+
+  check(
+    "the policy describes itself in sentences a merchant can read",
+    describePolicy(loosened).every(
+      (line) => line.length > 0 && !/\w+Paise/.test(line)
+    ),
+    describePolicy(loosened)[0]
+  );
+
+  await db
+    .delete(merchantPolicy)
+    .where(eq(merchantPolicy.merchantId, store.id));
+
+  // -------------------------------------------------------------- case 12
+  //
+  // Every money tool is gated — asserted against the tool set itself.
+  //
+  // The unattended briefing's safety rests entirely on this: a gated tool
+  // returns `user-approval`, nobody is there to answer, so it suspends and
+  // never runs. The agent suite can only show that for tools a given run
+  // happened to attempt. This closes the gap, and it is the regression that
+  // matters — the day somebody adds a money tool and forgets to gate it, the
+  // overnight run is what spends the money at 3am.
+  console.log("\n12. Every money tool refuses to run without a human");
+
+  const { merchantApproval, merchantToolSet } = await import("@workspace/ai");
+
+  const briefingCtx = {
+    actor: { identifier: actorId, type: "human" as const, userId: actorId },
+    autoApproveCeilingPaise: 0,
+    conversationId: "00000000-0000-0000-0000-000000000000",
+    merchantId: store.id,
+    spendCapPaise: 0,
+    storeSlug: store.storeSlug,
+  };
+
+  const gate = merchantApproval(briefingCtx) as Record<
+    string,
+    ((input: unknown) => unknown) | undefined
+  >;
+  const allTools = Object.keys(merchantToolSet(briefingCtx));
+
+  /**
+   * Anything that moves money, changes a live price, or writes to the
+   * catalogue every buying agent reads.
+   */
+  const MUST_BE_GATED = [
+    "activateCampaign",
+    "approveAgentOrder",
+    "createReorderRequest",
+    "enrichProduct",
+    "issuePaymentLink",
+    "pauseCampaign",
+    "refundOrder",
+    "rejectAgentOrder",
+    "updateInventoryThreshold",
+    "updateProductPrice",
+  ];
+
+  const missing = MUST_BE_GATED.filter((name) => !allTools.includes(name));
+
+  check(
+    "every tool this checks still exists",
+    missing.length === 0,
+    missing.length === 0 ? allTools.length + " tools" : `renamed: ${missing}`
+  );
+
+  const ungated: string[] = [];
+
+  for (const name of MUST_BE_GATED) {
+    const policy = gate[name];
+
+    if (!policy) {
+      ungated.push(name);
+      continue;
+    }
+
+    const verdict = await policy({
+      campaignId: "00000000-0000-0000-0000-000000000000",
+      explanation: "verify",
+      newPricePaise: 100_000,
+      orderId: "00000000-0000-0000-0000-000000000000",
+      productId: "00000000-0000-0000-0000-000000000000",
+      quantity: 1,
+      reason: "verify",
+    });
+
+    if ((verdict as { type?: string })?.type !== "user-approval") {
+      ungated.push(name);
+    }
+  }
+
+  check(
+    "no money tool would run unattended",
+    ungated.length === 0,
+    ungated.length === 0
+      ? `${MUST_BE_GATED.length} tools all stop for a human`
+      : `UNGATED: ${ungated.join(", ")}`
+  );
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);

@@ -223,6 +223,50 @@ export const payments = pgTable(
 );
 
 /**
+ * The bounds this merchant chose, rather than the ones the deployment did.
+ *
+ * Every limit in this system used to be a constant in `guardrails.ts` or a
+ * number in the environment. That makes "bounded" a promise the developer
+ * made, and the merchant is the one whose money it is — they should be able to
+ * say a discount may never exceed 15% in their shop, or that they want small
+ * agent orders to flow without waking them.
+ *
+ * The platform ceiling still wins. A row here can only ever be *stricter* than
+ * `LIMITS`, so a merchant cannot raise their own discount cap to 80% and a
+ * compromised session cannot either. Absent fields fall back to the platform
+ * default, which is why every one of them is nullable: not set and set to zero
+ * are different statements, and the second is a real choice.
+ */
+export const merchantPolicy = pgTable("merchant_policy", {
+  /**
+   * Whether an agent order still needs a human.
+   *
+   * Defaults to true and is the one flag here a merchant should think hardest
+   * about — turning it off is the difference between this system and one that
+   * lets strangers' software spend their money unattended.
+   */
+  agentOrdersRequireApproval: boolean("agent_orders_require_approval")
+    .default(true)
+    .notNull(),
+  /** Order total under which a money action need not stop for a human. */
+  autoApproveCeilingPaise: integer("auto_approve_ceiling_paise"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  /** Thinnest margin a discount may leave, as a percentage of the price. */
+  marginFloorPercent: integer("margin_floor_percent"),
+  maxDiscountPercent: integer("max_discount_percent"),
+  maxPriceMovePercent: integer("max_price_move_percent"),
+  merchantId: uuid("merchant_id")
+    .primaryKey()
+    .references(() => merchants.id, { onDelete: "cascade" }),
+  /** Total one buyer may commit at this store across a conversation. */
+  spendCapPaise: integer("spend_cap_paise"),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+/**
  * Every price this product has ever carried, and who moved it.
  *
  * A price change is not like other edits. It applies to every future order

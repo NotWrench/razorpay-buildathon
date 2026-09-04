@@ -5,6 +5,7 @@ import { ConnectRazorpayNotice } from "@/components/manager/connect-razorpay-not
 import { FindingsList } from "@/components/manager/findings-list";
 import { ManagerComposer } from "@/components/manager/manager-composer";
 import { ManagerThread } from "@/components/manager/manager-thread";
+import { OvernightBlock } from "@/components/manager/overnight-block";
 import { RangeMenu } from "@/components/manager/range-menu";
 import {
   Earnings,
@@ -95,6 +96,10 @@ function ManagerScreen({
       </header>
 
       {razorpayConnected ? null : <ConnectRazorpayNotice />}
+
+      {/* Above the briefing on purpose: it is the only thing on this page
+          that happened since the merchant last looked. */}
+      <OvernightBlock merchantId={merchantId} />
 
       {/* 56px between blocks. The briefing is six things, read top to bottom. */}
       <div className="mt-14 grid gap-14">

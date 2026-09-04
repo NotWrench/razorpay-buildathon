@@ -8,14 +8,14 @@ import { usePathname } from "next/navigation";
 import { managerRoutes } from "@/lib/routes";
 
 /**
- * The manager's six places, as text.
+ * The manager's seven places, as text.
  *
  * No icons, no fills, no store switcher. This side of the product is the same
  * company's quieter room — an operator is here to read numbers and approve
  * things, and a rail of coloured buttons would be the loudest thing on a page
  * whose job is to be calm.
  *
- * Below `lg` the same six items become a bar across the top rather than
+ * Below `lg` the same seven items become a bar across the top rather than
  * disappearing. An operator on a phone still has to be able to reach Orders.
  */
 
@@ -24,6 +24,7 @@ const ITEMS: { href: Route; label: string }[] = [
   { href: managerRoutes.products, label: "Products" },
   { href: managerRoutes.orders, label: "Orders" },
   { href: managerRoutes.restock, label: "Restock" },
+  { href: managerRoutes.campaigns, label: "Campaigns" },
   { href: managerRoutes.agents, label: "Agents" },
   { href: managerRoutes.account, label: "Account" },
 ];

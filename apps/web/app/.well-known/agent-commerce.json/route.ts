@@ -1,4 +1,8 @@
-import { autoApproveCeilingPaise, spendCapPaise } from "@workspace/ai";
+import {
+  autoApproveCeilingPaise,
+  getEffectivePolicy,
+  spendCapPaise,
+} from "@workspace/ai";
 import { db, merchants } from "@workspace/db";
 import type { NextRequest } from "next/server";
 import { handleRouteError } from "@/lib/api/respond";
@@ -70,10 +74,31 @@ export async function GET(request: NextRequest): Promise<Response> {
           note: "Razorpay is the source of truth. Payment state is settled by webhook, so poll order_status rather than assuming a link redirect means success.",
           provider: "razorpay",
         },
-        stores: stores.map((store) => ({
-          ...store,
-          catalog: `${origin}/store/${store.slug}/catalog.json`,
-        })),
+        /*
+         * Each store's own bounds, not just the platform's.
+         *
+         * The `policy` block above is what this deployment allows at most. A
+         * merchant may be stricter, and a counterparty planning against the
+         * platform number would plan wrong — so the effective limits travel
+         * with the store they belong to.
+         */
+        stores: await Promise.all(
+          stores.map(async (store) => {
+            const policy = await getEffectivePolicy(store.id);
+
+            return {
+              ...store,
+              catalog: `${origin}/store/${store.slug}/catalog.json`,
+              policy: {
+                agent_orders_require_approval:
+                  policy.agentOrdersRequireApproval,
+                max_discount_percent: policy.maxDiscountPercent,
+                per_conversation_cap_paise: policy.spendCapPaise,
+                note: "A key issued by this store may carry a lower cap of its own. These are the store's limits, not yours.",
+              },
+            };
+          })
+        ),
       },
       {
         headers: {

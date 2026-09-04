@@ -117,6 +117,11 @@ export {
   rupeesToPaise,
 } from "./money";
 export {
+  describePolicy,
+  type EffectivePolicy,
+  getEffectivePolicy,
+} from "./policy";
+export {
   CONTEXT_PAGES,
   type ContextPage,
   describeMerchantView,

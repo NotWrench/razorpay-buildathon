@@ -45,6 +45,7 @@ export const managerRoutes = {
   agents: route("/manager/agents"),
   assistant: route("/manager"),
   assistantWith: (rangeId: string) => route(`/manager?range=${rangeId}`),
+  campaigns: route("/manager/campaigns"),
   orders: route("/manager/orders"),
   products: route("/manager/products"),
   restock: route("/manager/restock"),
