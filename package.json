@@ -55,6 +55,7 @@
     "typecheck": "turbo typecheck",
     "verify": "bun run scripts/verify.ts",
     "verify:agent": "bun run scripts/verify-agent.ts",
+    "verify:manager": "bun run scripts/verify-manager.ts",
     "verify:merchant": "bun run scripts/verify-merchant.ts"
   },
   "devDependencies": {

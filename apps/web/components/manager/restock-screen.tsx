@@ -6,13 +6,20 @@ import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
 import { Check } from "lucide-react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ProductRender } from "@/components/common/product-render";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable } from "@/components/manager/manager-table";
+import { useAction } from "@/hooks/use-action";
+import {
+  approveRestockAction,
+  createPurchaseOrderAction,
+  rejectRestockAction,
+  saveThresholdsAction,
+} from "@/lib/actions/manager";
 import type { RestockDraft, RestockRow } from "@/lib/data/types";
 
 /**
@@ -20,11 +27,17 @@ import type { RestockDraft, RestockRow } from "@/lib/data/types";
  *
  * The editable cells are real inputs, not spans that turn into inputs on
  * click: a number an operator is expected to change should be focusable with
- * Tab and typed into without a ceremony first.
+ * Tab and typed into without a ceremony first. They commit on blur and on
+ * Enter rather than on every keystroke — one write per decision, not one per
+ * digit, and an audit trail that reads as decisions rather than typing.
  *
  * Drafts the assistant made on /manager arrive at the top with the reason it
  * made them. Approve and Reject are both ghost — approving somebody else's
  * suggestion is a decision, and a filled pill would be the page taking a side.
+ *
+ * Nothing here holds its own copy of the data. Every action revalidates on the
+ * server and the screen re-renders from it, so what is on screen is what is in
+ * the database rather than an optimistic guess that survives a failed write.
  */
 
 const rowKey = (row: RestockRow) => row.id;
@@ -32,27 +45,49 @@ const rowKey = (row: RestockRow) => row.id;
 function NumberCell({
   id,
   label,
-  onChange,
+  onCommit,
   value,
 }: {
   id: string;
   label: string;
-  onChange: (id: string, value: number) => void;
+  onCommit: (id: string, value: number) => void;
   value: number;
 }) {
+  const [draft, setDraft] = useState(String(value));
+
   const change = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) =>
-      onChange(id, Math.max(0, Number(event.target.value) || 0)),
-    [id, onChange]
+    (event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value),
+    []
   );
+
+  const commit = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const next = Math.max(0, Number(event.target.value) || 0);
+
+      setDraft(String(next));
+
+      if (next !== value) {
+        onCommit(id, next);
+      }
+    },
+    [id, onCommit, value]
+  );
+
+  const onKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
+  }, []);
 
   return (
     <input
       aria-label={label}
       className="h-8 w-20 rounded-full border border-hairline bg-transparent px-3 text-right font-mono text-[15px] text-bone tabular-nums outline-none transition-colors duration-[180ms] focus:border-bone"
       inputMode="numeric"
+      onBlur={commit}
       onChange={change}
-      value={value}
+      onKeyDown={onKeyDown}
+      value={draft}
     />
   );
 }
@@ -102,16 +137,18 @@ function SelectCell({
 }
 
 function DraftRow({
+  busy,
   draft,
   onApprove,
   onReject,
 }: {
+  busy: boolean;
   draft: RestockDraft;
-  onApprove: (draft: RestockDraft) => void;
-  onReject: (draft: RestockDraft) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
 }) {
-  const approve = useCallback(() => onApprove(draft), [draft, onApprove]);
-  const reject = useCallback(() => onReject(draft), [draft, onReject]);
+  const approve = useCallback(() => onApprove(draft.id), [draft.id, onApprove]);
+  const reject = useCallback(() => onReject(draft.id), [draft.id, onReject]);
 
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-4 border-hairline border-b py-5">
@@ -128,10 +165,10 @@ function DraftRow({
       </div>
 
       <div className="flex shrink-0 gap-3">
-        <Pill onClick={approve} size="sm" variant="ghost">
+        <Pill disabled={busy} onClick={approve} size="sm" variant="ghost">
           Approve
         </Pill>
-        <Pill onClick={reject} size="sm" variant="ghost">
+        <Pill disabled={busy} onClick={reject} size="sm" variant="ghost">
           Reject
         </Pill>
       </div>
@@ -140,15 +177,31 @@ function DraftRow({
 }
 
 function RestockScreen({
-  drafts: initialDrafts,
-  rows: initialRows,
+  drafts,
+  rows,
 }: {
   drafts: RestockDraft[];
   rows: RestockRow[];
 }) {
-  const [rows, setRows] = useState(initialRows);
-  const [drafts, setDrafts] = useState(initialDrafts);
   const [selected, setSelected] = useState<string[]>([]);
+
+  const approve = useAction(approveRestockAction, {
+    successMessage: "Approved. Recorded against the request.",
+  });
+  const reject = useAction(rejectRestockAction, {
+    successMessage: "Rejected, with the decision recorded.",
+  });
+  const thresholds = useAction(saveThresholdsAction, {
+    successMessage: "Thresholds saved.",
+  });
+  const purchase = useAction(createPurchaseOrderAction, {
+    onSuccess: ({ created }) => {
+      setSelected([]);
+      toast.success(
+        `${created} request(s) raised and waiting on you. Nothing has been ordered.`
+      );
+    },
+  });
 
   const onToggle = useCallback((id: string) => {
     setSelected((current) =>
@@ -158,27 +211,40 @@ function RestockScreen({
     );
   }, []);
 
-  const onThreshold = useCallback((id: string, value: number) => {
-    setRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, threshold: value } : row))
-    );
-  }, []);
+  const byId = useMemo(
+    () => new Map(rows.map((row) => [row.id, row])),
+    [rows]
+  );
 
-  const onSuggested = useCallback((id: string, value: number) => {
-    setRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, suggested: value } : row))
-    );
-  }, []);
+  const onThreshold = useCallback(
+    (id: string, value: number) => {
+      const row = byId.get(id);
 
-  const onApprove = useCallback((draft: RestockDraft) => {
-    setDrafts((current) => current.filter((entry) => entry.id !== draft.id));
-    toast(`Approved. ${draft.quantity} units of ${draft.product.name} queued.`);
-  }, []);
+      if (row) {
+        thresholds.run({
+          productId: id,
+          reorderQuantity: row.suggested,
+          threshold: value,
+        });
+      }
+    },
+    [byId, thresholds]
+  );
 
-  const onReject = useCallback((draft: RestockDraft) => {
-    setDrafts((current) => current.filter((entry) => entry.id !== draft.id));
-    toast("Rejected. The assistant will not raise it again this window.");
-  }, []);
+  const onSuggested = useCallback(
+    (id: string, value: number) => {
+      const row = byId.get(id);
+
+      if (row) {
+        thresholds.run({
+          productId: id,
+          reorderQuantity: value,
+          threshold: row.threshold,
+        });
+      }
+    },
+    [byId, thresholds]
+  );
 
   const estimate = useMemo(
     () =>
@@ -192,10 +258,12 @@ function RestockScreen({
   );
 
   const onCreate = useCallback(() => {
-    toast(
-      `Purchase order drafted for ${selected.length} lines — ${formatPaise(estimate)}. Nothing has been sent.`
+    purchase.run(
+      rows
+        .filter((row) => selected.includes(row.id))
+        .map((row) => ({ productId: row.id, quantity: row.suggested }))
     );
-  }, [estimate, selected.length]);
+  }, [purchase, rows, selected]);
 
   const columns = useMemo<ManagerColumn<RestockRow>[]>(
     () => [
@@ -245,8 +313,9 @@ function RestockScreen({
         render: (row) => (
           <NumberCell
             id={row.id}
+            key={`threshold-${row.id}-${row.threshold}`}
             label={`Threshold for ${row.product.name}`}
-            onChange={onThreshold}
+            onCommit={onThreshold}
             value={row.threshold}
           />
         ),
@@ -259,8 +328,9 @@ function RestockScreen({
         render: (row) => (
           <NumberCell
             id={row.id}
+            key={`suggested-${row.id}-${row.suggested}`}
             label={`Suggested quantity for ${row.product.name}`}
-            onChange={onSuggested}
+            onCommit={onSuggested}
             value={row.suggested}
           />
         ),
@@ -269,6 +339,8 @@ function RestockScreen({
     ],
     [onSuggested, onThreshold, onToggle, selected]
   );
+
+  const busy = approve.pending || reject.pending;
 
   return (
     <div className="px-5 pt-14 pb-32 sm:px-8 lg:px-8 2xl:px-12">
@@ -279,14 +351,15 @@ function RestockScreen({
 
       {drafts.length > 0 ? (
         <section className="pb-12">
-          <Label>From the assistant</Label>
+          <Label>Waiting on you</Label>
           <div className="mt-4 border-hairline border-t">
             {drafts.map((draft) => (
               <DraftRow
+                busy={busy}
                 draft={draft}
                 key={draft.id}
-                onApprove={onApprove}
-                onReject={onReject}
+                onApprove={approve.run}
+                onReject={reject.run}
               />
             ))}
           </div>
@@ -310,8 +383,14 @@ function RestockScreen({
         <span className="font-mono text-[13px] text-smoke tabular-nums">
           {selected.length} selected · estimated {formatPaise(estimate)}
         </span>
-        <Pill disabled={selected.length === 0} onClick={onCreate} size="sm">
-          Create purchase order
+        <Pill
+          disabled={selected.length === 0 || purchase.pending}
+          onClick={onCreate}
+          size="sm"
+        >
+          {/* It raises requests; it does not send anything to a supplier, and
+              the label should not imply otherwise. */}
+          Raise reorder requests
         </Pill>
       </div>
     </div>

@@ -2,11 +2,11 @@
 
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
-import type { ReactNode } from "react";
-import { useCallback, useId, useState } from "react";
-import { toast } from "sonner";
-import { TypedConfirmDialog } from "@/components/manager/manager-dialogs";
+import type { FormEvent, ReactNode } from "react";
+import { useCallback, useId } from "react";
 import { RazorpayConnect } from "@/components/manager/razorpay-connect";
+import { useAction } from "@/hooks/use-action";
+import { renameStoreAction } from "@/lib/actions/manager";
 import type { StoreSettings } from "@/lib/data/types";
 
 /**
@@ -15,6 +15,15 @@ import type { StoreSettings } from "@/lib/data/types";
  * The Razorpay key is masked and stays masked: a screen that prints a live key
  * in full is one screenshot away from being an incident, and there is nothing
  * an operator does here that needs the whole string.
+ *
+ * Two controls used to live here that did nothing: an Invite button that
+ * drafted an invitation nowhere, and a Close store dialog that admitted in its
+ * own toast that it was not wired up. There is no invitation model and no
+ * merchant-active flag for either to write to, so both are gone rather than
+ * backed by something invented. The slug and the currency are shown as facts
+ * for the same reason — the slug is in the discovery manifest a buying agent
+ * may have already cached, and the currency is stamped on every order ever
+ * placed, so neither is a field an operator should be able to type into.
  */
 
 function Section({
@@ -34,14 +43,26 @@ function Section({
   );
 }
 
+/** A fact about the store, shown rather than offered for editing. */
+function Reading({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <p className="mt-2 font-mono text-[15px] text-smoke tabular-nums">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function Field({
   defaultValue,
   label,
-  mono,
+  name,
 }: {
   defaultValue: string;
   label: string;
-  mono?: boolean;
+  name: string;
 }) {
   const id = useId();
 
@@ -49,31 +70,28 @@ function Field({
     <div>
       <Label htmlFor={id}>{label}</Label>
       <input
-        className={
-          mono
-            ? "mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 font-mono text-[15px] text-bone tabular-nums outline-none transition-colors duration-[180ms] focus:border-bone"
-            : "mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-[15px] text-bone outline-none transition-colors duration-[180ms] focus:border-bone"
-        }
+        className="mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-[15px] text-bone outline-none transition-colors duration-[180ms] focus:border-bone"
         defaultValue={defaultValue}
         id={id}
+        name={name}
       />
     </div>
   );
 }
 
 function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
-  const [closing, setClosing] = useState(false);
+  const rename = useAction(renameStoreAction, {
+    successMessage: "Store renamed.",
+  });
 
-  const onInvite = useCallback(
-    () => toast("Invitation drafted. It has not been sent."),
-    []
-  );
-
-  const onOpenClose = useCallback(() => setClosing(true), []);
-
-  const onCloseStore = useCallback(
-    () => toast("Nothing was closed — this screen is not wired up yet."),
-    []
+  const onRename = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      rename.run(
+        String(new FormData(event.currentTarget).get("name") ?? "")
+      );
+    },
+    [rename]
   );
 
   return (
@@ -84,11 +102,16 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
 
       <div className="mt-14 max-w-[640px]">
         <Section first title="Store details">
-          <div className="grid gap-5">
-            <Field defaultValue={settings.name} label="Name" />
-            <Field defaultValue={settings.slug} label="Slug" mono />
-            <Field defaultValue={settings.currency} label="Currency" mono />
-          </div>
+          <form className="grid gap-5" onSubmit={onRename}>
+            <Field defaultValue={settings.name} label="Name" name="name" />
+            <Reading label="Slug" value={settings.slug} />
+            <Reading label="Currency" value={settings.currency} />
+            <div>
+              <Pill disabled={rename.pending} size="sm" type="submit">
+                {rename.pending ? "Saving…" : "Save name"}
+              </Pill>
+            </div>
+          </form>
         </Section>
 
         <Section title="Payment">
@@ -120,40 +143,13 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
             ))}
           </div>
 
-          <div className="mt-6">
-            <Pill onClick={onInvite} size="sm" variant="ghost">
-              Invite
-            </Pill>
-          </div>
-        </Section>
-
-        <Section title="Leaving">
-          <p className="max-w-[46ch] text-[15px] text-smoke leading-relaxed">
-            Closing the store takes the catalogue offline and stops new orders.
-            Existing orders stay readable.
+          <p className="mt-6 max-w-[46ch] text-[15px] text-smoke leading-relaxed">
+            One account owns a store. There is no invitation flow yet, so this
+            is the list rather than a place to change it.
           </p>
-          <div className="mt-5">
-            <Pill
-              className="text-lacquer hover:text-ember"
-              onClick={onOpenClose}
-              size="sm"
-              variant="text"
-            >
-              Close store
-            </Pill>
-          </div>
         </Section>
       </div>
 
-      <TypedConfirmDialog
-        body="The catalogue goes offline and no new orders can be placed. Existing orders stay readable."
-        confirmLabel="Close store"
-        onConfirm={onCloseStore}
-        onOpenChange={setClosing}
-        open={closing}
-        title="Close this store"
-        word="CLOSE"
-      />
     </div>
   );
 }

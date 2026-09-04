@@ -5,15 +5,21 @@ import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { Copy, EyeOff, Pencil } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { ProductRender } from "@/components/common/product-render";
 import { ConfirmDialog } from "@/components/manager/manager-dialogs";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable, RowAction } from "@/components/manager/manager-table";
+import type { ProductDraft } from "@/components/manager/product-sheet";
 import { ProductSheet } from "@/components/manager/product-sheet";
+import { useAction } from "@/hooks/use-action";
+import {
+  deactivateProductAction,
+  duplicateProductAction,
+  saveProductAction,
+} from "@/lib/actions/manager";
 import type { ManagerProduct } from "@/lib/data/types";
 
 /**
@@ -48,11 +54,13 @@ function ProductActions({
         <Copy aria-hidden className="size-3.5" />
       </RowAction>
       <RowAction
-        label={`Remove ${entry.product.name}`}
+        label={`Take ${entry.product.name} off sale`}
         onClick={remove}
         tone="lacquer"
       >
-        <Trash2 aria-hidden className="size-3.5" />
+        {/* Not a bin. Nothing here deletes — the row survives, off sale,
+            because order_items still points at it. */}
+        <EyeOff aria-hidden className="size-3.5" />
       </RowAction>
     </>
   );
@@ -60,11 +68,22 @@ function ProductActions({
 
 const productKey = (entry: ManagerProduct) => entry.product.id;
 
-function ProductsScreen({ products }: { products: ManagerProduct[] }) {
+function ProductsScreen({ products: rows }: { products: ManagerProduct[] }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ManagerProduct | null>(null);
   const [removing, setRemoving] = useState<ManagerProduct | null>(null);
-  const [rows, setRows] = useState(products);
+
+  const save = useAction(saveProductAction, {
+    onSuccess: () => setSheetOpen(false),
+    successMessage: "Saved.",
+  });
+  const duplicate = useAction(duplicateProductAction, {
+    successMessage: "Duplicated as a draft. It is not on sale.",
+  });
+  const deactivate = useAction(deactivateProductAction, {
+    onSuccess: () => setRemoving(null),
+    successMessage: "Taken off sale. Past orders are unaffected.",
+  });
 
   const onAdd = useCallback(() => {
     setEditing(null);
@@ -76,28 +95,22 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
     setSheetOpen(true);
   }, []);
 
-  const onSave = useCallback(() => {
-    setSheetOpen(false);
-    toast("Saved to the draft catalogue. Nothing is published yet.");
-  }, []);
+  const onSave = useCallback(
+    (draft: ProductDraft) =>
+      save.run({ ...draft, productId: editing?.product.id }),
+    [editing, save]
+  );
 
-  const onDuplicate = useCallback((entry: ManagerProduct) => {
-    toast(`Duplicated ${entry.product.name} as a draft.`);
-  }, []);
+  const onDuplicate = useCallback(
+    (entry: ManagerProduct) => duplicate.run(entry.product.id),
+    [duplicate]
+  );
 
   const onRemoveConfirm = useCallback(() => {
-    if (!removing) {
-      return;
+    if (removing) {
+      deactivate.run(removing.product.id);
     }
-
-    const gone = removing;
-
-    setRows((current) =>
-      current.filter((entry) => entry.product.id !== gone.product.id)
-    );
-    setRemoving(null);
-    toast(`${gone.product.name} removed.`);
-  }, [removing]);
+  }, [deactivate, removing]);
 
   const onRemoveOpen = useCallback(
     (open: boolean) => setRemoving(open ? removing : null),
@@ -219,6 +232,7 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
       />
 
       <ProductSheet
+        busy={save.pending}
         entry={editing}
         onOpenChange={setSheetOpen}
         onSave={onSave}
@@ -226,12 +240,12 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
       />
 
       <ConfirmDialog
-        body={`${removing?.product.name ?? "This product"} will be taken off the store. Orders that already contain it are unaffected.`}
-        confirmLabel="Remove"
+        body={`${removing?.product.name ?? "This product"} will be taken off sale. It is not deleted, and orders that already contain it still name it.`}
+        confirmLabel="Take off sale"
         onConfirm={onRemoveConfirm}
         onOpenChange={onRemoveOpen}
         open={removing !== null}
-        title="Remove this product"
+        title="Take this product off sale"
       />
     </div>
   );

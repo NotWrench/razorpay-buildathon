@@ -318,19 +318,42 @@ export interface ManagerProduct {
   stock: number;
 }
 
+/**
+ * The states this database can actually distinguish.
+ *
+ * "fulfilled" is gone. There is no shipment anywhere in the schema, so a
+ * button that set it was claiming a state nothing could ever read back — and a
+ * filter for it listed orders that had simply been paid for. `awaiting` takes
+ * its place and is real: an order a buying agent created that no human has
+ * approved yet, which is the queue this whole system is built around.
+ */
 export type ManagerOrderState =
+  | "awaiting"
   | "new"
   | "due"
-  | "fulfilled"
   | "cancelled"
   | "refunded";
 
 export interface ManagerOrder {
+  /** Why the buying agent says it wants this. Null for a human shopper. */
+  agentReason: string | null;
+  buyerType: "human" | "ai_agent";
   customer: string;
+  /** The display reference, "NX-A1B2C3". Not an identifier to act on. */
   id: string;
   itemCount: number;
   lines: { name: string; pricePaise: Money; quantity: number }[];
+  /**
+   * The real uuid, which every write is addressed to.
+   *
+   * `id` is a six-character reference for a human to read out; two orders
+   * could in principle share one. A refund must never be aimed at a display
+   * string.
+   */
+  orderId: string;
   placedOn: string;
+  /** True once a payment on this order has actually been captured. */
+  refundable: boolean;
   state: ManagerOrderState;
   totalPaise: Money;
 }
