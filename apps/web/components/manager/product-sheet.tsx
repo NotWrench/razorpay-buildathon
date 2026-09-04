@@ -125,8 +125,8 @@ function ProductSheet({
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-70 bg-void/55 backdrop-blur-[4px] transition-opacity duration-[280ms] data-ending-style:opacity-0 data-starting-style:opacity-0" />
-        <Dialog.Popup className="fixed inset-y-0 right-0 z-71 flex w-[480px] max-w-[92vw] flex-col rounded-l-[28px] bg-carbon shadow-float transition-transform duration-[420ms] ease-[cubic-bezier(.22,1,.36,1)] data-ending-style:translate-x-full data-starting-style:translate-x-full data-ending-style:duration-[280ms] data-ending-style:ease-[cubic-bezier(.65,0,.35,1)]">
+        <Dialog.Backdrop className="fixed inset-0 z-70 bg-void/55 backdrop-blur-[4px] transition-opacity duration-exit data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <Dialog.Popup className="fixed inset-y-0 right-0 z-71 flex w-[480px] max-w-[92vw] flex-col rounded-l-[28px] bg-carbon shadow-float transition-transform duration-standard ease-[cubic-bezier(.22,1,.36,1)] data-ending-style:translate-x-full data-starting-style:translate-x-full data-ending-style:duration-exit data-ending-style:ease-[cubic-bezier(.65,0,.35,1)]">
           {/*
             Keyed on the product so switching which row is being edited
             remounts the fields. Without it the defaultValues of the first
@@ -138,11 +138,11 @@ function ProductSheet({
             onSubmit={submit}
           >
             <div className="flex items-center justify-between px-7 pt-7 pb-6">
-              <Dialog.Title className="font-display font-semibold text-[24px] text-bone tracking-[-0.02em]">
+              <Dialog.Title className="t-display-sm text-bone">
                 {editing ? "Edit product" : "Add product"}
               </Dialog.Title>
               <Dialog.Close
-                className="text-[13px] text-smoke transition-colors duration-[180ms] hover:text-bone"
+                className="t-body-sm text-smoke transition-colors duration-micro hover:text-bone"
                 render={<button type="button" />}
               >
                 Close

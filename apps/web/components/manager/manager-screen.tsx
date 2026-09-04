@@ -107,7 +107,7 @@ function ManagerScreen({
       </div>
 
       {messages.length > 0 ? (
-        <div className="mt-14 border-hairline border-t pt-14">
+        <div className="rule-section mt-14 pt-14">
           <ManagerThread
             busy={busy}
             error={error}

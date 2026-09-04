@@ -78,7 +78,7 @@ function ModeItem({
 
   return (
     <Menu.Item
-      className="cursor-default rounded-[16px] px-4 py-2.5 text-[15px] text-bone outline-none transition-colors duration-[180ms] data-highlighted:bg-riser"
+      className="t-body cursor-default rounded-[16px] px-4 py-2.5 text-bone outline-none transition-colors duration-micro data-highlighted:bg-riser"
       onClick={choose}
     >
       {mode}
@@ -99,7 +99,7 @@ function PillField({
     <div>
       <Label>{label}</Label>
       <input
-        className="mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-[15px] text-bone outline-none transition-colors duration-[180ms] focus:border-bone"
+        className="t-body mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-bone outline-none transition-colors duration-micro focus:border-bone"
         defaultValue={defaultValue}
         type={type}
       />
@@ -155,7 +155,7 @@ function SettingsScreen({ account }: { account: Account }) {
 
   return (
     <div className="max-w-[640px]">
-      <h1 className="font-display font-semibold text-[28px] text-bone leading-none tracking-[-0.02em]">
+      <h1 className="t-display-md text-bone leading-none">
         Settings
       </h1>
 
@@ -177,7 +177,7 @@ function SettingsScreen({ account }: { account: Account }) {
         </Section>
 
         <Section title="Appearance">
-          <p className="text-[15px] text-bone">Theme</p>
+          <p className="t-body text-bone">Theme</p>
           <ThemeSwatches onChange={onTheme} value={settings.theme} />
 
           <div className="mt-8">
@@ -192,11 +192,11 @@ function SettingsScreen({ account }: { account: Account }) {
 
         <Section title="Assistant">
           <div className="flex items-center justify-between gap-8 py-3.5">
-            <span className="text-[15px] text-bone">Default mode</span>
+            <span className="t-body text-bone">Default mode</span>
 
             <Menu.Root>
               <Menu.Trigger
-                className="flex items-center gap-2 text-[15px] text-smoke outline-none transition-colors duration-[180ms] hover:text-bone focus-visible:text-bone"
+                className="t-body flex items-center gap-2 text-smoke outline-none transition-colors duration-micro hover:text-bone focus-visible:text-bone"
                 render={<button type="button" />}
               >
                 {settings.defaultMode}
@@ -205,7 +205,7 @@ function SettingsScreen({ account }: { account: Account }) {
 
               <Menu.Portal>
                 <Menu.Positioner align="end" sideOffset={8}>
-                  <Menu.Popup className="min-w-[180px] rounded-[20px] border border-hairline bg-panel p-1.5 shadow-float outline-none">
+                  <Menu.Popup className="surface-float min-w-[180px] rounded-[20px] border border-hairline bg-panel p-1.5 outline-none">
                     {MODES.map((mode) => (
                       <ModeItem key={mode} mode={mode} onSelect={onMode} />
                     ))}
@@ -269,7 +269,7 @@ function SettingsScreen({ account }: { account: Account }) {
         </Section>
 
         <Section title="Leaving">
-          <p className="max-w-[46ch] text-[15px] text-smoke leading-relaxed">
+          <p className="t-body max-w-[46ch] text-smoke leading-relaxed">
             Deleting your account removes your orders, your saved builds and
             every conversation you have had with the assistant.
           </p>

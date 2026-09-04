@@ -30,7 +30,7 @@ function SpecList({ className, rows }: SpecListProps) {
           key={row.label}
         >
           <Label as="dt">{row.label}</Label>
-          <dd className="text-right font-mono text-[13px] text-bone tabular-nums">
+          <dd className="t-num-xs text-right text-bone">
             {row.value}
           </dd>
         </div>

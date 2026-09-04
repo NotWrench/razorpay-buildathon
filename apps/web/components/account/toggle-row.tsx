@@ -38,18 +38,18 @@ function ToggleRow({
   return (
     <div className="flex items-start justify-between gap-8 py-3.5">
       <div className="min-w-0">
-        <label className="text-[15px] text-bone" htmlFor={id}>
+        <label className="t-body text-bone" htmlFor={id}>
           {label}
         </label>
         {description ? (
-          <p className="mt-1 text-[13px] text-smoke">{description}</p>
+          <p className="t-body-sm mt-1 text-smoke">{description}</p>
         ) : null}
       </div>
 
       <Switch.Root
         checked={checked}
         className={cn(
-          "h-6 w-11 shrink-0 rounded-full border p-[3px] transition-colors duration-[180ms]",
+          "h-6 w-11 shrink-0 rounded-full border p-[3px] transition-colors duration-micro",
           "outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-bone focus-visible:outline-offset-[3px]",
           checked ? "border-bone bg-bone" : "border-hairline bg-panel"
         )}
@@ -58,7 +58,7 @@ function ToggleRow({
       >
         <Switch.Thumb
           className={cn(
-            "block size-[18px] rounded-full transition-transform duration-[180ms]",
+            "block size-[18px] rounded-full transition-transform duration-micro",
             checked ? "translate-x-5 bg-void" : "translate-x-0 bg-smoke"
           )}
         />

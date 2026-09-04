@@ -6,6 +6,7 @@ import { Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { UseCaseMenu } from "@/components/layout/use-case-menu";
 import { useSearch } from "@/components/search/search-context";
 import { shellRoutes } from "@/lib/routes";
@@ -32,6 +33,7 @@ const HERO_ROUTES = new Set(["/"]);
 const NAV = [
   { href: shellRoutes.prebuilts, label: "Prebuilts" },
   { href: shellRoutes.components, label: "Components" },
+  { href: shellRoutes.build, label: "Build yours" },
 ] as const;
 
 interface SiteHeaderProps {
@@ -79,6 +81,14 @@ function useHeaderProgress() {
   return ref;
 }
 
+/**
+ * The active nav item is one of the five reds §4.1 budgets for, and it was
+ * being spent on nothing: the only difference between here and not-here was
+ * smoke versus bone, which is the same difference as hovering.
+ *
+ * A two-pixel rule under the label, not a fill. Red as a fill means "this
+ * does something"; red as a mark means "this is where you are."
+ */
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -86,12 +96,19 @@ function NavLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       className={cn(
-        "text-[15px] transition-colors duration-[180ms]",
+        "t-body relative py-1 transition-colors duration-micro",
         active ? "text-bone" : "text-smoke hover:text-bone"
       )}
       href={href as never}
     >
       {label}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-x-0 -bottom-0.5 h-0.5 origin-left rounded-full bg-lacquer transition-transform duration-exit",
+          active ? "scale-x-100" : "scale-x-0"
+        )}
+      />
     </Link>
   );
 }
@@ -127,7 +144,7 @@ function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
           href={shellRoutes.home}
           style={{ transform: "scale(calc(1 - 0.08 * var(--hp)))" }}
         >
-          <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
+          <span className="t-display-sm font-bold text-bone">
             NEXUS
           </span>
           <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
@@ -143,25 +160,25 @@ function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
 
         <div className="ml-auto flex items-center gap-4">
           <button
-            className="flex h-9 items-center gap-2 rounded-full border border-hairline px-3 text-smoke transition-colors duration-[180ms] hover:border-smoke hover:text-bone"
+            className="flex h-9 items-center gap-2 rounded-full border border-hairline px-3 text-smoke transition-colors duration-micro hover:border-smoke hover:text-bone"
             onClick={openSearch}
             type="button"
           >
             <Search aria-hidden className="size-4" />
             <span className="sr-only">Search</span>
-            <span className="hidden font-mono text-[11px] text-smoke tabular-nums sm:inline">
+            <span className="t-num-xs hidden text-smoke sm:inline">
               ⌘K
             </span>
           </button>
 
           <Link
             aria-label={`Cart, ${cartCount} items`}
-            className="relative flex size-9 items-center justify-center rounded-full text-smoke transition-colors duration-[180ms] hover:text-bone"
+            className="relative flex size-9 items-center justify-center rounded-full text-smoke transition-colors duration-micro hover:text-bone"
             href={shellRoutes.cart}
           >
             <ShoppingBag aria-hidden className="size-[18px]" />
             {cartCount > 0 ? (
-              <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-riser font-mono text-[10px] text-bone tabular-nums">
+              <span className="t-num-xs absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-riser text-bone">
                 {cartCount}
               </span>
             ) : null}
@@ -169,11 +186,14 @@ function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
 
           <Link
             aria-label="Account"
-            className="flex size-7 items-center justify-center rounded-full bg-riser"
+            className="hidden size-7 items-center justify-center rounded-full bg-riser md:flex"
             href={shellRoutes.account}
           >
-            <Label className="text-[10px] text-bone">S</Label>
+            <Label className="text-2xs text-bone">S</Label>
           </Link>
+
+          {/* Below md the nav row is hidden, so everything it held moves here. */}
+          <MobileNav />
         </div>
       </div>
 

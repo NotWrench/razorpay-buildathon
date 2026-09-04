@@ -4,6 +4,8 @@ import type { PageContextInput } from "@workspace/ai";
 import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { cn } from "@workspace/ui/lib/utils";
+import type { LucideIcon } from "lucide-react";
+import { Cpu, GitCompare, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentMessage,
@@ -49,10 +51,30 @@ import { partFor, validateBuild } from "@/lib/assistant/build";
  */
 
 /** The opening rows, and the task each one actually is. */
-const STARTERS: { label: string; mode: ChatModeId }[] = [
-  { label: "Build me a PC", mode: "build" },
-  { label: "Compare two parts", mode: "compare" },
-  { label: "What should I upgrade?", mode: "recommend" },
+const STARTERS: {
+  blurb: string;
+  icon: LucideIcon;
+  label: string;
+  mode: ChatModeId;
+}[] = [
+  {
+    blurb: "A few questions, then a full parts list you can price and buy.",
+    icon: Cpu,
+    label: "Build me a PC",
+    mode: "build",
+  },
+  {
+    blurb: "Two parts, side by side, on the specs that decide it.",
+    icon: GitCompare,
+    label: "Compare two parts",
+    mode: "compare",
+  },
+  {
+    blurb: "Tell it what you have and it finds the part holding you back.",
+    icon: TrendingUp,
+    label: "What should I upgrade?",
+    mode: "recommend",
+  },
 ];
 
 /** The tool whose output the sheet is drawn from. */
@@ -498,7 +520,7 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
               ) : null}
 
               {waiting ? (
-                <p className="flex items-center gap-2 text-[13px] text-smoke">
+                <p className="t-body-sm flex items-center gap-2 text-smoke">
                   <span aria-hidden className="stream-caret">
                     ▍
                   </span>
@@ -525,10 +547,25 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
             </div>
           ) : (
             <div className="py-16">
-              <h1 className="font-display font-semibold text-[40px] text-bone tracking-[-0.03em]">
+              <div className="flex items-center gap-2.5">
+                {/* The one red at rest: it says the thing is actually live. */}
+                <span
+                  aria-hidden
+                  className="size-[6px] rounded-full bg-lacquer"
+                />
+                <p className="t-label text-smoke">The assistant</p>
+              </div>
+
+              <h1 className="t-display-lg mt-4 text-bone">
                 What are you building?
               </h1>
-              <div className="mt-10">
+              <p className="t-body-lg mt-4 max-w-[52ch] text-smoke">
+                It reads this store&rsquo;s catalogue, runs the compatibility
+                rules on every part it picks, and shows the working. Nothing is
+                added to your cart without you pressing something.
+              </p>
+
+              <div className="mt-9">
                 <ChatComposer
                   mode={mode}
                   onModeChange={assistant.setMode}
@@ -540,19 +577,24 @@ function ChatScreen({ slug, storeName }: ChatScreenProps) {
                   value={draft}
                 />
               </div>
-              <div className="mt-6 flex flex-wrap items-center">
-                {STARTERS.map((starter, index) => (
-                  <div className="flex items-center" key={starter.label}>
-                    {index > 0 ? (
-                      <span aria-hidden className="mx-4 h-4 w-px bg-hairline" />
-                    ) : null}
-                    <StarterPill
-                      label={starter.label}
-                      mode={starter.mode}
-                      onModeChange={assistant.setMode}
-                      onSend={send}
-                    />
-                  </div>
+
+              {/*
+                These were three text pills separated by hairlines — visually
+                identical to body copy, so the page's primary actions read as
+                nothing at all. They are cards now, and each one says what the
+                task actually does rather than only naming it.
+              */}
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                {STARTERS.map((starter) => (
+                  <StarterCard
+                    blurb={starter.blurb}
+                    icon={starter.icon}
+                    key={starter.label}
+                    label={starter.label}
+                    mode={starter.mode}
+                    onModeChange={assistant.setMode}
+                    onSend={send}
+                  />
                 ))}
               </div>
             </div>
@@ -640,12 +682,16 @@ function ProgressDots({
  * "Compare two parts" is not a build request, so it sets the mode it means on
  * the way out — otherwise the first press of it would open a build.
  */
-function StarterPill({
+function StarterCard({
+  blurb,
+  icon: Icon,
   label,
   mode,
   onModeChange,
   onSend,
 }: {
+  blurb: string;
+  icon: LucideIcon;
   label: string;
   mode: ChatModeId;
   onModeChange: (mode: ChatModeId) => void;
@@ -657,9 +703,18 @@ function StarterPill({
   }, [label, mode, onModeChange, onSend]);
 
   return (
-    <Pill className="px-0" onClick={handleClick} size="sm" variant="text">
-      {label}
-    </Pill>
+    <button
+      className="surface-card group flex h-full flex-col rounded-[20px] border border-hairline bg-panel p-5 text-left transition-[transform,border-color] duration-micro hover:-translate-y-0.5 hover:border-smoke"
+      onClick={handleClick}
+      type="button"
+    >
+      <Icon
+        aria-hidden
+        className="size-[18px] text-smoke transition-colors duration-micro group-hover:text-bone"
+      />
+      <span className="t-body mt-4 font-medium text-bone">{label}</span>
+      <span className="t-body-sm mt-2 text-smoke">{blurb}</span>
+    </button>
   );
 }
 

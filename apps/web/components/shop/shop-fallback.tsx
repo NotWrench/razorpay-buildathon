@@ -22,7 +22,7 @@ function ShopFallback({ name }: { name: string }) {
         <div className="mx-auto w-full max-w-[1280px] px-8 lg:px-16">
           <div className="relative -mt-14 flex flex-wrap items-end justify-between gap-6">
             <div>
-              <h1 className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+              <h1 className="t-display-lg text-bone leading-none">
                 {name}
               </h1>
               <p className="mt-3 h-5" />

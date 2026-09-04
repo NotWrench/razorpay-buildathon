@@ -23,15 +23,15 @@ export function StatTile({
 }) {
   return (
     <div className={cn("rounded-md border border-border p-4", className)}>
-      <p className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+      <p className="t-label text-muted-foreground">
         {label}
       </p>
       <p
         className={cn(
           "mt-1.5 font-semibold text-xl tabular-nums",
-          tone === "warning" && "text-amber-600 dark:text-amber-400",
+          tone === "warning" && "text-amber",
           tone === "danger" && "text-destructive",
-          tone === "success" && "text-emerald-600 dark:text-emerald-400"
+          tone === "success" && "text-verdant"
         )}
       >
         {value}

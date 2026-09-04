@@ -115,7 +115,7 @@ export function CheckoutPanel({
 
         {blocking.length > 0 ? (
           <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3">
-            <p className="mb-2 font-semibold text-destructive text-xs uppercase tracking-widest">
+            <p className="t-label mb-2 text-destructive">
               Checkout blocked
             </p>
             <IssueList issues={blocking} />

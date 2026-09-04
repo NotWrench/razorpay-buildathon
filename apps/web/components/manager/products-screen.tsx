@@ -134,7 +134,7 @@ function ProductsScreen({ products: rows }: { products: ManagerProduct[] }) {
         label: "Name",
         render: (entry) => (
           <div className="min-w-0">
-            <p className="truncate text-[15px] text-bone">
+            <p className="t-body truncate text-bone">
               {entry.product.name}
             </p>
             <Label className="mt-0.5 block">{entry.product.category}</Label>
@@ -151,7 +151,7 @@ function ProductsScreen({ products: rows }: { products: ManagerProduct[] }) {
           /* The hovered row outlines this cell: the price is the thing an
              operator changes most, and the outline says so without adding a
              pencil to every row. */
-          <span className="inline-flex h-8 items-center rounded-full border border-transparent px-3 font-mono text-[15px] text-bone tabular-nums transition-colors duration-[180ms] group-hover:border-hairline">
+          <span className="t-num-sm inline-flex h-8 items-center rounded-full border border-transparent px-3 text-bone transition-colors duration-micro group-hover:border-hairline">
             {formatPaise(entry.product.pricePaise)}
           </span>
         ),
@@ -165,7 +165,7 @@ function ProductsScreen({ products: rows }: { products: ManagerProduct[] }) {
         render: (entry) => (
           <span
             className={cn(
-              "font-mono text-[15px] tabular-nums",
+              "t-num-sm",
               entry.stock <= entry.lowAt ? "text-amber" : "text-bone"
             )}
           >
@@ -179,7 +179,7 @@ function ProductsScreen({ products: rows }: { products: ManagerProduct[] }) {
         id: "status",
         label: "Status",
         render: (entry) => (
-          <span className="text-[13px] text-smoke">
+          <span className="t-body-sm text-smoke">
             {entry.status === "live" ? "Live" : "Draft"}
           </span>
         ),
@@ -221,7 +221,7 @@ function ProductsScreen({ products: rows }: { products: ManagerProduct[] }) {
         columns={columns}
         empty={
           <div className="flex flex-col items-start gap-5">
-            <p className="text-[16px] text-smoke">Nothing in the catalogue.</p>
+            <p className="t-body text-smoke">Nothing in the catalogue.</p>
             <Pill onClick={onAdd} size="sm" variant="ghost">
               Add the first product
             </Pill>

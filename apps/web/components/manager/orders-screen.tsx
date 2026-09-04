@@ -249,10 +249,10 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "customer",
         label: "Customer",
         render: (order) => (
-          <span className="text-[15px] text-bone">
+          <span className="t-body text-bone">
             {order.customer}
             {order.buyerType === "ai_agent" ? (
-              <span className="ml-2 text-[13px] text-smoke">agent</span>
+              <span className="ml-2 t-body-sm text-smoke">agent</span>
             ) : null}
           </span>
         ),

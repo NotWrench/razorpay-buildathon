@@ -22,11 +22,11 @@ export default async function AccountPage() {
   return (
     <div className="grid gap-24">
       <section>
-        <h1 className="font-display font-semibold text-[28px] text-bone leading-none tracking-[-0.02em]">
+        <h1 className="t-display-md text-bone leading-none">
           {account.name}
         </h1>
-        <p className="mt-3 text-[15px] text-smoke">{account.email}</p>
-        <p className="mt-1 font-mono text-[13px] text-smoke tabular-nums">
+        <p className="t-body mt-3 text-smoke">{account.email}</p>
+        <p className="t-num-xs mt-1 text-smoke">
           Member since {account.memberSince}
         </p>
       </section>

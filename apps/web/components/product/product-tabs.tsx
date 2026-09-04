@@ -42,12 +42,14 @@ function TabButton({
 
   return (
     <button
+      aria-selected={active}
       className={cn(
-        "py-3 text-[15px] transition-colors duration-[180ms]",
+        "t-body py-3 transition-colors duration-micro",
         active ? "text-bone" : "text-smoke hover:text-bone"
       )}
       onClick={handleClick}
       ref={handleRef}
+      role="tab"
       type="button"
     >
       {label}
@@ -65,7 +67,7 @@ function ReviewBars({ distribution }: { distribution: number[] }) {
 
         return (
           <div className="flex items-center gap-4" key={stars}>
-            <span className="w-3 font-mono text-[13px] text-smoke tabular-nums">
+            <span className="t-num-xs w-3 text-smoke">
               {stars}
             </span>
             <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-hairline">
@@ -74,7 +76,7 @@ function ReviewBars({ distribution }: { distribution: number[] }) {
                 style={{ width: `${(count / most) * 100}%` }}
               />
             </span>
-            <span className="w-10 text-right font-mono text-[13px] text-smoke tabular-nums">
+            <span className="t-num-xs w-10 text-right text-smoke">
               {count}
             </span>
           </div>
@@ -85,6 +87,15 @@ function ReviewBars({ distribution }: { distribution: number[] }) {
 }
 
 function ProductTabs({ product }: { product: ProductDetail }) {
+  /*
+   * Reviews was always clickable and always rendered an empty panel when the
+   * product had none. A tab that leads nowhere is worse than a missing tab,
+   * so the row only offers what there is something to show for.
+   */
+  const tabList = product.reviews
+    ? TABS
+    : TABS.filter((tab) => tab !== "Reviews");
+
   const [active, setActive] = useState<Tab>("Specifications");
   const [underline, setUnderline] = useState({ scale: 0, x: 0 });
   const tabs = useRef(new Map<Tab, HTMLButtonElement>());
@@ -114,8 +125,8 @@ function ProductTabs({ product }: { product: ProductDetail }) {
   return (
     <div>
       <div className="relative border-hairline border-b">
-        <div className="flex gap-8">
-          {TABS.map((tab) => (
+        <div className="flex gap-8" role="tablist">
+          {tabList.map((tab) => (
             <TabButton
               active={active === tab}
               key={tab}
@@ -127,7 +138,7 @@ function ProductTabs({ product }: { product: ProductDetail }) {
         </div>
         <span
           aria-hidden
-          className="absolute bottom-0 left-0 h-0.5 origin-left bg-bone transition-transform duration-[420ms] ease-[cubic-bezier(.22,1,.36,1)]"
+          className="absolute bottom-0 left-0 h-0.5 origin-left bg-bone transition-transform duration-standard ease-[cubic-bezier(.22,1,.36,1)]"
           style={{
             transform: `translateX(${underline.x}px) scaleX(${underline.scale})`,
             width: `${BASE_WIDTH}px`,
@@ -166,7 +177,7 @@ function ProductTabs({ product }: { product: ProductDetail }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-[15px] text-smoke">
+              <p className="t-body text-smoke">
                 Nothing to check until a build is open.
               </p>
             )}
@@ -176,10 +187,10 @@ function ProductTabs({ product }: { product: ProductDetail }) {
         {active === "Reviews" && product.reviews ? (
           <div className="grid gap-12 md:grid-cols-[280px_1fr]">
             <div>
-              <p className="font-mono text-[40px] text-bone tabular-nums leading-none">
+              <p className="t-num-lg text-2xl text-bone">
                 {product.reviews.average}
               </p>
-              <p className="mt-3 font-mono text-[13px] text-smoke tabular-nums">
+              <p className="t-num-xs mt-3 text-smoke">
                 {product.reviews.total} ratings
               </p>
               <div className="mt-6">
@@ -191,15 +202,15 @@ function ProductTabs({ product }: { product: ProductDetail }) {
               {product.reviews.items.map((review) => (
                 <li className="border-hairline border-b py-5" key={review.id}>
                   <div className="flex items-baseline justify-between gap-4">
-                    <p className="text-[15px] text-bone">{review.author}</p>
-                    <p className="font-mono text-[13px] text-smoke tabular-nums">
+                    <p className="t-body text-bone">{review.author}</p>
+                    <p className="t-num-xs text-smoke">
                       {review.rating}/5
                     </p>
                   </div>
-                  <p className="mt-2 max-w-[66ch] text-[15px] text-smoke">
+                  <p className="t-body mt-2 max-w-[66ch] text-smoke">
                     {review.body}
                   </p>
-                  <p className="mt-2 text-[13px] text-smoke">{review.when}</p>
+                  <p className="t-body-sm mt-2 text-smoke">{review.when}</p>
                 </li>
               ))}
             </ul>

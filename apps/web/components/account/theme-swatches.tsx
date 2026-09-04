@@ -76,7 +76,7 @@ function ThemeSwatch({
     >
       <span
         className={cn(
-          "relative flex h-[72px] w-full items-end gap-1.5 overflow-hidden rounded-[12px] border p-2.5 transition-colors duration-[180ms]",
+          "relative flex h-[72px] w-full items-end gap-1.5 overflow-hidden rounded-[12px] border p-2.5 transition-colors duration-micro",
           selected
             ? "border-bone"
             : "border-hairline group-hover:border-smoke group-focus-visible:border-bone"
@@ -103,7 +103,7 @@ function ThemeSwatch({
 
       <span
         className={cn(
-          "mt-2 block text-[13px] transition-colors duration-[180ms]",
+          "t-body-sm mt-2 block transition-colors duration-micro",
           selected ? "text-bone" : "text-smoke group-hover:text-bone"
         )}
       >

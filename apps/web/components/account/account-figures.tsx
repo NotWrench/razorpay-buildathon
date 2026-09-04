@@ -24,7 +24,7 @@ function AccountFiguresRow({ figures }: { figures: AccountFigures }) {
         <Label as="dt">Orders</Label>
         <dd className="mt-2">
           <CountUp
-            className="text-[26px] text-bone md:text-[32px]"
+            className="t-num-md text-bone md:text-xl"
             value={figures.orders}
           />
         </dd>
@@ -34,7 +34,7 @@ function AccountFiguresRow({ figures }: { figures: AccountFigures }) {
         <Label as="dt">Total spent</Label>
         <dd className="mt-2">
           <CountUp
-            className="text-[26px] text-bone md:text-[32px]"
+            className="t-num-md text-bone md:text-xl"
             format={wholeRupees}
             value={figures.totalSpentPaise}
           />
@@ -45,7 +45,7 @@ function AccountFiguresRow({ figures }: { figures: AccountFigures }) {
         <Label as="dt">Builds</Label>
         <dd className="mt-2">
           <CountUp
-            className="text-[26px] text-bone md:text-[32px]"
+            className="t-num-md text-bone md:text-xl"
             value={figures.builds}
           />
         </dd>
@@ -55,7 +55,7 @@ function AccountFiguresRow({ figures }: { figures: AccountFigures }) {
         <Label as="dt">Conversations</Label>
         <dd className="mt-2">
           <CountUp
-            className="text-[26px] text-bone md:text-[32px]"
+            className="t-num-md text-bone md:text-xl"
             value={figures.conversations}
           />
         </dd>

@@ -238,7 +238,7 @@ function CartScreen({ cart }: { cart: Cart }) {
   if (lines.length === 0) {
     return (
       <div className="mx-auto w-full max-w-[1280px] px-5 py-32 sm:px-8 lg:px-10 2xl:px-16">
-        <p className="text-[21px] text-bone">Your cart is empty.</p>
+        <p className="t-display-sm text-bone">Your cart is empty.</p>
         <div className="mt-8 flex flex-wrap gap-6">
           <PillLink href={shellRoutes.components} variant="text">
             Browse parts →
@@ -256,7 +256,7 @@ function CartScreen({ cart }: { cart: Cart }) {
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-5 pt-14 sm:px-8 lg:px-10 2xl:px-16">
-      <h1 className="font-display font-semibold text-[40px] text-bone leading-none tracking-[-0.03em]">
+      <h1 className="t-display-lg text-bone leading-none">
         Cart
       </h1>
 
@@ -278,7 +278,7 @@ function CartScreen({ cart }: { cart: Cart }) {
               <section className="mb-12" key={group.build.id}>
                 <div className="flex items-baseline justify-between gap-6 border-hairline border-b pb-3">
                   <Label className="text-bone">{group.build.name}</Label>
-                  <span className="font-mono text-[13px] text-smoke tabular-nums">
+                  <span className="t-num-xs text-smoke">
                     {formatPaise(subtotal)}
                   </span>
                 </div>
@@ -333,7 +333,7 @@ function CartScreen({ cart }: { cart: Cart }) {
         <div>
           <CartSummary {...totals} />
 
-          <p className="mt-10 flex items-start gap-2 border-hairline border-t pt-8 text-[13px] text-smoke">
+          <p className="t-body-sm mt-10 flex items-start gap-2 border-hairline border-t pt-8 text-smoke">
             <Sparkles aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             {note}
           </p>
@@ -345,7 +345,7 @@ function CartScreen({ cart }: { cart: Cart }) {
       <div className="sticky bottom-0 z-50 -mx-8 mt-12 flex items-center justify-between gap-5 border-hairline border-t bg-void px-8 py-4 lg:hidden">
         <div>
           <Label>Total</Label>
-          <p className="mt-1 font-mono text-[21px] text-bone tabular-nums">
+          <p className="t-num-md mt-1 text-bone">
             {formatPaise(totals.totalPaise)}
           </p>
         </div>
@@ -359,7 +359,7 @@ function CartScreen({ cart }: { cart: Cart }) {
           aria-live="polite"
           className="fixed bottom-8 left-1/2 z-60 flex -translate-x-1/2 items-center gap-5 rounded-full bg-panel py-3 pr-3 pl-6 shadow-float"
         >
-          <span className="text-[13px] text-smoke">
+          <span className="t-body-sm text-smoke">
             Removed {removed.line.product.name}.
           </span>
           <Pill onClick={onUndo} size="sm" variant="ghost">

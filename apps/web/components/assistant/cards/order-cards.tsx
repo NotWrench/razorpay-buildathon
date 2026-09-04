@@ -50,7 +50,7 @@ export function OrderCard({
           Pay {formatPaise(totalPaise)}
         </Button>
       ) : null}
-      <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+      <p className="t-num-xs mt-2 text-muted-foreground">
         {orderId}
       </p>
     </ToolCard>

@@ -82,7 +82,7 @@ function NumberCell({
   return (
     <input
       aria-label={label}
-      className="h-8 w-20 rounded-full border border-hairline bg-transparent px-3 text-right font-mono text-[15px] text-bone tabular-nums outline-none transition-colors duration-[180ms] focus:border-bone"
+      className="t-num-sm h-8 w-20 rounded-full border border-hairline bg-transparent px-3 text-right text-bone outline-none transition-colors duration-micro focus:border-bone"
       inputMode="numeric"
       onBlur={commit}
       onChange={change}
@@ -117,7 +117,7 @@ function SelectCell({
       />
       <label
         className={cn(
-          "flex size-5 cursor-pointer items-center justify-center rounded-[6px] border transition-colors duration-[180ms]",
+          "flex size-5 cursor-pointer items-center justify-center rounded-[6px] border transition-colors duration-micro",
           checked ? "border-bone" : "border-hairline hover:border-smoke",
           "peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-bone peer-focus-visible:outline-offset-[3px]"
         )}
@@ -157,11 +157,11 @@ function DraftRow({
       </ImageGround>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] text-bone">
+        <p className="t-body truncate text-bone">
           {draft.product.name} ·{" "}
           <span className="font-mono tabular-nums">{draft.quantity}</span> units
         </p>
-        <p className="mt-1 text-[13px] text-smoke">{draft.provenance}</p>
+        <p className="t-body-sm mt-1 text-smoke">{draft.provenance}</p>
       </div>
 
       <div className="flex shrink-0 gap-3">
@@ -288,7 +288,7 @@ function RestockScreen({
             <ImageGround className="size-10 shrink-0 rounded-[10px] p-1.5">
               <ProductRender alt="" category={row.product.category} />
             </ImageGround>
-            <p className="truncate text-[15px] text-bone">{row.product.name}</p>
+            <p className="t-body truncate text-bone">{row.product.name}</p>
           </div>
         ),
         sort: (a, b) => a.product.name.localeCompare(b.product.name),
@@ -299,7 +299,7 @@ function RestockScreen({
         id: "inStock",
         label: "In stock",
         render: (row) => (
-          <span className="font-mono text-[15px] text-amber tabular-nums">
+          <span className="t-num-sm text-amber">
             {row.inStock}
           </span>
         ),
@@ -369,7 +369,7 @@ function RestockScreen({
       <ManagerTable
         columns={columns}
         empty={
-          <p className="text-[16px] text-smoke">
+          <p className="t-body text-smoke">
             Nothing is below its threshold.
           </p>
         }
@@ -380,7 +380,7 @@ function RestockScreen({
       {/* The footer is the only place on this screen with a filled pill: one
           constructive action, at the end of the work. */}
       <div className="sticky bottom-0 mt-8 flex flex-wrap items-center justify-between gap-5 border-hairline border-t bg-void py-5">
-        <span className="font-mono text-[13px] text-smoke tabular-nums">
+        <span className="t-num-xs text-smoke">
           {selected.length} selected · estimated {formatPaise(estimate)}
         </span>
         <Pill

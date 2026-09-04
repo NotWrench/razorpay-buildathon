@@ -57,25 +57,39 @@ export const managerRoutes = {
  * literal already matches.
  */
 export const shellRoutes = {
+  about: route("/about"),
   account: route("/account"),
   accountSettings: route("/account/settings"),
   assistant: route("/assistant"),
   assistantWith: (query: string) =>
     route(`/assistant?q=${encodeURIComponent(query)}`),
-  byUse: (useCase: string) => route(`/shop?use=${encodeURIComponent(useCase)}`),
+  build: route("/build"),
+  /**
+   * Use cases select machines, not parts: the four values here are the
+   * ones /prebuilts already matches on, and components carry no use-case
+   * dimension in the data to filter by.
+   */
+  byUse: (useCase: string) =>
+    route(`/prebuilts?use=${encodeURIComponent(useCase)}`),
   cart: route("/cart"),
   checkout: route("/checkout"),
   /** Checkout for a build the assistant assembled, rather than the cart. */
   checkoutWith: (productIds: string[]) =>
     route(`/checkout?parts=${encodeURIComponent(productIds.join(","))}`),
   components: route("/shop"),
+  contact: route("/contact"),
+  /** One saved thread, reopened. */
+  conversation: (id: string) => route(`/assistant?c=${encodeURIComponent(id)}`),
   home: route("/"),
   login: route("/login"),
   prebuilt: (slug: string) => route(`/prebuilts/${slug}`),
+  prebuiltSpecs: (slug: string) => route(`/prebuilts/${slug}#specs`),
   prebuilts: route("/prebuilts"),
   preview: route("/preview"),
   product: (id: string) => route(`/product/${id}`),
   search: (query: string) => route(`/shop?q=${encodeURIComponent(query)}`),
+  shipping: route("/shipping"),
   shopCategory: (category: string) => route(`/shop/${category}`),
   signup: route("/signup"),
+  warranty: route("/warranty"),
 };

@@ -30,10 +30,10 @@ function AssistantBand({ machine, pick }: AssistantBandProps) {
         <div>
           <Label>The assistant</Label>
 
-          <p className="mt-6 max-w-[22ch] font-display font-semibold text-[40px] text-bone leading-[1.05] tracking-[-0.03em]">
+          <p className="t-display-lg mt-6 max-w-[22ch] text-bone leading-[1.05]">
             “₹80,000, 1440p, mostly competitive shooters.”
           </p>
-          <p className="mt-5 max-w-[54ch] text-[15px] text-smoke">
+          <p className="t-body mt-5 max-w-[54ch] text-smoke">
             Then spend it on the card and the panel refresh, not the case. Here
             is what that looks like.
           </p>
@@ -43,8 +43,8 @@ function AssistantBand({ machine, pick }: AssistantBandProps) {
               <ProductRender alt={pick.name} category={pick.category} />
             </ImageGround>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] text-bone">{pick.name}</p>
-              <p className="mt-1 font-mono text-[13px] text-smoke tabular-nums">
+              <p className="t-body truncate text-bone">{pick.name}</p>
+              <p className="t-num-xs mt-1 text-smoke">
                 {pick.keySpecs.map((spec) => spec.value).join(" · ")}
               </p>
             </div>
@@ -59,7 +59,7 @@ function AssistantBand({ machine, pick }: AssistantBandProps) {
 
           <div className="mt-5 flex items-baseline justify-between gap-6">
             <Label>Build total</Label>
-            <span className="font-mono text-[21px] text-bone tabular-nums">
+            <span className="t-num-md text-bone">
               {formatPaise(machine.pricePaise)}
             </span>
           </div>

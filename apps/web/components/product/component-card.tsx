@@ -32,21 +32,21 @@ function ComponentCard({ product }: { product: ProductSummary }) {
 
   return (
     <Link
-      className="group flex flex-col rounded-[20px] border border-hairline bg-panel p-5 shadow-card transition-[transform,border-color] duration-[180ms] hover:-translate-y-0.5 hover:border-smoke/40"
+      className="group surface-card flex flex-col rounded-[20px] border border-hairline bg-panel p-5 transition-[transform,border-color] duration-micro hover:-translate-y-0.5 hover:border-smoke/40"
       href={shellRoutes.product(product.id)}
     >
       <ImageGround className="aspect-[16/10] p-6">
         <ProductRender
           alt={product.name}
           category={product.category}
-          className="transition-transform duration-[420ms] group-hover:scale-[1.03]"
+          className="transition-transform duration-standard group-hover:scale-[1.03]"
           sizes="(min-width: 1280px) 380px, (min-width: 768px) 45vw, 90vw"
           src={product.imageUrl || undefined}
         />
       </ImageGround>
 
       <Label className="mt-5">{product.brand}</Label>
-      <h3 className="mt-2 line-clamp-2 min-h-[44px] text-[15px] text-bone">
+      <h3 className="t-body mt-2 line-clamp-2 min-h-[44px] font-medium text-bone">
         {product.name}
       </h3>
 
@@ -67,7 +67,7 @@ function ComponentCard({ product }: { product: ProductSummary }) {
         />
       ) : null}
 
-      <span className="mt-4 text-[13px] text-smoke opacity-0 transition-opacity duration-[180ms] group-hover:opacity-100 group-focus-visible:opacity-100">
+      <span className="t-body-sm mt-4 text-smoke opacity-0 transition-opacity duration-micro group-hover:opacity-100 group-focus-visible:opacity-100">
         Configure →
       </span>
     </Link>
@@ -80,7 +80,7 @@ function ComponentCard({ product }: { product: ProductSummary }) {
  */
 function ComponentCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-[20px] border border-hairline bg-panel p-5">
+    <div className="surface-card flex flex-col rounded-[20px] border border-hairline bg-panel p-5">
       <Shimmer className="aspect-[16/10]" radius="ground" />
       <Shimmer className="mt-5 h-3 w-16" radius="pill" />
       <Shimmer className="mt-3 h-[38px] w-full" radius="pill" />

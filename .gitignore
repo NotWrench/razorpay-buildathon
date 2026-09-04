@@ -18,8 +18,13 @@ coverage
 out/
 
 # production
-build
-dist
+#
+# Anchored, and directories only. A bare `build` matches any path segment
+# called build anywhere in the tree, which silently swallowed the storefront's
+# own `app/(store)/build` route and every new file under
+# `components/build/` — source that looks committed and is not.
+/build/
+**/dist/
 
 # turbo
 .turbo

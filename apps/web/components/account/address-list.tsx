@@ -19,11 +19,11 @@ function AddressList({ addresses }: { addresses: SavedAddress[] }) {
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
-              <p className="text-[15px] text-bone">{address.label}</p>
+              <p className="t-body text-bone">{address.label}</p>
               {address.primary ? <Label>Default</Label> : null}
             </div>
             {address.lines.map((line) => (
-              <p className="mt-1 text-[14px] text-smoke" key={line}>
+              <p className="t-body-sm mt-1 text-smoke" key={line}>
                 {line}
               </p>
             ))}

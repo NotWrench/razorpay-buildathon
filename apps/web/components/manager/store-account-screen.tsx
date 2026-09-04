@@ -70,7 +70,7 @@ function Field({
     <div>
       <Label htmlFor={id}>{label}</Label>
       <input
-        className="mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-[15px] text-bone outline-none transition-colors duration-[180ms] focus:border-bone"
+        className="t-body mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-bone outline-none transition-colors duration-micro focus:border-bone"
         defaultValue={defaultValue}
         id={id}
         name={name}
@@ -131,19 +131,19 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
                 key={member.id}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] text-bone">
+                  <p className="t-body truncate text-bone">
                     {member.name}
                   </p>
-                  <p className="mt-0.5 truncate text-[13px] text-smoke">
+                  <p className="t-body-sm mt-0.5 truncate text-smoke">
                     {member.email}
                   </p>
                 </div>
-                <span className="text-[13px] text-smoke">{member.role}</span>
+                <span className="t-body-sm text-smoke">{member.role}</span>
               </div>
             ))}
           </div>
 
-          <p className="mt-6 max-w-[46ch] text-[15px] text-smoke leading-relaxed">
+          <p className="t-body mt-6 max-w-[46ch] text-smoke leading-relaxed">
             One account owns a store. There is no invitation flow yet, so this
             is the list rather than a place to change it.
           </p>

@@ -9,7 +9,7 @@ export function CartButton({ count, slug }: { count: number; slug: string }) {
       <ShoppingCartIcon />
       Cart
       {count > 0 ? (
-        <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground tabular-nums">
+        <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-2xs text-primary-foreground tabular-nums">
           {count}
         </span>
       ) : null}

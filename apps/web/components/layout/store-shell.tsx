@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RouteMemory } from "@/components/layout/route-memory";
 import { ScrollProgress } from "@/components/layout/scroll-progress";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -27,6 +28,9 @@ function StoreShell({
 }: StoreShellProps) {
   return (
     <SearchProvider>
+      {/* Writes down where the shopper is, so the assistant can offer a Back
+          that returns here rather than always dropping them on the home page. */}
+      <RouteMemory />
       <div className="flex min-h-dvh flex-col bg-void">
         {scrollProgress ? <ScrollProgress /> : null}
         <SiteHeader cartCount={cartCount} />

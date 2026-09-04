@@ -25,7 +25,7 @@ function FullSpecs({ machine }: { machine: PrebuiltDetail }) {
   const toggle = useCallback(() => setOpen((current) => !current), []);
 
   return (
-    <section className="mx-auto w-full max-w-[1280px] px-8 lg:px-16">
+    <section className="mx-auto w-full max-w-[1280px] px-8 lg:px-16" id="specs">
       <div className="border-hairline border-t">
         <button
           aria-controls={panelId}
@@ -37,13 +37,13 @@ function FullSpecs({ machine }: { machine: PrebuiltDetail }) {
           <Label>Full specifications</Label>
           <ChevronDown
             aria-hidden
-            className="size-4 text-smoke transition-transform duration-[280ms]"
+            className="size-4 text-smoke transition-transform duration-exit"
             style={{ transform: open ? "rotate(180deg)" : "none" }}
           />
         </button>
 
         <div
-          className="grid transition-[grid-template-rows] duration-[420ms] ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none"
+          className="grid transition-[grid-template-rows] duration-standard ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none"
           id={panelId}
           style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
         >

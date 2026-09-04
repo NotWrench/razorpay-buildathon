@@ -40,7 +40,7 @@ function StatusLine({ className, message, state }: StatusLineProps) {
   const { Icon, tone } = STATUS[state];
 
   return (
-    <p className={cn("flex items-start gap-2 text-[13px]", tone, className)}>
+    <p className={cn("t-body-sm flex items-start gap-2", tone, className)}>
       <Icon aria-hidden className="mt-px size-3.5 shrink-0" />
       <span>{message}</span>
     </p>

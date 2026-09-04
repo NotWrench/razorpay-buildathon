@@ -49,7 +49,7 @@ function AccountRail() {
               <Link
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-full py-2 text-[15px] transition-colors duration-[180ms]",
+                  "t-body flex items-center gap-3 rounded-full py-2 transition-colors duration-micro",
                   current ? "text-bone" : "text-smoke hover:text-bone"
                 )}
                 href={item.href}
@@ -57,7 +57,7 @@ function AccountRail() {
                 <span
                   aria-hidden
                   className={cn(
-                    "h-[2px] w-4 rounded-full transition-colors duration-[180ms]",
+                    "h-[2px] w-4 rounded-full transition-colors duration-micro",
                     current ? "bg-bone" : "bg-transparent"
                   )}
                 />
