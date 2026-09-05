@@ -16,6 +16,12 @@ import { toast } from "sonner";
  * key that reached the browser has already passed three server-side checks,
  * and if one of them ever lets a live key through, the next thing that happens
  * is a real charge. Refusing here costs nothing and ends that.
+ *
+ * Saying so in the window itself is a separate problem. Razorpay's checkout v2
+ * paints no test badge of its own and offers no option to ask for one, so the
+ * only text we control inside that modal is `name` and `description` — and
+ * `description` is where the words go. `notes` carries the same fact onto the
+ * payment record, where the dashboard shows it.
  */
 
 declare global {
@@ -25,6 +31,9 @@ declare global {
 }
 
 const SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+
+/** Shown under the store name inside the Razorpay window. */
+const TEST_MODE_LINE = "Test mode — this payment moves no real money";
 
 export interface RazorpayHandoff {
   amount: number;
@@ -98,6 +107,7 @@ export function useRazorpay() {
       const checkout = new window.Razorpay({
         amount: handoff.amount,
         currency: handoff.currency,
+        description: TEST_MODE_LINE,
         handler: async (response: Record<string, string>) => {
           const verification = await fetch("/api/payments/verify", {
             // The verify route takes Razorpay's own field names, which is
@@ -132,6 +142,7 @@ export function useRazorpay() {
           },
         },
         name: storeName,
+        notes: { mode: "test" },
         order_id: handoff.razorpayOrderId,
       });
 
