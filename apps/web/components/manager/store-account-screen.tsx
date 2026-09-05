@@ -87,9 +87,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
   const onRename = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      rename.run(
-        String(new FormData(event.currentTarget).get("name") ?? "")
-      );
+      rename.run(String(new FormData(event.currentTarget).get("name") ?? ""));
     },
     [rename]
   );
@@ -131,9 +129,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
                 key={member.id}
               >
                 <div className="min-w-0">
-                  <p className="t-body truncate text-bone">
-                    {member.name}
-                  </p>
+                  <p className="t-body truncate text-bone">{member.name}</p>
                   <p className="t-body-sm mt-0.5 truncate text-smoke">
                     {member.email}
                   </p>
@@ -149,7 +145,6 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
           </p>
         </Section>
       </div>
-
     </div>
   );
 }

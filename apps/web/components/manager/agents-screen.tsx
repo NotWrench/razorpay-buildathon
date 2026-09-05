@@ -13,7 +13,10 @@ import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable, RowAction } from "@/components/manager/manager-table";
 import { useAction } from "@/hooks/use-action";
-import { issueAgentKeyAction, revokeAgentKeyAction } from "@/lib/actions/agents";
+import {
+  issueAgentKeyAction,
+  revokeAgentKeyAction,
+} from "@/lib/actions/agents";
 import type { AgentKeyRow } from "@/lib/data/types";
 
 /**
@@ -71,7 +74,7 @@ function IssuedKey({ secret }: { secret: string }) {
   return (
     <div className="mb-10 rounded-[18px] border border-amber/40 bg-amber/5 p-6">
       <Label>Copy this now</Label>
-      <p className="mt-3 t-body-sm text-smoke">
+      <p className="t-body-sm mt-3 text-smoke">
         This is the only time the key is shown. It is not stored anywhere we can
         read it back, so if it is lost you issue a new one.
       </p>
@@ -148,7 +151,7 @@ function AgentsScreen({
         label: "Agent",
         render: (row) => (
           <div className="min-w-0">
-            <p className={cn("truncate t-body", row.revoked && "text-smoke")}>
+            <p className={cn("t-body truncate", row.revoked && "text-smoke")}>
               {row.label}
               {row.revoked ? " · revoked" : ""}
             </p>
@@ -239,7 +242,7 @@ function AgentsScreen({
         <div className="min-w-[200px] flex-1">
           <Label htmlFor="agent-label">Who is this for</Label>
           <input
-            className="mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 t-body text-bone outline-none transition-colors duration-micro placeholder:text-smoke focus:border-bone"
+            className="t-body mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 text-bone outline-none transition-colors duration-micro placeholder:text-smoke focus:border-bone"
             id="agent-label"
             name="label"
             placeholder="Acme shopping agent"
@@ -250,7 +253,7 @@ function AgentsScreen({
         <div className="w-[220px]">
           <Label htmlFor="agent-cap">Spending limit in rupees</Label>
           <input
-            className="mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 font-mono t-body text-bone tabular-nums outline-none transition-colors duration-micro placeholder:text-smoke focus:border-bone"
+            className="t-body mt-2 h-[52px] w-full rounded-full border border-hairline bg-panel px-5 font-mono text-bone tabular-nums outline-none transition-colors duration-micro placeholder:text-smoke focus:border-bone"
             id="agent-cap"
             inputMode="numeric"
             name="cap"

@@ -1,5 +1,5 @@
-import { ManagerTableSkeleton } from "@/components/manager/table-skeleton";
+import { ProductGridSkeleton } from "@/components/manager/table-skeleton";
 
 export default function Loading() {
-  return <ManagerTableSkeleton />;
+  return <ProductGridSkeleton />;
 }

@@ -68,10 +68,10 @@ function OvernightBlock({ merchantId }: { merchantId: string }) {
     return (
       <section className="mt-14">
         <Label>While you were away</Label>
-        <p className="mt-5 t-body-lg text-smoke">
-          Run the assistant unattended over the last week. It reads the
-          numbers, and can leave at most one draft campaign and one reorder
-          request — it cannot approve anything, because approving needs you.
+        <p className="t-body-lg mt-5 text-smoke">
+          Run the assistant unattended over the last week. It reads the numbers,
+          and can leave at most one draft campaign and one reorder request — it
+          cannot approve anything, because approving needs you.
         </p>
         <div className="mt-5">
           <Pill disabled={running} onClick={onRun} size="sm" variant="ghost">
@@ -86,7 +86,7 @@ function OvernightBlock({ merchantId }: { merchantId: string }) {
     <section className="mt-14 rounded-[18px] border border-hairline bg-panel p-7">
       <Label>While you were away</Label>
 
-      <p className="mt-5 whitespace-pre-wrap t-body text-bone leading-relaxed">
+      <p className="t-body mt-5 whitespace-pre-wrap text-bone leading-relaxed">
         {result.text}
       </p>
 
@@ -122,9 +122,9 @@ function OvernightBlock({ merchantId }: { merchantId: string }) {
         to act and one that was not.
       */}
       {result.blockedTools.length > 0 ? (
-        <p className="mt-3 t-body-sm text-smoke">
-          It tried {result.blockedTools.join(", ")} and was stopped — those
-          need you.
+        <p className="t-body-sm mt-3 text-smoke">
+          It tried {result.blockedTools.join(", ")} and was stopped — those need
+          you.
         </p>
       ) : null}
     </section>

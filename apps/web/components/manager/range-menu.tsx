@@ -4,6 +4,7 @@ import { Menu } from "@base-ui/react/menu";
 import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { ManagerMenuItem, MENU_POPUP } from "@/components/manager/manager-menu";
 import type { ManagerRange } from "@/lib/data/types";
 import { managerRoutes } from "@/lib/routes";
 
@@ -14,27 +15,11 @@ import { managerRoutes } from "@/lib/routes";
  * client already holds, so the skeletons are real and the numbers genuinely
  * belong to the range named above them. A range control that reorders the same
  * figures teaches the operator that the page is decorative.
+ *
+ * The trigger stays a quiet line rather than the ghost pill the catalogue's
+ * menus wear: it sits directly under the greeting, and a bordered control
+ * there would read as the page's primary action.
  */
-
-function RangeItem({
-  onSelect,
-  range,
-}: {
-  onSelect: (id: string) => void;
-  range: ManagerRange;
-}) {
-  const choose = useCallback(() => onSelect(range.id), [onSelect, range.id]);
-
-  return (
-    <Menu.Item
-      className="t-body cursor-default rounded-[16px] px-4 py-2.5 text-bone outline-none transition-colors duration-micro data-highlighted:bg-riser"
-      onClick={choose}
-    >
-      {range.label}
-    </Menu.Item>
-  );
-}
-
 function RangeMenu({
   current,
   ranges,
@@ -61,9 +46,16 @@ function RangeMenu({
 
       <Menu.Portal>
         <Menu.Positioner align="start" sideOffset={8}>
-          <Menu.Popup className="surface-float min-w-[200px] rounded-[20px] border border-hairline bg-panel p-1.5 outline-none">
+          <Menu.Popup className={MENU_POPUP}>
             {ranges.map((range) => (
-              <RangeItem key={range.id} onSelect={onSelect} range={range} />
+              <ManagerMenuItem
+                key={range.id}
+                onSelect={onSelect}
+                selected={range.id === current.id}
+                value={range.id}
+              >
+                {range.label}
+              </ManagerMenuItem>
             ))}
           </Menu.Popup>
         </Menu.Positioner>

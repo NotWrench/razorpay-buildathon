@@ -16,6 +16,10 @@ import { NoOwnedStoreError, requireManagerStore } from "@/lib/manager-store";
  * from who is asking before any of them render. A signed-out caller is sent to
  * sign in; a signed-in caller who owns no store is told so in a sentence
  * rather than shown an empty shop that looks like a broken one.
+ *
+ * The rail's height below `lg` is declared once as `--manager-rail`, because
+ * the assistant screen has to subtract it to size its own scroll region and a
+ * magic number written twice is a magic number that will disagree with itself.
  */
 export default async function ManagerLayout({
   children,
@@ -33,11 +37,13 @@ export default async function ManagerLayout({
   }
 
   return (
-    <div className="min-h-dvh bg-void">
+    <div className="min-h-dvh bg-void [--manager-rail:116px]">
       <ManagerRail />
       {/* The rail is a top bar below lg and a fixed column above it, so the
           content clears it in one direction or the other. */}
-      <div className="pt-[116px] lg:pt-0 lg:pl-[220px]">{children}</div>
+      <div className="pt-(--manager-rail) lg:pt-0 lg:pl-[220px]">
+        {children}
+      </div>
     </div>
   );
 }

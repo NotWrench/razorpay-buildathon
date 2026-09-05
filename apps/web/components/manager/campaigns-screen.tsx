@@ -69,16 +69,16 @@ function CampaignRow({
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
           <p className="t-body-lg text-bone">{campaign.title}</p>
-          <p className="mt-1.5 t-body-sm text-smoke">{campaign.summary}</p>
+          <p className="t-body-sm mt-1.5 text-smoke">{campaign.summary}</p>
 
           {campaign.productNames.length > 0 ? (
-            <p className="mt-1 t-body-sm text-smoke">
+            <p className="t-body-sm mt-1 text-smoke">
               {campaign.productNames.join(", ")}
             </p>
           ) : null}
 
           {campaign.reason ? (
-            <p className="mt-3 border-hairline border-l-2 pl-4 t-body-sm text-smoke italic">
+            <p className="t-body-sm mt-3 border-hairline border-l-2 pl-4 text-smoke italic">
               {campaign.reason}
             </p>
           ) : null}
@@ -153,7 +153,7 @@ function CampaignsScreen({ campaigns }: { campaigns: ManagerCampaign[] }) {
     <section className="pb-12">
       <Label>{title}</Label>
       {rows.length === 0 ? (
-        <p className="mt-5 t-body-lg text-smoke">{empty}</p>
+        <p className="t-body-lg mt-5 text-smoke">{empty}</p>
       ) : (
         <div className="mt-5 border-hairline border-t">
           {rows.map((campaign) => (
@@ -178,11 +178,7 @@ function CampaignsScreen({ campaigns }: { campaigns: ManagerCampaign[] }) {
         title="Campaigns"
       />
 
-      {section(
-        "Running",
-        live,
-        "Nothing is discounting anything right now."
-      )}
+      {section("Running", live, "Nothing is discounting anything right now.")}
       {section(
         "Waiting on you",
         waiting,

@@ -1,7 +1,32 @@
 # UI/UX Memory
 
 > Working memory for the **visual/UX layer only**. `AGENTS.md` at the repo root remains the memory for architecture, agents, data and rules — this file never contradicts it.
-> Design system: **Ember v3, image-led** · Reference: **ORIGIN PC** · Updated 2026-09-02
+> Design system: **Arctic Mono** · Updated 2026-09-04 · supersedes Ember v3, whose entries are kept below for their reasoning
+
+---
+
+## 0. Arctic Mono — the current design system
+
+Set 2026-09-04. Everything above this section predates it and is kept for the
+reasoning, not the values.
+
+| | |
+|---|---|
+| Name | "Arctic Mono" is the **colour** system — black, white, one red. It is not an instruction to set the site in a monospace; that was tried and reverted. See the Face and The split rows below |
+| Base | Black, deliberately **not** pure black — `--void: #0a0a0a`, with white mixed into every surface above it (`--carbon #111`, `--panel #181818`, `--riser #232323`) |
+| Text | `--bone` is now pure `#ffffff`; `--smoke` is a neutral `#a3a3a3` (was a warm `#8e8b87`) and clears 7:1 on the page ground |
+| Accent | Red, and only red. `--lacquer #d61332` primary, `--ember #ff2d4b` accent |
+| Retired | Green and amber. `--verdant` now points at `--smoke`, `--amber` at `--ember` — a passing check is unremarkable, anything wanting attention is red. The token names survive so the ~30 call sites still compile |
+| Face | **Geist + Geist Mono** — two faces from one family. Archivo, Inter Tight and JetBrains Mono are all gone. `--font-display`, `--font-sans` and `--font-serif` point at Geist; `--font-mono` at Geist Mono |
+| The split | Sans is for language: headings, prose, nav, buttons, product names. Mono is for **values you scan rather than read** — `.t-num-*` (prices, wattage, counts, SKUs), `.t-label` (the small-caps key beside a value), and `.t-model` (the uppercase machine-name treatment). The site briefly ran on the mono alone and it read as a terminal pretending to be a shop; equal glyph widths line up a column of numbers and destroy the word shapes an eye reads a sentence by |
+| Weights | Geist 400/500/600/700, Geist Mono 400/500. Display is 600–700, `.t-model` is mono 500 |
+| Scale | Back to the original 11 · 13 · 15 · 17 · 21 · 28 · 40 · 56 · 76 — the ~7% reduction only existed to stop a monospace overrunning its `ch` measures |
+| Tracking | Display back to `tighter`/`tight`. A grotesque wants negative tracking at size; the mono did not, which is why it was relaxed and is now restored |
+| **Rules** | **Gone.** 91 row dividers removed across 44 files. Rows are separated by space and by the grey-label/white-value pairing that was doing the work anyway |
+| What kept a line | Only chrome: fixed headers, sticky footers, the dock's header and footer, the tab rail, the footer's top edge. Plus `.rule-section` — the one real boundary, now heavier since it is the only horizontal line on most pages |
+| Line renders | `ProductRender`'s three greys are tokens now (`--render-shell/-edge/-detail`), not hexes tuned by eye against a ground that has since moved |
+| Galleries | Product page: one photograph, no thumbnail rail. Prebuilt model page: **three** tiles, and they finally show the three different photographs the data layer was already providing (`GalleryTile` accepted `view` and never used it) |
+| Landing images | `apps/web/public/landing/` + `apps/web/lib/landing-images.ts`. Thirteen slots, each `src: null` until a file exists, each falling back to the line render. Prompts in `docs/IMAGE-PROMPTS.md` |
 
 ---
 
@@ -22,7 +47,7 @@ A premium PC store whose real purpose is to **showcase our AI model**. Shadow + 
 | Assumptions | **Ask first** | project instructions |
 | Search | Full-screen overlay, the Vorion mechanic | v2 |
 | Motion clock | Vorion's — 180 / 420 / 280 / 800, exit faster than entry | v2 |
-| Manager | A briefing, not a dashboard | v2 |
+| Manager | ~~A briefing, not a dashboard~~ → **panels, with the composer pinned** | v2, reversed in 15 |
 | **Reference site** | **ORIGIN PC** — image-led, generous per product | v3 |
 | **Display face** | **Archivo** (the Instrument Serif experiment is retired) | v3 |
 | **Density** | **Generous per product**, not minimal per product | v3 |
@@ -736,3 +761,88 @@ An audit of the whole build, not a feature. Grouped as the prompt asks.
 1. **Nothing was exercised at runtime.** `next build` dies prerendering `/account` on `ECONNREFUSED` to Postgres: **Docker is not running on this machine and nothing is listening on 5443 or 5445**. That is the environment, not the code — every page compiled. The flow needs `bun run db:up && bun run seed` before it can be walked.
 2. **`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `SEED_OWNER_EMAIL` are empty in `.env`.** Until they are set the login screen deliberately renders its own amber "not configured" line instead of a button into a Google error page — which is the state it is currently in, and the reason the sign-in half is unproven end to end. `RAZORPAY_KEY_ID` is already an `rzp_test_` key, so the platform fallback has something real to fall back to.
 3. **No measurements.** Entry 11's numbers for this screen — the 576/704 split, the 380px column — should still hold, since the change removed fields from the right column rather than moving it, but no browser was opened to confirm it and none of the new manager surfaces were measured at 390px.
+
+
+### 16 — Manager rebuild · 2026-09-05 · **done**
+
+The whole manager side except Account, which the teammate owns and which was
+not touched. Prompted by three complaints, all of them fair.
+
+| File | What it is now |
+|---|---|
+| `app/(manager)/layout.tsx` | declares `--manager-rail: 116px` once, so the assistant screen can subtract it |
+| `components/manager/manager-screen.tsx` | three regions — fixed header, one scroll area, **pinned composer** |
+| `components/manager/summary-blocks.tsx` | two figure tiles and three list panels, not six stacked blocks |
+| `components/manager/findings-list.tsx` | three cards abreast, evidence disclosure unchanged |
+| `components/manager/products-screen.tsx` · `product-card.tsx` | the catalogue as an image-led grid |
+| `components/manager/orders-screen.tsx` | one segmented filter track carrying counts, search, sticky head, status chips |
+| `components/manager/restock-screen.tsx` · `restock-picker.tsx` | draft cards, a line-total column, and a way to put a part on the order by hand |
+| `components/manager/manager-menu.tsx` · `select-cell.tsx` · `manager-search.tsx` | the three things two screens both needed |
+
+**The reversal.** §2 of this file records *"Manager — a briefing, not a
+dashboard"*, and `summary-blocks.tsx` used to say *"No tiles, no KPI row"*.
+That is now reversed, deliberately and on request. The reasoning that produced
+it was not wrong about dashboards; it was wrong about the cost. Six full-width
+blocks 56px apart put the composer three screens down, so the page answered
+"how is the store" for free and then made asking anything else the most
+expensive thing on it. The briefing is panels now and fits one view.
+
+**What was learned about the complaint.**
+
+1. **The composer was the last element in a page-flow column.** There was no
+   scroll container anywhere on `/manager` — the whole page scrolled, and the
+   composer scrolled with it. It is a three-region flex column at
+   `h-[calc(100dvh-var(--manager-rail))]` now, and only the middle region
+   scrolls. Measured at 1280×800: the document does not scroll at all, the
+   composer's bottom edge sits at 775, and the briefing needs about 240px of
+   internal scroll to reach the findings.
+2. **Auto-scroll by `scrollIntoView` on a zero-height marker did not fire** —
+   verified, not assumed: a turn landed and `scrollTop` stayed at 0. The
+   container carries the ref now and is told where to go inside a
+   `requestAnimationFrame`, because the new turn is one frame away from being
+   laid out when the effect runs.
+3. **Restock was never mock data.** `getRestock()` reads live rows —
+   `getLowStockProducts()` plus a Drizzle query on `reorderRequests` where
+   `status = 'draft'`. Six real rows and, on this database, no drafts. The
+   brief asked for the fixtures to be removed; there were none to remove. What
+   is fake there is the *write* side, and it stays fake.
+
+**Kept from 12 and 13, deliberately.** One solid pill per screen. Destructive
+confirmations are lacquer text, never a filled red button — `ConfirmDialog`
+grew a `tone` so the new *Order more* could be constructive without teaching
+the shape that red text means "yes". `ManagerTable` is still a real `<table>`
+and still stacks below `md`; `stickyHead` is opt-in so a five-row restock does
+not get a floating heading. The orders status column has an edge to scan now
+but only `cancelled` and `refunded` carry colour.
+
+**Where the keyboard was nearly lost.** A card grid has no `focus-within` row
+to hang actions off. The card actions are `lg:opacity-0` with
+`lg:group-focus-within:opacity-100` — and they stay **visible below `lg`**,
+because a phone has no hover at all. Same for the selection checkbox.
+
+**Merged with master's writes, not over them.** This rebuild was designed
+against a read-only manager and documented the missing actions; master landed
+them first (entry 15's sibling work — `saveProductAction`,
+`duplicateProductAction`, `deactivateProductAction`, `approveRestockAction`,
+`rejectRestockAction`, `saveThresholdsAction`, `createPurchaseOrderAction`,
+`refundOrderAction`, `decideAgentOrderAction`) along with the streaming
+merchant agent behind the composer. Resolving the conflict by taking this
+branch wholesale would have compiled to nothing — `managerReplyAction` and
+`lib/data/manager-chat` are gone, `ManagerOrderState` lost `fulfilled`, and
+`StoreSettings` lost `razorpayKeyId`. So the layout is this branch's and the
+wiring is master's throughout. Two consequences worth recording:
+
+- **Order more became real.** It was going to be a toast. It calls
+  `createPurchaseOrderAction`, the same action the restock footer calls, so
+  raising a part from the catalogue and raising it from the restock list are
+  one code path and one audit entry.
+- **The restock picker raises a request rather than a row.** Appending to
+  local state would have invented a row the database does not have. A picked
+  part goes through `createPurchaseOrderAction` and comes back in the drafts
+  block on the next revalidate.
+
+**Note.** The Fulfilled filter is gone, and correctly so — master deleted the
+state because no shipment exists in the schema for it to read. The segments
+are now All / Awaiting you / New / Paid / Cancelled, each carrying its own
+count, and *Awaiting you* is the one that matters: an order a buying agent
+placed sits uncharged until a human presses something.

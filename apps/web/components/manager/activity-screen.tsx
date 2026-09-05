@@ -128,7 +128,7 @@ function ActivityScreen({ entries }: { entries: ActivityEntry[] }) {
                 </span>
               </div>
 
-              <p className="mt-1.5 t-body-sm text-smoke">{entry.explanation}</p>
+              <p className="t-body-sm mt-1.5 text-smoke">{entry.explanation}</p>
             </div>
           ))}
         </div>

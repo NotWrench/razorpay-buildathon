@@ -10,8 +10,8 @@ import { useCallback, useMemo, useState } from "react";
  *
  * A real `<table>`: forty rows of products read by a screen reader are a table,
  * and a grid of divs with roles bolted on is the same thing with the semantics
- * hand-written and half-wrong. No borders, no zebra, no card — rows sit on
- * hairlines and the hovered row lifts to --carbon, which is the whole of its
+ * hand-written and half-wrong. No borders, no zebra, no card, and now no
+ * rules either — the hovered row lifts to --carbon, which is the whole of its
  * chrome.
  *
  * Row actions appear on hover *and on focus*, because a control that only
@@ -40,6 +40,12 @@ interface ManagerTableProps<T> {
   openKey?: string | null;
   rowKey: (row: T) => string;
   rows: T[];
+  /**
+   * Pins the head to the top of the page while the rows scroll under it.
+   * Opt-in: a long list of orders needs it and a five-row restock does not,
+   * and a heading that floats over four rows looks broken.
+   */
+  stickyHead?: boolean;
 }
 
 function ManagerTable<T>({
@@ -51,6 +57,7 @@ function ManagerTable<T>({
   openKey,
   rowKey,
   rows,
+  stickyHead,
 }: ManagerTableProps<T>) {
   const [sortId, setSortId] = useState<string | null>(null);
   const [descending, setDescending] = useState(false);
@@ -76,14 +83,14 @@ function ManagerTable<T>({
   }, [columns, descending, rows, sortId]);
 
   if (rows.length === 0) {
-    return <div className="border-hairline border-t py-14">{empty}</div>;
+    return <div className="py-14">{empty}</div>;
   }
 
   const span = columns.length + (actions ? 1 : 0);
 
   return (
     <>
-      <table className="hidden w-full border-hairline border-t md:table">
+      <table className="hidden w-full md:table">
         <colgroup>
           {columns.map((column) => (
             <col key={column.id} style={{ width: column.width }} />
@@ -91,7 +98,7 @@ function ManagerTable<T>({
           {actions ? <col style={{ width: "4.5rem" }} /> : null}
         </colgroup>
 
-        <thead>
+        <thead className={cn(stickyHead && "sticky top-0 z-10 bg-void")}>
           <tr>
             {columns.map((column) => (
               <th
@@ -139,7 +146,7 @@ function ManagerTable<T>({
       {/* Below md the same rows stack. Six columns in 390px is not a table, it
         is a word search — so each row becomes a block of labelled values, and
         the actions stop hiding behind a hover that touch does not have. */}
-      <ul className="border-hairline border-t md:hidden">
+      <ul className="md:hidden">
         {ordered.map((row) => (
           <StackedRow
             actions={actions}
@@ -178,7 +185,7 @@ function StackedRow<T>({
   const [lead, ...rest] = columns;
 
   return (
-    <li className="border-hairline border-b px-1 py-4">
+    <li className="px-1 py-4">
       {onToggle ? (
         <button
           aria-expanded={open}
@@ -240,7 +247,7 @@ function TableRow<T>({
     <>
       <tr
         className={cn(
-          "group border-hairline border-t transition-colors duration-micro",
+          "group transition-colors duration-micro",
           "focus-within:bg-carbon hover:bg-carbon",
           open && "bg-carbon"
         )}
@@ -275,7 +282,7 @@ function TableRow<T>({
       </tr>
 
       {open && expanded ? (
-        <tr className="border-hairline border-t bg-carbon">
+        <tr className="bg-carbon">
           <td className="px-3 pt-1 pb-5" colSpan={span}>
             <div className="order-lines">{expanded(row)}</div>
           </td>
@@ -344,7 +351,7 @@ function RowAction({
         "flex size-7 items-center justify-center rounded-full transition-colors duration-micro",
         "outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-bone focus-visible:outline-offset-2",
         tone === "lacquer"
-          ? "text-smoke hover:text-lacquer"
+          ? "text-smoke hover:text-ember"
           : "text-smoke hover:text-bone"
       )}
       onClick={click}

@@ -1,8 +1,8 @@
 "use client";
 
 import type { MerchantMessage } from "@workspace/ai";
-import { MerchantToolOutput } from "@/components/assistant/merchant/tool-output";
 import { merchantPendingLabel } from "@/components/assistant/merchant/pending-labels";
+import { MerchantToolOutput } from "@/components/assistant/merchant/tool-output";
 import { MessageThread } from "@/components/assistant/message-thread";
 
 /**
