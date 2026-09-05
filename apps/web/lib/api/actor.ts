@@ -13,6 +13,8 @@ import { GUEST_COOKIE, isGuestIdentifier } from "@/lib/store/guest";
  */
 export interface Actor {
   apiKeyId?: string;
+  /** What this key may spend unattended, when the merchant set a number. */
+  autoApproveCeilingPaise?: number;
   /** Stable identity written to `orders.buyerIdentifier`. */
   identifier: string;
   /** True when the identity is a guest cookie rather than an account. */
@@ -59,6 +61,7 @@ export async function resolveActor(
 
       return {
         apiKeyId: result.key.id,
+        autoApproveCeilingPaise: metadata.autoApproveCeilingPaise,
         identifier: result.key.id,
         merchantId: metadata.merchantId,
         spendCapPaise: metadata.spendCapPaise,

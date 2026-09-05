@@ -147,6 +147,9 @@ export function checkoutTools(ctx: AgentContext) {
 
         const common = {
           aiPurchaseReason: reason,
+          // The key's own unattended ceiling, where the merchant set one. It
+          // only ever tightens the store's number; see `resolveOrderApproval`.
+          autoApproveCeilingPaise: ctx.actor.autoApproveCeilingPaise,
           buyerIdentifier: ctx.actor.identifier,
           buyerType: ctx.actor.type,
           // Whatever the quote actually applied, so the attribution on the

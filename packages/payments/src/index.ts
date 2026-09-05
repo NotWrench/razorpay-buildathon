@@ -1,3 +1,11 @@
+export {
+  type ApprovalDecision,
+  type ApprovalInputs,
+  type ApprovalStatus,
+  decideApproval,
+  platformAutoApproveCeilingPaise,
+  resolveOrderApproval,
+} from "./approval-policy";
 export { recordAudit, recordFailure } from "./audit";
 export {
   BuildIncompatibleError,

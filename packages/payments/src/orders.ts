@@ -9,6 +9,7 @@ import {
   products,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
+import { type ApprovalDecision, resolveOrderApproval } from "./approval-policy";
 import { recordAudit, recordFailure } from "./audit";
 import { getMerchantGateway, type MerchantGateway } from "./client";
 import { PaymentError, toPaymentError } from "./errors";
@@ -24,6 +25,15 @@ export interface CartLine {
 export interface CreateCheckoutOrderInput {
   /** Explainability record for agent-initiated purchases. */
   aiPurchaseReason?: string;
+  /**
+   * The unattended ceiling on the API key that placed this order.
+   *
+   * The merchant chose it per counterparty when they issued the key, so it can
+   * only tighten what the store-wide policy already allows. Absent for a
+   * signed-in person and for keys issued before the field existed, which falls
+   * back to the store's own number rather than to nothing.
+   */
+  autoApproveCeilingPaise?: number;
   buyerIdentifier: string;
   buyerType: BuyerType;
   /**
@@ -58,15 +68,12 @@ export interface CheckoutOrder {
   order: Order;
 }
 
-/**
- * Human checkouts are approved immediately; agent purchases wait for the
- * merchant's human-in-the-loop approval before money can move.
+/*
+ * The approval decision used to live here as `initialApprovalStatus`, a
+ * one-line function of `buyerType` that consulted nothing. It now lives in
+ * `approval-policy.ts`, where it can read what the merchant actually decided —
+ * see the comment there for why the gap mattered.
  */
-function initialApprovalStatus(
-  buyerType: BuyerType
-): "approved" | "pending_approval" {
-  return buyerType === "human" ? "approved" : "pending_approval";
-}
 
 /** Prices the cart against live product rows and validates availability. */
 async function priceCart(merchantId: string, items: CartLine[]) {
@@ -216,6 +223,41 @@ function toHandoff(order: Order, gateway: MerchantGateway): CheckoutHandoff {
 }
 
 /**
+ * An agent order that cleared without a human, said out loud.
+ *
+ * `/manager/activity` is one stream because the question a merchant has is
+ * "who changed this", and an order nobody approved has to answer it too. The
+ * entry names the delegation that cleared it and the ceiling it cleared under,
+ * so the merchant reads a decision they made rather than an absence of one.
+ *
+ * Human checkouts are skipped: a person buying their own cart is not a
+ * delegation, and stamping one on every storefront order would bury the rows
+ * that matter.
+ */
+async function recordAutoApproval(
+  order: Order,
+  buyerType: BuyerType,
+  approval: ApprovalDecision
+): Promise<void> {
+  if (buyerType === "human") {
+    return;
+  }
+
+  await recordAudit({
+    action: "ORDER_AUTO_APPROVED",
+    actorId: "system",
+    actorType: "system",
+    explanation: approval.explanation,
+    merchantId: order.merchantId,
+    metadata: {
+      ceilingPaise: approval.ceilingPaise,
+      totalAmount: order.totalAmount,
+    },
+    orderId: order.id,
+  });
+}
+
+/**
  * Persists an order and its line items, then — when the buyer does not need
  * merchant approval — creates the matching Razorpay order.
  */
@@ -230,12 +272,21 @@ export async function createCheckoutOrder(
   );
   const totalAmount = subtotal - discountAmount;
 
+  // Decided before the insert, on the total the buyer will actually pay, so
+  // the row is written already knowing whether a human is owed a look at it.
+  const approval = await resolveOrderApproval({
+    buyerType: input.buyerType,
+    keyCeilingPaise: input.autoApproveCeilingPaise,
+    merchantId: input.merchantId,
+    totalAmount,
+  });
+
   const { order, items } = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(orders)
       .values({
         aiPurchaseReason: input.aiPurchaseReason ?? null,
-        approvalStatus: initialApprovalStatus(input.buyerType),
+        approvalStatus: approval.status,
         buyerIdentifier: input.buyerIdentifier,
         buyerType: input.buyerType,
         campaignId: discountAmount > 0 ? (input.campaignId ?? null) : null,
@@ -277,6 +328,8 @@ export async function createCheckoutOrder(
   if (order.approvalStatus !== "approved") {
     return { checkout: null, items, order };
   }
+
+  await recordAutoApproval(order, input.buyerType, approval);
 
   const activated = await activateOrder(order, gateway, input.notes);
 

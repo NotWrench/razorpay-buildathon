@@ -80,6 +80,13 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     const result = await createCheckoutOrder({
       aiPurchaseReason: body.aiPurchaseReason,
+      /*
+       * The ceiling the merchant attached to this key, carried into the
+       * approval decision. It can only tighten the store's own number — see
+       * `resolveOrderApproval` — so passing it can never let an order through
+       * that the shop-wide policy would have stopped.
+       */
+      autoApproveCeilingPaise: actor.autoApproveCeilingPaise,
       buyerIdentifier: actor.identifier,
       buyerType: actor.type,
       campaignId: quote.appliedCampaign?.id ?? null,

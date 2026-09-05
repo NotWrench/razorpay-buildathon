@@ -110,6 +110,16 @@ export const verification = pgTable(
  * ₹5,000, which is what having a relationship with a customer means.
  */
 export interface ApiKeyMetadata {
+  /**
+   * What this counterparty may spend without waking the merchant.
+   *
+   * Distinct from `spendCapPaise`, which is the most they may commit at all.
+   * This is the most they may commit *unattended*, and it can only ever be
+   * stricter than the store-wide `merchant_policy` number — trusting one agent
+   * further must not raise the shop's own ceiling. Absent falls back to the
+   * store's number, which is why it is optional rather than defaulted to zero.
+   */
+  autoApproveCeilingPaise?: number;
   dailyBudget?: number;
   /** Who the merchant thinks this is. Shown on the agents screen. */
   label?: string;

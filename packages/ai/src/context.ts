@@ -1,5 +1,8 @@
 import { agentDb, conversations, db, merchants } from "@workspace/db";
-import { PaymentError } from "@workspace/payments";
+import {
+  PaymentError,
+  platformAutoApproveCeilingPaise,
+} from "@workspace/payments";
 import { and, eq } from "drizzle-orm";
 import { recordAudit } from "./audit";
 import { assertKeyScope } from "./guardrails";
@@ -11,6 +14,14 @@ import { assertKeyScope } from "./guardrails";
  * package stays usable from scripts and route handlers alike.
  */
 export interface AgentActor {
+  /**
+   * What this key may spend without waking the merchant.
+   *
+   * Carried through to `createCheckoutOrder`, which is the only place it is
+   * consulted. Distinct from `spendCapPaise`: one bounds what may be committed
+   * at all, this bounds what may be committed unattended.
+   */
+  autoApproveCeilingPaise?: number;
   identifier: string;
   /**
    * The one store an API-key caller may trade with.
@@ -52,7 +63,6 @@ export interface AgentContext {
 }
 
 const DEFAULT_SPEND_CAP_PAISE = 5_000_000; // ₹50,000
-const DEFAULT_AUTO_APPROVE_CEILING_PAISE = 0; // every money action is gated
 
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -70,11 +80,18 @@ export function spendCapPaise(): number {
   return envInt("AGENT_SPEND_CAP_PAISE", DEFAULT_SPEND_CAP_PAISE);
 }
 
+/**
+ * The platform's unattended ceiling, read from the one place that defines it.
+ *
+ * The number is owned by `@workspace/payments` because the order path decides
+ * approval and cannot import this package. Re-exported through here so callers
+ * that already depend on the agent layer keep their import, and so the value a
+ * merchant is shown on `/manager/account` is provably the value an order is
+ * measured against — two readers of the same environment variable are two
+ * numbers waiting to drift.
+ */
 export function autoApproveCeilingPaise(): number {
-  return envInt(
-    "AGENT_AUTO_APPROVE_CEILING_PAISE",
-    DEFAULT_AUTO_APPROVE_CEILING_PAISE
-  );
+  return platformAutoApproveCeilingPaise();
 }
 
 export async function getMerchantBySlug(slug: string) {

@@ -91,11 +91,24 @@ every agent order regardless of what the merchant decided.
   (`packages/db/src/schema/auth.ts:113`). The effective ceiling for an order is
   the **stricter** of the merchant's policy and the one attached to the key that
   placed it, so trusting one counterparty never loosens the shop-wide number.
-- `AgentContext.autoApproveCeilingPaise` stops reading the environment
-  (`context.ts:175`, `context.ts:210`) and reads the effective policy, which is
-  what the account screen has been showing all along.
 - `ORDER_AUTO_APPROVED` audit action, naming which delegation cleared it and
   what headroom remained.
+
+**Departure, found while building.** This phase was going to point
+`AgentContext.autoApproveCeilingPaise` at the merchant's policy too, so the
+buyer's confirmation card in `agents/approval.ts` would open on the same number.
+That is wrong, and the error is instructive: the card in `storefrontApproval` is
+the **buyer** confirming their own purchase, and the merchant's policy is not
+the buyer's consent. Letting a shop's setting suppress a shopper's confirmation
+would have been a merchant granting themselves permission on their customer's
+behalf — the exact shape of thing this plan exists to make explicit.
+
+So Phase 1 touches only the merchant-side gate. `approval.ts` and
+`AgentContext` are untouched; `autoApproveCeilingPaise()` becomes a re-export of
+the one platform constant now owned by `@workspace/payments`, so the number a
+merchant is shown and the number an order is measured against cannot drift. The
+buyer-side ceiling is a buyer's delegation and arrives with the mandate in
+Phase 4.
 
 **Proves.** A merchant order can now clear without a human, on the merchant's
 own stated terms. Payment still requires one. Nothing about Razorpay changed.
