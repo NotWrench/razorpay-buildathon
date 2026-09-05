@@ -23,6 +23,7 @@ export {
   type RazorpayMode,
 } from "./mode";
 export {
+  abandonCheckout,
   approveOrder,
   type BuyerType,
   type CartLine,

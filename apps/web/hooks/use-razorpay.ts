@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { abandonPaymentAction } from "@/lib/actions/pay";
 
 /**
  * Razorpay Checkout, as a hook.
@@ -22,6 +23,13 @@ import { toast } from "sonner";
  * only text we control inside that modal is `name` and `description` — and
  * `description` is where the words go. `notes` carries the same fact onto the
  * payment record, where the dashboard shows it.
+ *
+ * Closing the window without paying is an answer too, and `ondismiss` is the
+ * only place the browser hears it — Razorpay tells the server nothing about a
+ * checkout nobody completed. So a dismiss that follows no payment cancels the
+ * order. The server decides whether it really is one: a payment that reached
+ * the gateway is left alone there, and the `settled` ref here stops the call
+ * being made at all once a payment has come back.
  */
 
 declare global {
@@ -81,6 +89,8 @@ interface OpenOptions {
 
 export function useRazorpay() {
   const [paying, setPaying] = useState<string | null>(null);
+  /** Set the moment Razorpay hands back a payment, so a later close is not one. */
+  const settled = useRef(false);
 
   useEffect(() => {
     void loadScript();
@@ -103,12 +113,15 @@ export function useRazorpay() {
       }
 
       setPaying(orderId);
+      settled.current = false;
 
       const checkout = new window.Razorpay({
         amount: handoff.amount,
         currency: handoff.currency,
         description: TEST_MODE_LINE,
         handler: async (response: Record<string, string>) => {
+          settled.current = true;
+
           const verification = await fetch("/api/payments/verify", {
             // The verify route takes Razorpay's own field names, which is
             // what its handler hands us — renaming them here would only be a
@@ -136,8 +149,21 @@ export function useRazorpay() {
         },
         key: handoff.keyId,
         modal: {
-          ondismiss: () => {
+          ondismiss: async () => {
             setPaying(null);
+
+            if (settled.current) {
+              onSettled?.(false);
+
+              return;
+            }
+
+            const result = await abandonPaymentAction({ orderId });
+
+            if (result.ok && result.data.cancelled) {
+              toast.info("Payment cancelled. Nothing was charged.");
+            }
+
             onSettled?.(false);
           },
         },

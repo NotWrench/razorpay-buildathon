@@ -375,6 +375,77 @@ export async function rejectOrder(params: {
   return rejected ?? order;
 }
 
+/**
+ * The buyer closed the checkout window without paying.
+ *
+ * An order left at `created` is indistinguishable from one whose window is
+ * still open, so an abandoned checkout used to sit in the merchant's list
+ * looking like a sale about to happen. Closing the window is an answer, and
+ * this records it as one.
+ *
+ * Only a checkout that touched nothing is cancelled. An attempt that reached
+ * the gateway — authorized, captured, or declined — keeps the order alive:
+ * money may still be in flight, and a declined card is a retry rather than a
+ * change of mind. That is also what makes this safe to call from the modal's
+ * dismiss callback, which fires on a close the buyer may have made a second
+ * after their payment went through.
+ */
+export async function abandonCheckout(params: {
+  actorId: string;
+  orderId: string;
+}): Promise<{ cancelled: boolean; order: Order }> {
+  const order = await getOrderOrThrow(params.orderId);
+
+  // `created` is the one state this applies to: a Razorpay order exists and
+  // nothing has happened to it. `paid`, `failed` and `cancelled` have all
+  // already been answered by something better informed than a closed window.
+  if (order.orderStatus !== "created") {
+    return { cancelled: false, order };
+  }
+
+  const attempts = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.orderId, order.id));
+
+  const touched = attempts.some(
+    (attempt) =>
+      attempt.status !== "created" ||
+      attempt.razorpayPaymentId !== null ||
+      attempt.paymentLinkId !== null
+  );
+
+  if (touched) {
+    return { cancelled: false, order };
+  }
+
+  const [cancelled] = await db
+    .update(orders)
+    .set({ orderStatus: "cancelled" })
+    .where(eq(orders.id, order.id))
+    .returning();
+
+  await recordAudit({
+    action: "ORDER_CANCELLED",
+    actorId: params.actorId,
+    actorType:
+      order.buyerType === "human" ? "human_buyer" : "external_ai_agent",
+    explanation: `Checkout window closed without a payment; order ${order.id} cancelled`,
+    merchantId: order.merchantId,
+    metadata: { totalPaise: order.totalAmount },
+    orderId: order.id,
+  });
+
+  await recordFailure({
+    errorMessage: "Buyer closed the checkout window without paying",
+    errorType: "CHECKOUT_ABANDONED",
+    orderId: order.id,
+    recoveryAction: "CANCELLED_BY_BUYER",
+  });
+
+  return { cancelled: true, order: cancelled ?? order };
+}
+
 /** Full order view: line items plus every payment attempt. */
 export async function getOrderSummary(orderId: string) {
   const order = await getOrderOrThrow(orderId);
