@@ -31,6 +31,7 @@ export {
   revokeMandate,
 } from "./mandates";
 export {
+  type BuyerMandate,
   type MandateBounds,
   type MandateCheck,
   type MandateRefusal,

@@ -3,6 +3,9 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { recordAudit, recordFailure } from "./audit";
 import { PaymentError } from "./errors";
 
+/** Re-exported so a caller bounding a mandate need not also import the schema. */
+export type { BuyerMandate } from "@workspace/db";
+
 /**
  * What a mandate permits, checked before anything is charged.
  *
@@ -189,7 +192,7 @@ export async function assertMandateCovers(
     errorMessage: check.message,
     errorType: check.reason ?? "MANDATE_REFUSED",
     orderId: params.orderId ?? null,
-    recoveryAction: "Fell back to a payment link for a human to complete",
+    recoveryAction: "FELL_BACK_TO_PAYMENT_LINK",
   });
 
   throw new PaymentError("MANDATE_REFUSED", check.message, {

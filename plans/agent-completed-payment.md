@@ -224,10 +224,24 @@ setup rather than at the moment money is supposed to move. Migration `0017`.
 
 ### Phase 4 — Move the gate, don't remove it
 
-- `packages/ai/src/agents/approval.ts` — `createPaymentLink` becomes
-  conditional. A covering mandate returns `undefined` and the loop proceeds; no
-  mandate, an exhausted one or an expired one still returns `requireApproval`
-  with today's wording.
+- `packages/ai/src/agents/approval.ts` — `payForOrder` is the conditional gate.
+  A covering mandate returns `undefined` and the loop proceeds; no mandate, an
+  exhausted one or an expired one still returns `requireApproval`, carrying the
+  actual reason so the card says why rather than asking a generic question.
+
+**Departure.** `createPaymentLink` stays unconditional, contrary to the line
+above. A mandate is the buyer authorising *this store* to charge *them*; a
+payment link is a URL anyone holding it can pay. They are not the same
+permission, and a delegation to do the first is not consent to hand out the
+second.
+
+The coverage question is asked by `packages/ai/src/mandate.ts`, shared between
+the gate and the tool so the two can never disagree — a gate that let a purchase
+through which the tool then refused would have the buyer watching their agent
+claim authority it did not have. It reads with `checkMandate` rather than
+`assertMandateCovers`, because asking is not attempting: a gate that logged a
+refusal every time it looked would fill the failure log with purchases nobody
+made.
 - New storefront tool `payForOrder(orderId)` in `tools/checkout.ts`: resolves
   the mandate for `ctx.actor`, asserts coverage, charges, records
   `AUTONOMOUS_CHARGE` with the mandate id, the headroom before and after, and

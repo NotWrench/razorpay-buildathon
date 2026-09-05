@@ -2,6 +2,7 @@ import { cartCheckoutLines } from "@workspace/commerce/carts";
 import type { CompatibilityIssue } from "@workspace/commerce/compatibility";
 import { db, orders } from "@workspace/db";
 import {
+  chargeMandate,
   type CheckoutOrder,
   createCheckoutOrder,
   createCheckoutOrderFromCart,
@@ -21,6 +22,7 @@ import {
 } from "../audit";
 import type { AgentContext } from "../context";
 import { assertWithinSpendCap } from "../guardrails";
+import { mandateCoverage } from "../mandate";
 import { formatPaise } from "../money";
 import { quoteCart } from "../quote";
 import { optional } from "./schema";
@@ -262,6 +264,78 @@ export function checkoutTools(ctx: AgentContext) {
       inputSchema: z.object({
         orderId: z.uuid(),
       }),
+    }),
+
+    payForOrder: tool({
+      description:
+        "Pay an approved order from the buyer's standing authorisation, with " +
+        "no window to open and nobody to ask. Only works when the buyer has " +
+        "authorised this store in advance and the order fits inside the caps " +
+        "they set. If it does not, this falls back to a payment link and says " +
+        "why — it never asks the buyer for card details.",
+      execute: async ({ orderId }) => {
+        const summary = await getOwnedOrder(ctx, orderId);
+        const coverage = await mandateCoverage(ctx, orderId);
+
+        if (!coverage.mandate) {
+          const link = await createPaymentLinkForOrder({ orderId });
+
+          return {
+            message:
+              "You have not authorised this store to charge you, so I cannot " +
+              "complete this myself. Open this link to pay — it is hosted by " +
+              "Razorpay and I never see your card details.",
+            paid: false,
+            paymentLinkUrl: link.paymentLinkUrl,
+          };
+        }
+
+        try {
+          const result = await chargeMandate({
+            mandate: coverage.mandate,
+            order: summary.order,
+          });
+
+          return {
+            message: result.simulated
+              ? `${result.check.message} (Settled without calling Razorpay: this store has no recurring entitlement, so the payment is recorded as simulated.)`
+              : result.check.message,
+            paid: true,
+            remainingPaise: result.check.remainingPaise,
+            simulated: result.simulated,
+            totalPaise: summary.order.totalAmount,
+          };
+        } catch (error) {
+          /*
+           * The graceful half of the failure. A mandate that has lapsed, been
+           * withdrawn or run out is not the end of the purchase — it is the
+           * end of the *unattended* purchase, and the buyer should get a link
+           * and the actual reason in the same breath rather than an apology
+           * and a dead end. `assertMandateCovers` has already written the
+           * refusal to `failures` and `audit_logs` by the time we are here.
+           */
+          if (!(error instanceof PaymentError)) {
+            throw error;
+          }
+
+          const link = await createPaymentLinkForOrder({ orderId });
+
+          await recordFailure({
+            errorMessage: error.message,
+            errorType: error.code,
+            orderId,
+            recoveryAction: RecoveryAction.FELL_BACK_TO_PAYMENT_LINK,
+          });
+
+          return {
+            message: `${error.message} Open this link to pay it yourself instead.`,
+            paid: false,
+            paymentLinkUrl: link.paymentLinkUrl,
+            reason: error.code,
+          };
+        }
+      },
+      inputSchema: z.object({ orderId: z.uuid() }),
     }),
 
     getOrderStatus: tool({

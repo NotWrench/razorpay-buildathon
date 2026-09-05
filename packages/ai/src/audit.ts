@@ -25,6 +25,22 @@ export const AuditAction = {
   CAMPAIGN_PAUSED: "CAMPAIGN_PAUSED",
   CAMPAIGN_REJECTED: "CAMPAIGN_REJECTED",
   INVENTORY_THRESHOLD_UPDATED: "INVENTORY_THRESHOLD_UPDATED",
+  /**
+   * The four things a standing authorisation can do.
+   *
+   * They are listed here, beside the actions the AI layer writes, even though
+   * `@workspace/payments` is what writes them — `/manager/activity` groups and
+   * labels by these constants, and a money action nobody can label reads as an
+   * unexplained row on the one screen that exists to explain them.
+   *
+   * `MANDATE_CHARGED` is the entry a merchant sees when no human approved
+   * anything. It carries the mandate, the amount and what is left, because the
+   * question after "who authorised this" is always whether it can happen again.
+   */
+  MANDATE_CHARGED: "MANDATE_CHARGED",
+  MANDATE_CHARGE_REFUSED: "MANDATE_CHARGE_REFUSED",
+  MANDATE_ESTABLISHED: "MANDATE_ESTABLISHED",
+  MANDATE_REVOKED: "MANDATE_REVOKED",
   MARGIN_FLOOR_BREACHED: "MARGIN_FLOOR_BREACHED",
   MEMORY_WRITTEN: "MEMORY_WRITTEN",
   ORDER_CANCELLED: "ORDER_CANCELLED",
@@ -61,6 +77,8 @@ export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
 export const RecoveryAction = {
   CANCELLED_BY_BUYER: "CANCELLED_BY_BUYER",
   DOWNGRADED_CART: "DOWNGRADED_CART",
+  /** A mandate could not cover the order, so a human was handed a link. */
+  FELL_BACK_TO_PAYMENT_LINK: "FELL_BACK_TO_PAYMENT_LINK",
   RETRY_LINK_GENERATED: "RETRY_LINK_GENERATED",
 } as const;
 

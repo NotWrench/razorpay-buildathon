@@ -1,6 +1,7 @@
 import { cartCheckoutLines } from "@workspace/commerce/carts";
 import type { ToolApprovalStatus } from "ai";
 import type { AgentContext } from "../context";
+import { mandateCoverage } from "../mandate";
 import { formatPaise } from "../money";
 import { quoteCart } from "../quote";
 import { describeActivation } from "../tools/campaigns";
@@ -8,10 +9,17 @@ import { describeActivation } from "../tools/campaigns";
 /**
  * The approval gate.
  *
- * `AGENT_AUTO_APPROVE_CEILING_PAISE` ships at 0, so in practice every money
- * action stops and waits for a human. The ceiling exists so the bound is a
- * stated policy with a visible value rather than an implicit habit — and so a
- * merchant who wants small orders to flow can say so deliberately.
+ * Every money action here stops and waits for a human, with one exception, and
+ * the exception is the point: a buyer who has given this store a standing
+ * authorisation has already answered the payment question in advance, with
+ * numbers and an expiry on it. Asking them again is not extra safety — it is
+ * ignoring what they said.
+ *
+ * That is what "gated" means in this system now. Not that a person clicks each
+ * time, but that no money moves outside an explicit, bounded, revocable and
+ * published authority. The gate did not go away; it moved from the moment of
+ * purchase to the moment of delegation, where the person deciding has time to
+ * read the numbers. Everything with no delegation behind it still stops here.
  */
 
 type ApprovalFor<INPUT> = (
@@ -70,6 +78,44 @@ export function storefrontApproval(ctx: AgentContext) {
     }
   };
 
+  /**
+   * The gate that moves rather than disappears.
+   *
+   * A buyer with a live authorisation covering this order has already answered
+   * this question, in advance, with numbers on it — asking again is not extra
+   * safety, it is ignoring what they said. Everyone else still stops here, and
+   * so does a buyer whose mandate has lapsed, been withdrawn or run out.
+   *
+   * `mandateCoverage` only reads; it never writes a refusal. Asking is not
+   * attempting, and a gate that logged a failure every time it looked would
+   * fill the failure log with purchases nobody made.
+   */
+  const payForOrder: ApprovalFor<{ orderId: string }> = async ({ orderId }) => {
+    try {
+      const coverage = await mandateCoverage(ctx, orderId);
+
+      if (coverage.covered) {
+        return;
+      }
+
+      return requireApproval(
+        coverage.reason
+          ? `${coverage.reason} Issue a payment link instead?`
+          : "Issue a Razorpay payment link for this order? The link lets the payment be completed."
+      );
+    } catch {
+      // An order that cannot even be read is the tool's error to raise, not a
+      // question to put to a human.
+      return "not-applicable";
+    }
+  };
+
+  /*
+   * Still unconditional, and deliberately so. A mandate is the buyer
+   * authorising *this store* to charge *them*; a payment link is a URL anyone
+   * holding it can pay. They are not the same permission, and a delegation to
+   * do the first is not consent to hand out the second.
+   */
   const createPaymentLink: ApprovalFor<{ orderId: string }> = () =>
     requireApproval(
       "Issue a Razorpay payment link for this order? The link lets the payment be completed."
@@ -78,7 +124,7 @@ export function storefrontApproval(ctx: AgentContext) {
   const cancelOrder: ApprovalFor<{ orderId: string; reason: string }> = () =>
     requireApproval("Cancel this order?");
 
-  return { cancelOrder, createOrder, createPaymentLink };
+  return { cancelOrder, createOrder, createPaymentLink, payForOrder };
 }
 
 /** Approval policy for the merchant agent: order approvals, campaigns, stock. */
