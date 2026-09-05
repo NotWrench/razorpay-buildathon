@@ -54,6 +54,21 @@ const SCALES: Record<string, number> = {
 const MIN_PLAUSIBLE_RUPEES = 1000;
 
 /**
+ * The most a machine in this catalogue could plausibly cost.
+ *
+ * A ceiling for the mirror-image mistake to the floor's: the model sending
+ * paise in a field named rupees. A ₹4,00,000 budget forwarded as 40000000 is
+ * multiplied again by `rupeesToPaise`, and ₹4 crore is both not a PC and
+ * larger than the column it lands in — the turn died on a Postgres range
+ * error the buyer saw as "the assistant hit an error".
+ *
+ * Fifty lakh is well past the most expensive machine that can be assembled
+ * out of this catalogue, so nothing a buyer means is refused here; what is
+ * refused is a number that cannot have been rupees.
+ */
+const MAX_PLAUSIBLE_RUPEES = 5_000_000;
+
+/**
  * A budget in rupees, however the model chose to express it.
  *
  * It does not always send a number. When the buyer taps a bracket off a list
@@ -74,37 +89,52 @@ const MIN_PLAUSIBLE_RUPEES = 1000;
  * outright, because
  * inventing a number for "not sure yet" would put it in the buyer's mouth.
  */
-export const budgetSchema = z.union([
-  z.number().positive(),
-  z.string().transform((said, ctx) => {
-    const refuse = (why: string) => {
-      ctx.addIssue({ code: "custom", message: why });
+export const budgetSchema = z
+  .union([
+    z.number().positive(),
+    z.string().transform((said, ctx) => {
+      const refuse = (why: string) => {
+        ctx.addIssue({ code: "custom", message: why });
 
-      return z.NEVER;
-    };
+        return z.NEVER;
+      };
 
-    const amounts = [...said.matchAll(AMOUNTS)]
-      .map(([, digits, scale]) => {
-        /* The group is only optional to the type system; the match requires it. */
-        const amount = Number((digits ?? "").replaceAll(",", ""));
+      const amounts = [...said.matchAll(AMOUNTS)]
+        .map(([, digits, scale]) => {
+          /* The group is only optional to the type system; the match requires it. */
+          const amount = Number((digits ?? "").replaceAll(",", ""));
 
-        return amount * (scale ? (SCALES[scale.toLowerCase()] ?? 1) : 1);
-      })
-      .filter((value) => value > 0);
+          return amount * (scale ? (SCALES[scale.toLowerCase()] ?? 1) : 1);
+        })
+        .filter((value) => value > 0);
 
-    if (amounts.length === 0) {
-      return refuse(`No amount in "${said}"`);
+      if (amounts.length === 0) {
+        return refuse(`No amount in "${said}"`);
+      }
+
+      const budget = Math.max(...amounts);
+
+      if (budget < MIN_PLAUSIBLE_RUPEES) {
+        return refuse(`"${said}" does not read as a budget in rupees`);
+      }
+
+      return budget;
+    }),
+  ])
+  /*
+   * Both ends checked after the union, because the number branch is where the
+   * out-of-range budget actually arrived: the model sent 40000000 as a plain
+   * number and nothing between the tool call and the column looked at it.
+   */
+  .refine(
+    (rupees) =>
+      rupees >= MIN_PLAUSIBLE_RUPEES && rupees <= MAX_PLAUSIBLE_RUPEES,
+    {
+      message:
+        `A budget in rupees, between ${MIN_PLAUSIBLE_RUPEES} and ` +
+        `${MAX_PLAUSIBLE_RUPEES}. Send rupees, not paise: ₹4,00,000 is 400000.`,
     }
-
-    const budget = Math.max(...amounts);
-
-    if (budget < MIN_PLAUSIBLE_RUPEES) {
-      return refuse(`"${said}" does not read as a budget in rupees`);
-    }
-
-    return budget;
-  }),
-]);
+  );
 
 /**
  * One tappable answer, in any of the shapes the model actually sends.

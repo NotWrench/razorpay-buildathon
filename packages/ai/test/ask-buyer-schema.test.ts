@@ -182,6 +182,18 @@ describe("captureRequirements budget", () => {
     expect(() => capture({ budgetRupees: "₹12" })).toThrow();
   });
 
+  test("refuses an amount that can only be paise", () => {
+    // A ₹4,00,000 budget forwarded as 40000000, which `rupeesToPaise` turned
+    // into ₹4 crore and Postgres refused as out of range for the column. The
+    // buyer saw the turn die; the model should be told to resend in rupees.
+    expect(() => capture({ budgetRupees: 40_000_000 })).toThrow();
+    expect(() => capture({ budgetRupees: "40000000" })).toThrow();
+  });
+
+  test("still takes the most expensive machine anyone would ask for", () => {
+    expect(capture({ budgetRupees: "5L" }).budgetRupees).toBe(500_000);
+  });
+
   test("accepts null for a budget not given yet", () => {
     expect(capture({ budgetRupees: null }).budgetRupees).toBeUndefined();
   });

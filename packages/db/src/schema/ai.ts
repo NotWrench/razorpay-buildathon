@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   index,
@@ -126,8 +127,16 @@ export const aiRecommendations = pgTable(
 export const buildRequirements = pgTable(
   "build_requirements",
   {
-    /** Ceiling the buyer stated, in paise. Null means they have not said. */
-    budgetPaise: integer("budget_paise"),
+    /**
+     * Ceiling the buyer stated, in paise. Null means they have not said.
+     *
+     * A bigint because paise overflow a 32-bit integer at ₹2,14,748 — a
+     * budget a buyer could plausibly state — and the overflow surfaces as a
+     * Postgres range error mid-interview, which the buyer reads as the
+     * assistant breaking. The tool schema still refuses anything that cannot
+     * be a PC budget; this is the column being the wrong width regardless.
+     */
+    budgetPaise: bigint("budget_paise", { mode: "number" }),
     /** Hard limits: form factor, noise, an existing case to reuse. */
     constraints: jsonb("constraints").$type<Record<string, unknown>>(),
     conversationId: uuid("conversation_id")

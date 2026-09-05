@@ -1,0 +1,1 @@
+ALTER TABLE "build_requirements" ALTER COLUMN "budget_paise" SET DATA TYPE bigint;

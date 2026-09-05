@@ -29,6 +29,13 @@
       "when": 1788206811035,
       "tag": "0003_daffy_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788610628009,
+      "tag": "0004_thick_silver_centurion",
+      "breakpoints": true
     }
   ]
 }
