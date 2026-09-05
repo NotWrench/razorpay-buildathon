@@ -60,6 +60,42 @@ export function StorefrontToolOutput({
         />
       );
 
+    case "tool-searchWeb":
+      if (!output || output.blocked || !(output.results?.length > 0)) {
+        return null;
+      }
+      return (
+        <ToolCard title={`Web trends · ${input?.query ?? output.query ?? "Search"}`}>
+          <div className="space-y-2.5 pt-1 text-xs">
+            {output.results.map(
+              (
+                item: { snippet: string; title: string; url: string },
+                idx: number
+              ) => (
+                <div
+                  className="border-b border-border/40 pb-2 last:border-b-0 last:pb-0"
+                  key={`${item.url}-${idx}`}
+                >
+                  <a
+                    className="font-medium text-primary hover:underline line-clamp-1 flex items-center gap-1"
+                    href={item.url}
+                    rel="noreferrer noopener"
+                    target="_blank"
+                  >
+                    <span>{item.title}</span>
+                  </a>
+                  {item.snippet ? (
+                    <p className="mt-0.5 text-muted-foreground line-clamp-2 leading-relaxed">
+                      {item.snippet}
+                    </p>
+                  ) : null}
+                </div>
+              )
+            )}
+          </div>
+        </ToolCard>
+      );
+
     case "tool-suggestUpsell":
       return (
         <ProductGrid

@@ -5,9 +5,8 @@ import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
 import { cn } from "@workspace/ui/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { Cpu, GitCompare, Sparkles, TrendingUp } from "lucide-react";
+import { Cpu, GitCompare, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import type {
   AgentMessage,
   AgentTurnHandlers,
@@ -17,58 +16,39 @@ import { AgentTurn } from "@/components/chat/agent-turn";
 import { BuildSurface } from "@/components/chat/build-surface";
 import type { ChatModeId } from "@/components/chat/chat-composer";
 import { ChatComposer } from "@/components/chat/chat-composer";
-import {
-  AnsweredQuestion,
-  AskingQuestion,
-} from "@/components/chat/interview-question";
-import { StreamedText } from "@/components/chat/streamed-text";
-import { useWordStream } from "@/components/chat/use-word-stream";
 import { useRazorpay } from "@/hooks/use-razorpay";
 import { useStorefrontAssistant } from "@/hooks/use-storefront-assistant";
-import { recommendBuildAction } from "@/lib/actions/recommend";
+import { buildSheetAction } from "@/lib/actions/build-sheet";
 import { saveAssistantBuildAction } from "@/lib/actions/storefront";
-import type { BuildSlotRow, RecommendedBuild } from "@/lib/assistant/build";
+import type { BuildSlotRow } from "@/lib/assistant/build";
 import { partFor, validateBuild } from "@/lib/assistant/build";
-import type { InterviewQuestion } from "@/lib/assistant/interview";
-import {
-  INTERVIEW,
-  nextQuestion,
-  relevantQuestions,
-} from "@/lib/assistant/interview";
 
 /**
- * The full assistant: shell, empty state, the requirement interview, and the
- * model.
+ * The full assistant: shell, empty state and the agent.
  *
- * Two things answer here, and which one does is a decision this file makes
- * rather than a thing the shopper has to know about:
+ * One thing answers here now, and that is the change. This screen used to run
+ * a fixed interview of five questions in the browser — fixed wording, fixed
+ * order, model never consulted — and only handed a message to the agent once
+ * that interview was over. So the first thing anybody did on this page was the
+ * one thing the agent never saw, which is why it read as canned: the opening
+ * line, the assumptions and the closing sentence were string literals a few
+ * hundred lines from here.
  *
- * - The **interview and the build sheet** are deterministic. §4 says
- *   safety-critical commerce validation must not depend on model reasoning,
- *   and picking eight parts that fit each other is exactly that.
- * - **Everything else** is the real agent over `/api/agent/chat` — the same
- *   tools, the same grounding rules and the same approval gates the rest of
- *   the platform uses. A question the interview cannot answer used to be
- *   swallowed; now it is answered.
+ * Every message goes to `/api/agent/chat`. The model asks its own questions
+ * through `askBuyer` and they arrive in the thread as tappable rows; it
+ * assembles machines through `assembleBuild`, which runs the same
+ * deterministic engine the storefront's own recommendation screen does.
+ *
+ * That last part is the line §4 draws, and it has not moved. The model decides
+ * what to ask, what to assemble and what to say about it; it does not decide
+ * which socket takes which board. Choosing eight parts that fit each other is
+ * safety-critical commerce validation, and it stays in code — see
+ * `packages/ai/src/build-assembly.ts`.
  *
  * The sheet is written down as a real build as it changes, so when the
  * conversation continues past it the agent is looking at the same parts the
  * shopper is. See `saveAssistantBuildAction`.
- *
- * The sheet itself docks to the right edge, which is why nothing here reserves
- * space for it. An empty column held open for something that does not exist
- * yet is worse than a centred one that widens later.
  */
-
-/** Anything that has been said, in order. */
-type Entry =
-  | { id: string; kind: "user"; text: string }
-  | { id: string; kind: "assistant"; text: string }
-  | { id: string; kind: "asking"; question: InterviewQuestion }
-  | { id: string; kind: "answered"; questionId: string; value: string }
-  | { id: string; kind: "build" }
-  /** A turn of the real agent, drawn from the message it anchors. */
-  | { id: string; kind: "agent"; messageId: string };
 
 /** The opening rows, and the task each one actually is. */
 const STARTERS: {
@@ -97,50 +77,77 @@ const STARTERS: {
   },
 ];
 
-const OPENING =
-  "Right — a few questions and I can put something real in front of you.";
+/** The tool whose output the sheet is drawn from. */
+const ASSEMBLE_PART = "tool-assembleBuild";
 
-/** Long enough that the opening line lands before the first question. */
-const OPENING_MS = 900;
+/** The tool the model asks questions with, for the progress dots. */
+const ASK_PART = "tool-askBuyer";
 
-let seq = 0;
+/** How many questions the dots imply before any have been asked. */
+const EXPECTED_QUESTIONS = 4;
 
-function nextId(prefix: string) {
-  seq += 1;
-
-  return `${prefix}-${seq}`;
+interface ToolPartLike {
+  output?: { slots?: unknown[] };
+  state: string;
+  type: string;
 }
 
 /**
- * The interview's one server call can fail like any other request.
+ * The most recent assembled build in the thread, if there is one.
  *
- * Swallowing that leaves the thread sitting on the last question with no
- * indication anything went wrong, which reads as the assistant ignoring you.
+ * The last one wins: a shopper who says "try it at ₹60,000" gets a second
+ * `assembleBuild` call, and the sheet should show the machine they just asked
+ * for rather than the one before it.
  */
-function report(error: unknown) {
-  toast.error(
-    error instanceof Error
-      ? "The build could not be assembled just now."
-      : "Something went wrong assembling the build."
-  );
+function latestAssembly(messages: AgentMessage[]): unknown[] | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+
+    if (!message) {
+      continue;
+    }
+
+    for (let at = message.parts.length - 1; at >= 0; at -= 1) {
+      const part = message.parts[at] as ToolPartLike | undefined;
+
+      if (
+        part?.type === ASSEMBLE_PART &&
+        part.state === "output-available" &&
+        Array.isArray(part.output?.slots)
+      ) {
+        return part.output.slots;
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Every question the model has asked, and how many have been answered. */
+function questionProgress(messages: AgentMessage[]) {
+  let asked = 0;
+  let answered = 0;
+
+  for (const message of messages) {
+    for (const part of message.parts as ToolPartLike[]) {
+      if (part.type !== ASK_PART) {
+        continue;
+      }
+
+      asked += 1;
+
+      if (part.state === "output-available") {
+        answered += 1;
+      }
+    }
+  }
+
+  return { answered, asked };
 }
 
 interface ChatScreenProps {
-  /**
-   * A saved thread, replayed from `conversation_messages`. These go straight
-   * into the SDK's message list, so the shopper sees what was said *and* the
-   * model gets the same history rather than an empty context.
-   */
   initialMessages?: StorefrontMessage[];
-  /**
-   * A question carried in from somewhere else — the search overlay's "Ask the
-   * assistant" row, or a link that already knows what is being asked. It
-   * seeds the composer rather than sending itself: arriving mid-sentence with
-   * an answer already streaming is disorienting, and a back button would send
-   * it a second time.
-   */
   initialQuery?: string;
-  /** The row those messages came from, so a reply continues that thread. */
   resumeConversationId?: string;
   /** The store this assistant shops in, for the agent endpoint. */
   slug: string;
@@ -155,17 +162,13 @@ function ChatScreen({
   slug,
   storeName,
 }: ChatScreenProps) {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [skipped, setSkipped] = useState<string[]>([]);
   const [draft, setDraft] = useState(initialQuery ?? "");
   const [pinned, setPinned] = useState(true);
-  const [build, setBuild] = useState<RecommendedBuild | null>(null);
   const [rows, setRows] = useState<BuildSlotRow[]>([]);
+  const [basis, setBasis] = useState<string | null>(null);
   const [docked, setDocked] = useState(false);
   const [buildId, setBuildId] = useState<string | null>(null);
 
-  const stream = useWordStream();
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -190,38 +193,64 @@ function ChatScreen({
   const { messages, sendMessage } = assistant;
   const { open, paying } = useRazorpay();
 
-  const started = entries.length > 0;
+  const started = messages.length > 0;
 
   /*
-   * Every message the SDK holds gets exactly one place in the thread.
+   * The sheet, drawn from whatever the agent last assembled.
    *
-   * Anchoring rather than pushing at send time is what makes the turns the SDK
-   * sends on its own — the continuation after an approval — land in order
-   * instead of appearing twice or not at all.
+   * Keyed on the slots themselves rather than a message id: a re-render must
+   * not redraw a sheet the shopper has since unticked rows on, and an
+   * identical assembly is the same sheet whichever turn produced it.
    */
-  const anchored = useRef(new Set<string>());
+  const assembly = useMemo(() => latestAssembly(messages), [messages]);
+  const drawn = useRef<string | null>(null);
 
   useEffect(() => {
-    const fresh = messages.filter(
-      (message) => !anchored.current.has(message.id)
-    );
-
-    if (fresh.length === 0) {
+    if (!assembly) {
       return;
     }
 
-    for (const message of fresh) {
-      anchored.current.add(message.id);
+    const signature = JSON.stringify(assembly);
+
+    if (signature === drawn.current) {
+      return;
     }
 
-    setEntries((current) => [
-      ...current,
-      ...fresh.map((message) => ({
-        id: `m-${message.id}`,
-        kind: "agent" as const,
-        messageId: message.id,
-      })),
-    ]);
+    drawn.current = signature;
+
+    buildSheetAction(assembly)
+      .then((sheet) => {
+        if (sheet.length === 0) {
+          return;
+        }
+
+        setRows(sheet);
+        setDocked(false);
+      })
+      .catch(() => {
+        /*
+         * Quiet on purpose. The model's own description of the build is
+         * already in the thread and is still true; a toast about a widget that
+         * could not be drawn is an alarm about something nobody can act on.
+         */
+      });
+  }, [assembly]);
+
+  /* What the sheet says it was built on, straight from the tool. */
+  useEffect(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const part = messages[index]?.parts.find(
+        (entry) =>
+          (entry as ToolPartLike).type === ASSEMBLE_PART &&
+          (entry as ToolPartLike).state === "output-available"
+      ) as { output?: { basis?: string } } | undefined;
+
+      if (part?.output?.basis) {
+        setBasis(part.output.basis);
+
+        return;
+      }
+    }
   }, [messages]);
 
   /*
@@ -261,8 +290,7 @@ function ChatScreen({
          * A build that could not be saved costs the agent its view of the
          * sheet and costs the shopper nothing — the sheet, the compatibility
          * verdict and the checkout handoff all still work off the rows in the
-         * browser. So this is quiet on purpose; a toast here would be an alarm
-         * about something the shopper cannot act on.
+         * browser. So this is quiet on purpose.
          */
         if (!result.ok) {
           return;
@@ -276,79 +304,6 @@ function ChatScreen({
         /* Keeps the chain alive for the next change. */
       });
   }, [rows]);
-
-  /**
-   * Asks the next question that can still change the answer, skipping any it
-   * can infer and saying what it assumed.
-   */
-  const advance = useCallback(
-    async (currentAnswers: Record<string, string>, currentSkips: string[]) => {
-      let working = currentSkips;
-      let question = nextQuestion(currentAnswers, working);
-
-      while (question) {
-        const inference = question.inferred?.(currentAnswers);
-
-        if (!inference) {
-          break;
-        }
-
-        working = [...working, question.id];
-        setSkipped(working);
-        setEntries((current) => [
-          ...current,
-          { id: nextId("a"), kind: "assistant", text: inference },
-        ]);
-        question = nextQuestion(currentAnswers, working);
-      }
-
-      if (question) {
-        setEntries((current) => [
-          ...current,
-          { id: nextId("q"), kind: "asking", question },
-        ]);
-        stream.start(question.prompt.split(" ").length);
-
-        return;
-      }
-
-      const recommended = await recommendBuildAction(currentAnswers);
-
-      if (recommended.rows.length === 0) {
-        setEntries((current) => [
-          ...current,
-          {
-            id: nextId("a"),
-            kind: "assistant",
-            text: "I could not put a build together from what the store has in stock right now.",
-          },
-        ]);
-
-        return;
-      }
-
-      const verdict = validateBuild(recommended.rows);
-      const budget = Number(currentAnswers.budget || 0);
-      const over = verdict.totalPaise / 100 - budget;
-
-      /* If it does not fit the budget, say so before showing it. */
-      const line =
-        budget > 0 && over > 0
-          ? `Here it is. It comes to ₹${Math.round(verdict.totalPaise / 100).toLocaleString("en-IN")}, which is ₹${Math.round(over).toLocaleString("en-IN")} over what you said — the card is the cheapest thing to change.`
-          : "Here it is. Everything checked against everything else.";
-
-      setBuild(recommended);
-      setRows(recommended.rows);
-      setDocked(false);
-      setEntries((current) => [
-        ...current,
-        { id: nextId("a"), kind: "assistant", text: line },
-        { id: nextId("b"), kind: "build" },
-      ]);
-      stream.start(line.split(" ").length);
-    },
-    [stream]
-  );
 
   const onToggle = useCallback((partSlug: string) => {
     setRows((current) =>
@@ -378,68 +333,12 @@ function ChatScreen({
 
   const onExpand = useCallback(() => setDocked(false), []);
 
-  const onAnswer = useCallback(
-    (questionId: string, value: string) => {
-      const nextAnswers = { ...answers, [questionId]: value };
-
-      setAnswers(nextAnswers);
-      setEntries((current) => [
-        ...current.filter(
-          (entry) =>
-            !(entry.kind === "asking" && entry.question.id === questionId)
-        ),
-        { id: nextId("r"), kind: "answered", questionId, value },
-      ]);
-
-      advance(nextAnswers, skipped).catch(report);
-    },
-    [advance, answers, skipped]
-  );
-
   /**
-   * Editing an answer invalidates only what actually depended on it, and
-   * re-asks those. Re-running the whole interview to change one number is how
-   * people learn not to press Edit.
-   */
-  const onEdit = useCallback(
-    (questionId: string) => {
-      const question = INTERVIEW.find((entry) => entry.id === questionId);
-      const dropped = [questionId, ...(question?.invalidates ?? [])];
-
-      const nextAnswers = { ...answers };
-
-      for (const id of dropped) {
-        delete nextAnswers[id];
-      }
-
-      const nextSkips = skipped.filter((id) => !dropped.includes(id));
-
-      setAnswers(nextAnswers);
-      setSkipped(nextSkips);
-      setEntries((current) =>
-        current.filter(
-          (entry) =>
-            !(
-              (entry.kind === "answered" &&
-                dropped.includes(entry.questionId)) ||
-              (entry.kind === "asking" && dropped.includes(entry.question.id))
-            )
-        )
-      );
-
-      advance(nextAnswers, nextSkips).catch(report);
-    },
-    [advance, answers, skipped]
-  );
-
-  /**
-   * Where a message goes.
+   * Where a message goes: to the agent, always.
    *
-   * The interview owns the opening move of a build and nothing else. Once it
-   * is under way — and always, in every other mode — what the shopper types is
-   * a question for the agent, which is the whole point of the composer never
-   * disabling itself: you can ignore the question on screen and say what you
-   * actually want.
+   * There is no branch here any more, and its absence is the point. The
+   * composer never disables itself and never diverts — you can ignore a
+   * question on screen and say what you actually want, and the model gets it.
    */
   const send = useCallback(
     (text: string, task: ChatModeId) => {
@@ -451,46 +350,25 @@ function ChatScreen({
 
       setDraft("");
 
-      if (task === "build" && !started) {
-        setEntries((current) => [
-          ...current,
-          { id: nextId("u"), kind: "user", text: said },
-          { id: nextId("a"), kind: "assistant", text: OPENING },
-        ]);
-        stream.start(OPENING.split(" ").length);
-
-        window.setTimeout(
-          () => advance(answers, skipped).catch(report),
-          OPENING_MS
-        );
-
-        return;
-      }
-
       /*
        * Carrying on past a build docks the sheet rather than rebuilding it.
        * The agent works on the saved copy from here, so a swap it makes and a
-       * swap the shopper makes are edits to the same build rather than to two
-       * that disagree.
+       * swap the shopper makes are edits to the same build.
        */
-      if (build) {
+      if (rows.length > 0) {
         setDocked(true);
       }
 
       sendMessage({ text: said }, { mode: task });
     },
-    [advance, answers, build, sendMessage, skipped, started, stream]
+    [rows.length, sendMessage]
   );
 
   const mode = assistant.mode ?? "build";
 
   const onSend = useCallback(() => send(draft, mode), [draft, mode, send]);
 
-  /** Stops the reveal clock and the model — whichever of them is running. */
-  const onStop = useCallback(() => {
-    stream.stop();
-    assistant.stop();
-  }, [assistant, stream]);
+  const onStop = useCallback(() => assistant.stop(), [assistant]);
 
   /** Runs the failed turn again. Wrapped so the click event is not an option. */
   const onRetry = useCallback(() => {
@@ -498,15 +376,38 @@ function ChatScreen({
   }, [assistant]);
 
   const onEditLast = useCallback(() => {
-    const last = [...entries].reverse().find((entry) => entry.kind === "user");
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
 
-    if (last && last.kind === "user") {
-      setDraft(last.text);
+      if (message?.role !== "user") {
+        continue;
+      }
+
+      const text = message.parts
+        .filter((part) => part.type === "text")
+        .map((part) => (part as unknown as { text: string }).text)
+        .join("\n");
+
+      if (text) {
+        setDraft(text);
+
+        return;
+      }
     }
-  }, [entries]);
+  }, [messages]);
 
   const handlers = useMemo<AgentTurnHandlers>(
     () => ({
+      /*
+       * The buyer's tap *is* the tool's output — `askBuyer` has no server-side
+       * execute, so the turn stays suspended until this lands.
+       */
+      onAnswer: (toolCallId: string, value: string) =>
+        assistant.addToolOutput({
+          output: value,
+          tool: "askBuyer",
+          toolCallId,
+        }),
       onApproval: assistant.addToolApprovalResponse,
       onPay: (checkout: RazorpayCheckout, orderId: string) => {
         open({
@@ -528,11 +429,18 @@ function ChatScreen({
       },
       payingOrder: paying,
     }),
-    [assistant.addToolApprovalResponse, open, paying, sendMessage, storeName]
+    [
+      assistant.addToolApprovalResponse,
+      assistant.addToolOutput,
+      open,
+      paying,
+      sendMessage,
+      storeName,
+    ]
   );
 
   /* Auto-scroll follows the stream, and yields the moment you scroll up. */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: entries and messages are render signals, not values read here.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages and rows are render signals, not values read here.
   useEffect(() => {
     const node = scroller.current;
 
@@ -542,7 +450,7 @@ function ChatScreen({
     }
 
     node.scrollTop = node.scrollHeight;
-  }, [entries, messages, pinned]);
+  }, [messages, rows, pinned]);
 
   const onScroll = useCallback(() => {
     const node = scroller.current;
@@ -568,16 +476,17 @@ function ChatScreen({
     }
   }, []);
 
-  const relevant = useMemo(() => relevantQuestions(answers), [answers]);
-  const askingId = entries.find((entry) => entry.kind === "asking");
+  const progress = useMemo(() => questionProgress(messages), [messages]);
 
   /*
    * A turn with nothing on screen yet still has to look like one. Once a part
-   * has arrived it says what it is doing for itself, so this line goes.
+   * has arrived — reasoning included — it says what it is doing for itself.
    */
   const live = messages.at(-1);
   const waiting =
     assistant.busy && (live?.role !== "assistant" || live.parts.length === 0);
+
+  const verdict = rows.length > 0 ? validateBuild(rows) : null;
 
   return (
     <div className="flex h-[calc(100dvh-64px)] flex-col">
@@ -594,26 +503,32 @@ function ChatScreen({
         >
           {started ? (
             <div className="flex flex-col gap-8 py-12">
-              {entries.map((entry) => (
-                <div className="chat-turn" key={entry.id}>
-                  <ThreadEntry
-                    askingId={askingId?.id}
-                    basis={build?.basis}
+              {messages.map((message) => (
+                <div className="chat-turn" key={message.id}>
+                  <AgentTurn handlers={handlers} message={message} />
+                </div>
+              ))}
+
+              {/*
+                The sheet lives after the thread rather than inside a turn.
+                It is one object that the conversation edits — docking it and
+                re-drawing it in place is what makes a second assembly read as
+                the same machine changing rather than a new one appearing.
+              */}
+              {verdict && basis ? (
+                <div className="chat-turn">
+                  <BuildSurface
+                    basis={basis}
                     docked={docked}
-                    entry={entry}
-                    handlers={handlers}
-                    messages={messages}
-                    onAnswer={onAnswer}
-                    onEdit={onEdit}
                     onExpand={onExpand}
                     onRevert={onRevert}
                     onSwap={onSwap}
                     onToggle={onToggle}
                     rows={rows}
-                    stream={stream}
+                    verdict={verdict}
                   />
                 </div>
-              ))}
+              ) : null}
 
               {waiting ? (
                 <p className="t-body-sm flex items-center gap-2 text-smoke">
@@ -669,7 +584,7 @@ function ChatScreen({
                   onStop={onStop}
                   onValueChange={setDraft}
                   ref={composerRef}
-                  streaming={stream.streaming || assistant.busy}
+                  streaming={assistant.busy}
                   value={draft}
                 />
               </div>
@@ -717,31 +632,11 @@ function ChatScreen({
               onStop={onStop}
               onValueChange={setDraft}
               ref={composerRef}
-              streaming={stream.streaming || assistant.busy}
+              streaming={assistant.busy}
               value={draft}
             />
 
-            <div className="mt-4 flex items-center justify-center gap-2">
-              {relevant.map((question) => {
-                const answered = answers[question.id] !== undefined;
-                const current =
-                  askingId?.kind === "asking" &&
-                  askingId.question.id === question.id;
-
-                return (
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      answered && "bg-bone",
-                      !(answered || current) && "bg-hairline",
-                      current && "bg-transparent ring-1 ring-lacquer"
-                    )}
-                    key={question.id}
-                  />
-                );
-              })}
-            </div>
+            <ProgressDots {...progress} />
           </div>
         </div>
       ) : null}
@@ -749,116 +644,54 @@ function ChatScreen({
   );
 }
 
-interface ThreadEntryProps {
-  askingId?: string;
-  basis?: string;
-  docked: boolean;
-  entry: Entry;
-  handlers: AgentTurnHandlers;
-  messages: AgentMessage[];
-  onAnswer: (questionId: string, value: string) => void;
-  onEdit: (questionId: string) => void;
-  onExpand: () => void;
-  onRevert: (slug: string) => void;
-  onSwap: (slug: string) => void;
-  onToggle: (slug: string) => void;
-  rows: BuildSlotRow[];
-  stream: { shown: number; streaming: boolean };
-}
-
-/** One thing in the thread. Lifted out so the page reads as a page. */
-function ThreadEntry({
-  askingId,
-  basis,
-  docked,
-  entry,
-  handlers,
-  messages,
-  onAnswer,
-  onEdit,
-  onExpand,
-  onRevert,
-  onSwap,
-  onToggle,
-  rows,
-  stream,
-}: ThreadEntryProps) {
-  if (entry.kind === "agent") {
-    const message = messages.find((item) => item.id === entry.messageId);
-
-    return message ? <AgentTurn handlers={handlers} message={message} /> : null;
+/**
+ * How far through the questions we are.
+ *
+ * The model decides how many to ask, so unlike the fixed interview this cannot
+ * know the total in advance. It shows what has actually been asked against a
+ * modest expectation, and stops pretending to predict once the model has asked
+ * more than that — which is honest about the one thing that changed: nobody
+ * here knows what the next question will be, including this component.
+ */
+function ProgressDots({
+  answered,
+  asked,
+}: {
+  answered: number;
+  asked: number;
+}) {
+  if (asked === 0) {
+    return null;
   }
 
-  if (entry.kind === "user") {
-    return (
-      <p className="t-body-lg pl-16 text-right text-smoke">{entry.text}</p>
-    );
-  }
+  const total = Math.max(asked, EXPECTED_QUESTIONS);
 
-  if (entry.kind === "assistant") {
-    return (
-      <div className="flex gap-3">
-        <Sparkles aria-hidden className="mt-1.5 size-4 shrink-0 text-smoke" />
-        <StreamedText
-          className="t-body-lg flex-1 leading-relaxed"
-          id={entry.id}
-          shown={
-            askingId === entry.id ? stream.shown : entry.text.split(" ").length
-          }
-          streaming={false}
-          text={entry.text}
+  return (
+    <div className="mt-4 flex items-center justify-center gap-2">
+      {Array.from({ length: total }, (_, index) => (
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 rounded-full",
+            index < answered && "bg-bone",
+            index >= answered &&
+              index < asked &&
+              "bg-transparent ring-1 ring-lacquer",
+            index >= asked && "bg-hairline"
+          )}
+          // biome-ignore lint/suspicious/noArrayIndexKey: position is the identity here
+          key={index}
         />
-      </div>
-    );
-  }
-
-  if (entry.kind === "asking") {
-    return (
-      <AskingQuestion
-        onAnswer={onAnswer}
-        question={entry.question}
-        shown={stream.shown}
-        streaming={stream.streaming}
-      />
-    );
-  }
-
-  if (entry.kind === "build" && basis) {
-    return (
-      <BuildSurface
-        basis={basis}
-        docked={docked}
-        onExpand={onExpand}
-        onRevert={onRevert}
-        onSwap={onSwap}
-        onToggle={onToggle}
-        rows={rows}
-        verdict={validateBuild(rows)}
-      />
-    );
-  }
-
-  if (entry.kind === "answered") {
-    const question = INTERVIEW.find((item) => item.id === entry.questionId);
-
-    return (
-      <AnsweredQuestion
-        label={question?.label ?? entry.questionId}
-        onEdit={onEdit}
-        questionId={entry.questionId}
-        value={question?.format?.(entry.value) ?? entry.value}
-      />
-    );
-  }
-
-  return null;
+      ))}
+    </div>
+  );
 }
 
 /**
  * A starter row, which is a task as much as it is a sentence.
  *
  * "Compare two parts" is not a build request, so it sets the mode it means on
- * the way out — otherwise the first press of it would open the interview.
+ * the way out — otherwise the first press of it would open a build.
  */
 function StarterCard({
   blurb,

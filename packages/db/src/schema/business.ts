@@ -57,6 +57,20 @@ export const products = pgTable(
     categoryId: uuid("category_id").references(() => productCategories.id, {
       onDelete: "set null",
     }),
+    /**
+     * What the merchant paid for one unit, in paise.
+     *
+     * Nullable on purpose, following the same rule as the specs: a product
+     * with no cost has not been configured, which is a different fact from one
+     * that costs nothing. Every tool that reports margin also reports how many
+     * products it could not price, because a gross margin computed over half
+     * the catalogue and presented as the whole is worse than no figure at all.
+     *
+     * Without this column "grow revenue" is measured by a number that a 30%
+     * discount can always improve. With it there is a floor a discount cannot
+     * cross and a question — did that campaign make money — with an answer.
+     */
+    costPrice: integer("cost_price"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     description: text("description"),
     embedding: vector("embedding", { dimensions: 1536 }),
@@ -109,6 +123,17 @@ export const orders = pgTable(
       .notNull(),
     buyerIdentifier: text("buyer_identifier").notNull(), // Email or Agent API Key ID
     buyerType: text("buyer_type", { enum: ["human", "ai_agent"] }).notNull(),
+    /**
+     * Which campaign discounted this order, if one did.
+     *
+     * `discount_amount` recorded that a discount happened and nothing about
+     * where it came from, so "did that campaign work?" had no answer: there
+     * was no way to separate orders the campaign touched from orders placed
+     * the same week. Written at checkout from whatever `quoteCart` actually
+     * applied, so the attribution is the discount the buyer was really given
+     * rather than a later guess from dates.
+     */
+    campaignId: uuid("campaign_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     currency: text("currency").default("INR").notNull(),
     discountAmount: integer("discount_amount").default(0).notNull(),
@@ -197,6 +222,88 @@ export const payments = pgTable(
   ]
 );
 
+/**
+ * The bounds this merchant chose, rather than the ones the deployment did.
+ *
+ * Every limit in this system used to be a constant in `guardrails.ts` or a
+ * number in the environment. That makes "bounded" a promise the developer
+ * made, and the merchant is the one whose money it is — they should be able to
+ * say a discount may never exceed 15% in their shop, or that they want small
+ * agent orders to flow without waking them.
+ *
+ * The platform ceiling still wins. A row here can only ever be *stricter* than
+ * `LIMITS`, so a merchant cannot raise their own discount cap to 80% and a
+ * compromised session cannot either. Absent fields fall back to the platform
+ * default, which is why every one of them is nullable: not set and set to zero
+ * are different statements, and the second is a real choice.
+ */
+export const merchantPolicy = pgTable("merchant_policy", {
+  /**
+   * Whether an agent order still needs a human.
+   *
+   * Defaults to true and is the one flag here a merchant should think hardest
+   * about — turning it off is the difference between this system and one that
+   * lets strangers' software spend their money unattended.
+   */
+  agentOrdersRequireApproval: boolean("agent_orders_require_approval")
+    .default(true)
+    .notNull(),
+  /** Order total under which a money action need not stop for a human. */
+  autoApproveCeilingPaise: integer("auto_approve_ceiling_paise"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  /** Thinnest margin a discount may leave, as a percentage of the price. */
+  marginFloorPercent: integer("margin_floor_percent"),
+  maxDiscountPercent: integer("max_discount_percent"),
+  maxPriceMovePercent: integer("max_price_move_percent"),
+  merchantId: uuid("merchant_id")
+    .primaryKey()
+    .references(() => merchants.id, { onDelete: "cascade" }),
+  /** Total one buyer may commit at this store across a conversation. */
+  spendCapPaise: integer("spend_cap_paise"),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+/**
+ * Every price this product has ever carried, and who moved it.
+ *
+ * A price change is not like other edits. It applies to every future order
+ * rather than one, it is invisible after the fact — the row simply holds a
+ * different number — and the question a merchant asks three weeks later is
+ * "why is this ₹4,000 more than it was?", which nothing in the schema could
+ * answer.
+ *
+ * So the old price is kept with the reason and the actor beside it. This is
+ * what makes `updateProductPrice` safe enough to exist: the change is bounded
+ * before it happens and legible afterwards.
+ */
+export const productPriceHistory = pgTable(
+  "product_price_history",
+  {
+    /** "merchant" | "ai_assistant" — who actually moved it. */
+    actorType: text("actor_type").notNull(),
+    changedBy: text("changed_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    merchantId: uuid("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    newPrice: integer("new_price").notNull(),
+    oldPrice: integer("old_price").notNull(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    /** Required. A price move with no stated basis is one nobody can check. */
+    reason: text("reason").notNull(),
+  },
+  (table) => [
+    index("product_price_history_productId_idx").on(table.productId),
+    index("product_price_history_merchantId_idx").on(table.merchantId),
+  ]
+);
+
 export const campaigns = pgTable(
   "campaigns",
   {
@@ -204,6 +311,19 @@ export const campaigns = pgTable(
     approvedByMerchant: boolean("approved_by_merchant")
       .default(false)
       .notNull(),
+    /**
+     * The most this campaign may ever give away, in paise.
+     *
+     * A campaign that can be started and not stopped is the one genuinely
+     * dangerous object in this system: it discounts every matching order from
+     * now until somebody notices. The budget is the bound that does not depend
+     * on anybody noticing — `spent_paise` climbs as orders are captured, and
+     * the campaign stops applying the moment it is exhausted.
+     *
+     * Null means no cap, which is a decision the merchant makes explicitly
+     * rather than a default they never saw.
+     */
+    budgetPaise: integer("budget_paise"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     description: text("description"),
     discountType: text("discount_type", {
@@ -214,8 +334,21 @@ export const campaigns = pgTable(
     merchantId: uuid("merchant_id")
       .notNull()
       .references(() => merchants.id, { onDelete: "cascade" }),
+    /** When it may begin discounting. Null means "as soon as it is active". */
+    startsAt: timestamp("starts_at"),
+    /** When it stops. Null means it runs until paused or its budget runs out. */
+    endsAt: timestamp("ends_at"),
+    /** Discount actually given away so far, in paise. */
+    spentPaise: integer("spent_paise").default(0).notNull(),
     status: text("status", {
-      enum: ["draft", "pending_approval", "active", "rejected", "expired"],
+      enum: [
+        "draft",
+        "pending_approval",
+        "active",
+        "paused",
+        "rejected",
+        "expired",
+      ],
     })
       .default("draft")
       .notNull(),

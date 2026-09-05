@@ -1,6 +1,12 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
-import type { EmbeddingModel, LanguageModel } from "ai";
+import {
+  type EmbeddingModel,
+  extractReasoningMiddleware,
+  type LanguageModel,
+  wrapLanguageModel,
+} from "ai";
+import { NIM_REASONING_TAG, reasoningFetch } from "./nim-reasoning";
 
 /**
  * Model resolution.
@@ -38,7 +44,7 @@ const DEFAULT_OLLAMA_MODEL = "qwen2.5:3b-instruct";
 const DEFAULT_OLLAMA_EMBEDDING_MODEL = "nomic-embed-text";
 
 const DEFAULT_NVIDIA_URL = "https://integrate.api.nvidia.com/v1";
-const DEFAULT_NVIDIA_MODEL = "openai/gpt-oss-20b";
+const DEFAULT_NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 
 type Provider = "google" | "nvidia" | "ollama";
 
@@ -109,25 +115,42 @@ function ollamaChat() {
  * so a `gemini-…` left in `.env` is not sent to a provider that has never
  * heard of it.
  *
- * The default is `openai/gpt-oss-20b`, and the size is the whole point. NIM
- * serves the free tier by queueing, and the queue is where the 120b sits: with
- * one tool and a two-line prompt it took 39 seconds to reach its first token,
- * against 1.2 seconds for the 20b on the same key and the same payload. A real
- * storefront turn — eight thousand prompt tokens, 25 tool schemas, a dozen
- * steps — never arrived at all, which is not a slow agent but an agent that
- * appears to have hung.
+ * The default is a Nemotron, and the reason is a format rather than a score.
+ * This ran on `openai/gpt-oss-*` for a while, and that family speaks Harmony —
+ * a prompt syntax with its own header grammar, which NIM parses on the way out
+ * and re-renders on the way in. When the model writes a header the parser will
+ * not accept, NIM rejects the whole completion with a 400: "unexpected tokens
+ * remaining in message header". Observed roughly one turn in four, mid
+ * conversation, always after the buyer had answered something — the model
+ * opens `to=functions.captureRequirements` and then emits prose or garbage
+ * where the arguments belong, and there is nothing on this side of the wire to
+ * fix, because the request was well-formed and the *generation* was not. The
+ * buyer is simply told the assistant hit an error.
  *
- * The 20b was the reason to prefer the larger model in the first place, so the
- * trade was measured rather than assumed: it completes the full storefront
- * turn — getRequirements, captureRequirements, searchProducts,
- * recommendProducts, quoteOrder — with well-formed calls against all 25 tools,
- * in under a minute end to end.
+ * That failure is unreachable on a model that does not speak Harmony: tool
+ * calls are ordinary JSON in an ordinary field, with no second grammar to
+ * corrupt. Every other model NIM serves is in that category, which makes this
+ * a one-line fix to a class of bug rather than a trade.
  *
- * NIM does not serve any Qwen model, and several models it does serve 500 or
- * ignore the `tools` parameter outright, so this list is shorter than it looks.
- * If the 120b stops queueing it is a better model; measure the time to first
- * token before switching back, because that is the number that decides whether
- * this is usable, not the benchmark scores.
+ * Measured on the same key and the same two-tool payload, first token to last:
+ *
+ *   nvidia/nemotron-3-super-120b-a12b       2.6s / 3.9s   tools ok
+ *   nvidia/nemotron-3.5-lightning-30b-a3b   5.0s / 8.6s   tools ok
+ *   minimaxai/minimax-m3                    42s           tools ok
+ *   openai/gpt-oss-20b                      24s / 54s     tools ok, 400s above
+ *   mistralai/mistral-nemotron              64s           never called a tool
+ *   deepseek-ai/deepseek-v4-flash-0731      timed out
+ *
+ * So the default is also the fastest of them, by roughly ten times against
+ * what it replaces — both are MoE, and this one activates 12B of 120B. It
+ * passes the agent suite against all 25 tool schemas, including the approval
+ * gate and the cross-buyer order refusal.
+ *
+ * NIM does not serve any Qwen model, and several it lists 404 on `/chat/
+ * completions` or ignore the `tools` parameter outright, so the usable list is
+ * much shorter than `/v1/models` suggests — measure before switching, and
+ * measure time to first token, because that is what decides whether this is
+ * usable rather than the benchmark scores.
  */
 function nvidiaChat() {
   const apiKey = process.env.NVIDIA_API_KEY;
@@ -136,11 +159,22 @@ function nvidiaChat() {
     throw new Error("NVIDIA_API_KEY is required when AI_PROVIDER=nvidia");
   }
 
-  return createOpenAI({
+  const model = createOpenAI({
     apiKey,
     baseURL: process.env.NVIDIA_BASE_URL ?? DEFAULT_NVIDIA_URL,
+    // NIM returns a reasoning model's thinking in `reasoning_content`, which
+    // this provider does not read. The fetch folds it into the content stream
+    // in a tag; the middleware below lifts it back out. Harmless on a model
+    // that sends no reasoning at all — the fold simply never opens. See
+    // `nim-reasoning.ts`.
+    fetch: reasoningFetch(),
     name: "nvidia",
   }).chat(process.env.NVIDIA_CHAT_MODEL ?? DEFAULT_NVIDIA_MODEL);
+
+  return wrapLanguageModel({
+    middleware: extractReasoningMiddleware({ tagName: NIM_REASONING_TAG }),
+    model,
+  });
 }
 
 /**

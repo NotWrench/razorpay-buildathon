@@ -3,10 +3,12 @@ import { account, apikey, session, user, verification } from "./auth";
 import { buildItems, builds } from "./builds";
 import {
   campaigns,
+  merchantPolicy,
   merchants,
   orderItems,
   orders,
   payments,
+  productPriceHistory,
   products,
 } from "./business";
 import { cartItems, carts } from "./carts";
@@ -54,10 +56,12 @@ export {
 export { buildItems, builds } from "./builds";
 export {
   campaigns,
+  merchantPolicy,
   merchants,
   orderItems,
   orders,
   payments,
+  productPriceHistory,
   products,
 } from "./business";
 
@@ -108,11 +112,13 @@ export const projectSchema = {
   cartsRelations,
   inventory,
   inventoryRelations,
+  merchantPolicy,
   merchants,
   merchantsRelations,
   orderItems,
   orderItemsRelations,
   orders,
+  productPriceHistory,
   ordersRelations,
   payments,
   paymentsRelations,
@@ -154,7 +160,9 @@ export type NewCartItem = InferInsertModel<typeof cartItems>;
 
 export type Merchant = InferSelectModel<typeof merchants>;
 export type NewMerchant = InferInsertModel<typeof merchants>;
+export type MerchantPolicy = InferSelectModel<typeof merchantPolicy>;
 export type Product = InferSelectModel<typeof products>;
+export type ProductPriceChange = InferSelectModel<typeof productPriceHistory>;
 export type NewProduct = InferInsertModel<typeof products>;
 export type ProductCategory = InferSelectModel<typeof productCategories>;
 export type NewProductCategory = InferInsertModel<typeof productCategories>;

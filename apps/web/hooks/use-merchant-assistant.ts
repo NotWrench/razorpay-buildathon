@@ -17,8 +17,25 @@ import { useTurnInterruption } from "./use-turn-interruption";
  * merchant id is sent for routing only; the route re-checks store ownership
  * against the session before any tool runs.
  */
-export function useMerchantAssistant({ merchantId }: { merchantId: string }) {
+export function useMerchantAssistant({
+  merchantId,
+  rangeDays,
+}: {
+  merchantId: string;
+  /** The window the briefing above the thread is showing. */
+  rangeDays?: number;
+}) {
   const conversationId = useRef<string | undefined>(undefined);
+
+  /*
+   * The range changes when the merchant picks another window, and `useChat`
+   * captures `prepareSendMessagesRequest` once. Reading it out of a ref means
+   * the next turn carries the window they are actually looking at rather than
+   * the one that was open when the component first mounted.
+   */
+  const range = useRef(rangeDays);
+
+  range.current = rangeDays;
 
   const { clear, interruption, noteFinish } = useTurnInterruption();
 
@@ -42,6 +59,7 @@ export function useMerchantAssistant({ merchantId }: { merchantId: string }) {
           conversationId: conversationId.current,
           merchantId,
           messages,
+          rangeDays: range.current,
         },
       }),
     }),

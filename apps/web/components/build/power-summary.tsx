@@ -9,10 +9,12 @@ import { cn } from "@workspace/ui/lib/utils";
 export function PowerSummary({
   className,
   estimatedWattage,
+  psuWattage,
   recommendedPsuWattage,
 }: {
   className?: string;
   estimatedWattage: number;
+  psuWattage?: number | null;
   recommendedPsuWattage: number;
 }) {
   if (estimatedWattage <= 0) {

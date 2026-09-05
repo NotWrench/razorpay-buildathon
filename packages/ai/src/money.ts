@@ -14,14 +14,22 @@ export function rupeesToPaise(rupees: number): number {
   return Math.round(rupees * PAISE_PER_RUPEE);
 }
 
-/** "₹24,999" — no decimals when the amount is whole rupees. */
+/**
+ * "₹24,999" — no decimals when the amount is whole rupees, both when not.
+ *
+ * The minimum used to be zero, which printed ₹30,099.30 as "₹30,099.3". The
+ * model quotes these strings verbatim to the merchant, so a price with one
+ * decimal place ends up in an explanation of why a discount was refused,
+ * where it reads as a rounding error rather than a price.
+ */
 export function formatPaise(paise: number, currency = "INR"): string {
   const rupees = paiseToRupees(paise);
+  const decimals = Number.isInteger(rupees) ? 0 : 2;
 
   return new Intl.NumberFormat("en-IN", {
     currency,
-    maximumFractionDigits: Number.isInteger(rupees) ? 0 : 2,
-    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
     style: "currency",
   }).format(rupees);
 }

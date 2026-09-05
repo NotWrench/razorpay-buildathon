@@ -6,12 +6,15 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SearchProvider } from "@/components/search/search-context";
 import { SearchOverlay } from "@/components/search/search-overlay";
 
+import type { CurrentUser } from "@/lib/session";
+
 interface StoreShellProps {
   /** Cart count for the header badge. Mocked until the cart is wired. */
   cartCount?: number;
   children: ReactNode;
   /** The 2px lacquer bar. Off by default; long pages opt in. */
   scrollProgress?: boolean;
+  user?: CurrentUser;
 }
 
 /**
@@ -25,6 +28,7 @@ function StoreShell({
   children,
   cartCount = 0,
   scrollProgress = false,
+  user,
 }: StoreShellProps) {
   return (
     <SearchProvider>
@@ -33,7 +37,7 @@ function StoreShell({
       <RouteMemory />
       <div className="flex min-h-dvh flex-col bg-void">
         {scrollProgress ? <ScrollProgress /> : null}
-        <SiteHeader cartCount={cartCount} />
+        <SiteHeader cartCount={cartCount} initialUser={user} />
         <div className="flex-1">{children}</div>
         <SiteFooter />
       </div>

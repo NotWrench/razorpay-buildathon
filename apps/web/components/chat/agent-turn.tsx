@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanToolPartType } from "@workspace/ai/client";
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { StatusLine } from "@workspace/ui/components/status-line";
@@ -7,6 +8,11 @@ import { formatPaise } from "@workspace/ui/lib/money";
 import { Sparkles } from "lucide-react";
 import { useCallback } from "react";
 import { storefrontPendingLabel } from "@/components/assistant/storefront/pending-labels";
+import {
+  AnsweredQuestion,
+  AskBuyerQuestion,
+} from "@/components/chat/ask-buyer";
+import { ReasoningTrail } from "@/components/chat/reasoning-trail";
 import { StreamedText } from "@/components/chat/streamed-text";
 import { PillLink } from "@/components/common/pill-link";
 import { shellRoutes } from "@/lib/routes";
@@ -35,6 +41,12 @@ interface Part {
   type: string;
 }
 
+/** The model's own thinking, forwarded by `sendReasoning`. */
+interface ReasoningPart extends Part {
+  state?: "streaming" | "done";
+  text: string;
+}
+
 export interface AgentMessage {
   id: string;
   parts: Part[];
@@ -44,9 +56,12 @@ export interface AgentMessage {
 interface ToolPart extends Part {
   approval?: { id: string; isAutomatic?: boolean; requestReason?: string };
   errorText?: string;
+  // biome-ignore lint/suspicious/noExplicitAny: a tool input is a wide union, narrowed per case below.
+  input?: any;
   // biome-ignore lint/suspicious/noExplicitAny: a tool output is a wide union, narrowed per case below.
   output?: any;
   state: string;
+  toolCallId?: string;
 }
 
 export interface RazorpayCheckout {
@@ -57,6 +72,13 @@ export interface RazorpayCheckout {
 }
 
 export interface AgentTurnHandlers {
+  /**
+   * The buyer's reply to an `askBuyer` call.
+   *
+   * That tool has no server-side execute: the loop is suspended until this
+   * output arrives, so a question with no way to answer it hangs the turn.
+   */
+  onAnswer: (toolCallId: string, value: string) => void;
   onApproval: (response: { approved: boolean; id: string }) => void;
   onPay: (checkout: RazorpayCheckout, orderId: string) => void;
   /** The order whose payment window is already open, if any. */
@@ -68,6 +90,23 @@ const NAMED_PARTS = 4;
 
 function isToolPart(part: Part): part is ToolPart {
   return part.type.startsWith("tool-");
+}
+
+/**
+ * A tool part under the name its tool actually has.
+ *
+ * The model's control tokens are already attached when `tool-input-start`
+ * streams, so a mangled call arrives here as `tool-askBuyer<|channel|>
+ * commentary` and matches none of the cases below. Repairing the call
+ * server-side fixes which tool runs and nothing about which component draws,
+ * and for `askBuyer` that is the whole conversation: the question never
+ * appears, so it can never be answered, so the turn waits on "Working…" for
+ * an answer the buyer was never offered the chance to give.
+ */
+function drawnAs(part: ToolPart): ToolPart {
+  const type = cleanToolPartType(part.type);
+
+  return type === part.type ? part : { ...part, type };
 }
 
 function textOf(part: Part): string {
@@ -276,6 +315,45 @@ function ToolResult({
   }
 }
 
+/**
+ * A question from the model, and the answer once given.
+ *
+ * Both states are drawn here rather than left to `ToolResult`, because unlike
+ * every other tool this one is not a thing that happened — it is a thing the
+ * turn is waiting on. Falling through to the generic pending line would show
+ * "Thinking…" against a question nobody can answer, forever.
+ */
+function AskBuyerLine({
+  handlers,
+  part,
+}: {
+  handlers: AgentTurnHandlers;
+  part: ToolPart;
+}) {
+  const callId = part.toolCallId ?? "";
+  const { onAnswer } = handlers;
+
+  const answer = useCallback(
+    (value: string) => onAnswer(callId, value),
+    [callId, onAnswer]
+  );
+
+  if (part.state === "output-available") {
+    return (
+      <AnsweredQuestion
+        label={String(part.input?.label ?? "Answer")}
+        value={String(part.output ?? "")}
+      />
+    );
+  }
+
+  if (part.state === "input-streaming" || part.state === "input-available") {
+    return <AskBuyerQuestion input={part.input ?? {}} onAnswer={answer} />;
+  }
+
+  return null;
+}
+
 function ToolLine({
   handlers,
   part,
@@ -283,6 +361,10 @@ function ToolLine({
   handlers: AgentTurnHandlers;
   part: ToolPart;
 }) {
+  if (part.type === "tool-askBuyer") {
+    return <AskBuyerLine handlers={handlers} part={part} />;
+  }
+
   if (part.state === "approval-requested") {
     return part.approval?.isAutomatic ? (
       <WorkingLine label="Checking the store's policy…" />
@@ -351,6 +433,24 @@ export function AgentTurn({
         {message.parts.map((part, index) => {
           const key = `${message.id}-${index}`;
 
+          if (part.type === "reasoning") {
+            const reasoning = part as ReasoningPart;
+
+            return (
+              <ReasoningTrail
+                key={key}
+                /*
+                 * The part's own state, not the turn's. Reasoning ends well
+                 * before the turn does — tools run after it — and reading
+                 * `busy` here would leave the live view open, scrolling an
+                 * unchanging block, for the rest of the turn.
+                 */
+                streaming={reasoning.state !== "done"}
+                text={reasoning.text}
+              />
+            );
+          }
+
           if (part.type === "text") {
             const text = textOf(part);
 
@@ -378,7 +478,7 @@ export function AgentTurn({
           }
 
           return isToolPart(part) ? (
-            <ToolLine handlers={handlers} key={key} part={part} />
+            <ToolLine handlers={handlers} key={key} part={drawnAs(part)} />
           ) : null;
         })}
       </div>

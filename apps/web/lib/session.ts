@@ -10,6 +10,8 @@ export async function currentUser() {
   return session?.user ?? null;
 }
 
+export type CurrentUser = Awaited<ReturnType<typeof currentUser>>;
+
 /**
  * The store the signed-in user owns.
  *

@@ -1,6 +1,7 @@
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
 import type { AgentContext } from "../context";
+import { paiseToRupees, rupeesToPaise } from "../money";
 import type { BuildRequirements } from "../requirements";
 import {
   canRecommend,
@@ -8,6 +9,7 @@ import {
   getRequirements,
   missingFields,
 } from "../requirements";
+import { askBuyerInput, captureRequirementsInput } from "./ask-buyer-schema";
 
 /**
  * The requirement interview.
@@ -33,7 +35,15 @@ function requirementState(requirements: BuildRequirements | null) {
   return {
     captured: requirements
       ? {
-          budgetPaise: requirements.budgetPaise,
+          /*
+           * Rupees, because rupees are what the tools take. Handing paise back
+           * would put the model straight into the conversion that cost a build
+           * its budget — see `ask-buyer-schema.ts`.
+           */
+          budgetRupees:
+            requirements.budgetPaise === null
+              ? null
+              : paiseToRupees(requirements.budgetPaise),
           constraints: requirements.constraints,
           ownedParts: requirements.ownedParts,
           targetRefreshHz: requirements.targetRefreshHz,
@@ -65,52 +75,68 @@ function requirementState(requirements: BuildRequirements | null) {
 }
 export function requirementTools(ctx: AgentContext) {
   return {
+    /**
+     * A question, asked as something the buyer can tap.
+     *
+     * This tool has no `execute`, and that is the entire point: the SDK
+     * forwards it to the client, suspends the loop, and resumes when the
+     * answer comes back as the tool's output. The model is genuinely waiting
+     * for the buyer rather than guessing on their behalf.
+     *
+     * It exists because the question set used to be a hardcoded array in the
+     * browser — five questions, fixed wording, fixed order, model never
+     * consulted. That is fine right up until somebody wants a machine for
+     * flight simulation, at which point the interview asks about refresh rate
+     * and the one question worth asking is never put. The model knows what to
+     * ask next; what it lacked was a way to ask it that the buyer could
+     * answer with a thumb.
+     *
+     * The prompt does the narrowing: one of these per turn, and only when the
+     * answer would actually change the recommendation.
+     */
+    askBuyer: tool({
+      description:
+        "Ask the buyer ONE question and offer the answers as tappable " +
+        "options. Use this instead of writing the question as prose whenever " +
+        "the answer is a budget, a pick from a short list, or a few things " +
+        "off a list. Write the prompt and the option labels yourself, in your " +
+        "own words, for this buyer. The composer stays live, so they may " +
+        "ignore the options and type something else — expect that. Ask only " +
+        "what would change your recommendation, and call captureRequirements " +
+        "with the answer once it comes back.",
+      inputSchema: askBuyerInput,
+      /*
+       * Declared even though nothing here validates it: the output is produced
+       * by the browser, so this is the only place the answer's shape is
+       * written down for both sides to agree on.
+       */
+      outputSchema: z
+        .string()
+        .describe("What the buyer answered, in their own words."),
+    }),
+
     captureRequirements: tool({
       description:
         "Record what the buyer has told you about their needs. Call this as " +
         "soon as they say something concrete — a budget, a game, a resolution " +
         "— rather than waiting until the end. Pass only the fields they " +
         "actually mentioned; anything you omit is left as it was.",
-      execute: async (input) =>
-        requirementState(await captureRequirements(ctx, input)),
-      inputSchema: z.object({
-        budgetPaise: z
-          .number()
-          .int()
-          .positive()
-          .optional()
-          .describe(
-            "What they said they can spend, in paise. ₹80,000 is 8000000."
-          ),
-        constraints: z
-          .record(z.string(), z.unknown())
-          .optional()
-          .describe(
-            'Hard limits in their own terms, e.g. { "formFactor": "must be small", "noise": "quiet" }.'
-          ),
-        ownedParts: z
-          .record(z.string(), z.unknown())
-          .optional()
-          .describe(
-            'Parts they already have and want to keep, e.g. { "monitor": "1440p 165Hz" }.'
-          ),
-        targetRefreshHz: z.number().int().positive().max(1000).optional(),
-        targetResolution: z
-          .string()
-          .max(40)
-          .optional()
-          .describe('As they said it: "1080p", "1440p", "4K".'),
-        useCase: z
-          .string()
-          .max(200)
-          .optional()
-          .describe("Gaming, editing, development, office work, mixed."),
-        workloads: z
-          .array(z.string().max(120))
-          .max(12)
-          .optional()
-          .describe("Named games or software. Specifics beat categories."),
-      }),
+      execute: async ({ budgetRupees, ...rest }) =>
+        requirementState(
+          await captureRequirements(ctx, {
+            ...rest,
+            /*
+             * Converted here, never by the model. Asked for paise it turned a
+             * ₹1,25,000 budget into ₹12,500, and the build came back cheap
+             * with nothing to show that anything had gone wrong.
+             */
+            budgetPaise:
+              budgetRupees === undefined
+                ? undefined
+                : rupeesToPaise(budgetRupees),
+          })
+        ),
+      inputSchema: captureRequirementsInput,
     }),
 
     getRequirements: tool({

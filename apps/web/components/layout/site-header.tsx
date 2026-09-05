@@ -1,15 +1,16 @@
 "use client";
 
-import { Label } from "@workspace/ui/components/label";
 import { cn } from "@workspace/ui/lib/utils";
 import { Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { HeaderAccount } from "@/components/layout/header-account";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UseCaseMenu } from "@/components/layout/use-case-menu";
 import { useSearch } from "@/components/search/search-context";
 import { shellRoutes } from "@/lib/routes";
+import type { CurrentUser } from "@/lib/session";
 
 /**
  * The header, driven by one number.
@@ -38,6 +39,7 @@ const NAV = [
 
 interface SiteHeaderProps {
   cartCount?: number;
+  initialUser?: CurrentUser;
 }
 
 function useHeaderProgress() {
@@ -113,7 +115,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
+function SiteHeader({ cartCount = 0, initialUser }: SiteHeaderProps) {
   const ref = useHeaderProgress();
   const overHero = HERO_ROUTES.has(usePathname());
   const { openSearch } = useSearch();
@@ -144,9 +146,7 @@ function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
           href={shellRoutes.home}
           style={{ transform: "scale(calc(1 - 0.08 * var(--hp)))" }}
         >
-          <span className="t-display-sm font-bold text-bone">
-            NEXUS
-          </span>
+          <span className="t-display-sm font-bold text-bone">NEXUS</span>
           <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
         </Link>
 
@@ -166,9 +166,7 @@ function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
           >
             <Search aria-hidden className="size-4" />
             <span className="sr-only">Search</span>
-            <span className="t-num-xs hidden text-smoke sm:inline">
-              ⌘K
-            </span>
+            <span className="t-num-xs hidden text-smoke sm:inline">⌘K</span>
           </button>
 
           <Link
@@ -184,16 +182,14 @@ function SiteHeader({ cartCount = 0 }: SiteHeaderProps) {
             ) : null}
           </Link>
 
-          <Link
-            aria-label="Account"
-            className="hidden size-7 items-center justify-center rounded-full bg-riser md:flex"
-            href={shellRoutes.account}
-          >
-            <Label className="text-2xs text-bone">S</Label>
-          </Link>
+          <HeaderAccount
+            avatarClassName="hidden md:flex"
+            className="hidden sm:inline-flex"
+            initialUser={initialUser}
+          />
 
           {/* Below md the nav row is hidden, so everything it held moves here. */}
-          <MobileNav />
+          <MobileNav initialUser={initialUser} />
         </div>
       </div>
 

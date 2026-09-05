@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ChatChrome } from "@/components/chat/chat-chrome";
 import { countCart } from "@/lib/data";
 import { listConversations } from "@/lib/data/conversations";
+import { currentUser } from "@/lib/session";
 
 /**
  * The assistant has its own chrome — one thin bar, no store header, no footer.
@@ -15,14 +16,19 @@ export default async function AssistantLayout({
 }: {
   children: ReactNode;
 }) {
-  const [cartCount, conversations] = await Promise.all([
+  const [cartCount, conversations, user] = await Promise.all([
     countCart(),
     listConversations(),
+    currentUser(),
   ]);
 
   return (
     <div className="min-h-dvh bg-void">
-      <ChatChrome cartCount={cartCount} conversations={conversations} />
+      <ChatChrome
+        cartCount={cartCount}
+        conversations={conversations}
+        initialUser={user}
+      />
       {children}
     </div>
   );

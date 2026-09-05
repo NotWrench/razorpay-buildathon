@@ -196,8 +196,8 @@ const EXISTING_ROUTES: PreviewRoute[] = [
   },
   {
     built: true,
-    description: "The original sign-in screen.",
-    href: route("/sign-in"),
+    description: "Sign in. Google, and nothing else.",
+    href: route("/login"),
     prompt: "—",
   },
 ];

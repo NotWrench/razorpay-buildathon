@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ToolCard, ToolStatus } from "./primitives";
+import { ReasoningNote } from "./reasoning-note";
 import { TextMessage } from "./text-message";
 import { asToolPart, ToolPart, type ToolPartShape } from "./tool-part";
 
@@ -25,10 +26,12 @@ export function MessageThread<TMessage extends ThreadMessage>({
   empty,
   error,
   messages,
+  onAnswer,
   onApproval,
   onRetry,
   pendingLabel,
   renderOutput,
+  textVariant,
 }: {
   busy: boolean;
   deniedNote: string;
@@ -36,10 +39,14 @@ export function MessageThread<TMessage extends ThreadMessage>({
   /** A turn that ended badly. In practice never set while `busy` is true. */
   error?: Error;
   messages: TMessage[];
+  /** Answers an `askBuyer` question. Absent on agents that cannot ask. */
+  onAnswer?: (toolCallId: string, value: string) => void;
   onApproval: (response: { approved: boolean; id: string }) => void;
   onRetry?: () => void;
   pendingLabel: (type: string) => string;
   renderOutput: (part: ToolPartShape) => ReactNode;
+  /** How text parts are drawn. The manager's room does not use bubbles. */
+  textVariant?: "bubble" | "plain";
 }) {
   if (messages.length === 0) {
     return <>{empty}</>;
@@ -69,12 +76,22 @@ export function MessageThread<TMessage extends ThreadMessage>({
           {message.parts.map((part, index) => {
             const key = `${message.id}-${index}`;
 
+            if (part.type === "reasoning") {
+              return (
+                <ReasoningNote
+                  key={key}
+                  text={(part as unknown as { text: string }).text}
+                />
+              );
+            }
+
             if (part.type === "text") {
               return (
                 <TextMessage
                   key={key}
                   role={message.role}
                   text={(part as unknown as { text: string }).text}
+                  variant={textVariant}
                 />
               );
             }
@@ -89,6 +106,7 @@ export function MessageThread<TMessage extends ThreadMessage>({
               <ToolPart
                 deniedNote={deniedNote}
                 key={key}
+                onAnswer={onAnswer}
                 onApproval={onApproval}
                 part={tool}
                 pendingLabel={pendingLabel}

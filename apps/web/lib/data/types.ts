@@ -214,6 +214,8 @@ export interface NeverSeenRow {
 
 /** A window the manager can ask for. `id` is what the URL carries. */
 export interface ManagerRange {
+  /** The window in days, which is what the assistant is told to measure over. */
+  days: number;
   id: string;
   /** "1–31 August 2026" — what the dropdown shows. */
   label: string;
@@ -316,21 +318,98 @@ export interface ManagerProduct {
   stock: number;
 }
 
+/**
+ * The states this database can actually distinguish.
+ *
+ * "fulfilled" is gone. There is no shipment anywhere in the schema, so a
+ * button that set it was claiming a state nothing could ever read back — and a
+ * filter for it listed orders that had simply been paid for. `awaiting` takes
+ * its place and is real: an order a buying agent created that no human has
+ * approved yet, which is the queue this whole system is built around.
+ */
 export type ManagerOrderState =
+  | "awaiting"
   | "new"
   | "due"
-  | "fulfilled"
   | "cancelled"
   | "refunded";
 
 export interface ManagerOrder {
+  /** Why the buying agent says it wants this. Null for a human shopper. */
+  agentReason: string | null;
+  buyerType: "human" | "ai_agent";
   customer: string;
+  /** The display reference, "NX-A1B2C3". Not an identifier to act on. */
   id: string;
   itemCount: number;
   lines: { name: string; pricePaise: Money; quantity: number }[];
+  /**
+   * The real uuid, which every write is addressed to.
+   *
+   * `id` is a six-character reference for a human to read out; two orders
+   * could in principle share one. A refund must never be aimed at a display
+   * string.
+   */
+  orderId: string;
   placedOn: string;
+  /** True once a payment on this order has actually been captured. */
+  refundable: boolean;
   state: ManagerOrderState;
   totalPaise: Money;
+}
+
+/** One line of the store's ledger — an action, who took it, and why. */
+export interface ActivityEntry {
+  action: string;
+  actor: string;
+  at: string;
+  explanation: string;
+  /** True when this entry records something that did not work. */
+  failed: boolean;
+  /** The recorded failure type, when the order it names has one. */
+  failureType: string | null;
+  id: string;
+  /** The display reference, when the entry names an order in this store. */
+  orderRef: string | null;
+  /** True when this happened on an unattended run rather than on request. */
+  scheduled: boolean;
+}
+
+/** A campaign as the merchant reviews it: state, spend, and what it did. */
+export interface ManagerCampaign {
+  approvedByMerchant: boolean;
+  /** Null when it may give away as much as it likes. */
+  budgetPaise: Money | null;
+  /** Null while it has never been activated. */
+  endsAt: Date | null;
+  id: string;
+  productNames: string[];
+  /** The assistant's stated business case, shown in full. */
+  reason: string | null;
+  spentPaise: Money;
+  startsAt: Date | null;
+  status: string;
+  summary: string;
+  title: string;
+}
+
+/**
+ * One credential a merchant issued to a buying agent.
+ *
+ * `prefix` is masked and the secret is absent, because it is unrecoverable by
+ * design — it exists in the response to the call that created it and nowhere
+ * else.
+ */
+export interface AgentKeyRow {
+  createdAt: Date;
+  id: string;
+  label: string;
+  orders: { approved: number; pending: number; rejected: number; total: number };
+  prefix: string;
+  revoked: boolean;
+  /** Null when the key falls back to the platform default. */
+  spendCapPaise: Money | null;
+  spentPaise: Money;
 }
 
 export interface RestockRow {
@@ -357,11 +436,46 @@ export interface TeamMember {
   role: "Owner" | "Manager" | "Support";
 }
 
+/**
+ * Which Razorpay account this store is billed through.
+ *
+ * A store that has connected nothing still takes payments — everything
+ * downstream falls back to the platform keys (`resolveMerchantCredentials`) —
+ * so "not connected" is a state, not a fault, and the screen says which
+ * account the money is currently going to rather than only whether a form has
+ * been filled in.
+ */
+export interface RazorpayConnection {
+  /**
+   * Whether the store has keys of its own.
+   *
+   * False means the platform account is taking the money.
+   */
+  connected: boolean;
+  /** Masked at rest. The whole key id never reaches this screen, and the secret never leaves the row. */
+  keyId: string | null;
+  /** Read off the key id's own `rzp_test_` / `rzp_live_` prefix. */
+  mode: "live" | "test" | null;
+  /** The same, for the platform keys the store falls back to. */
+  platformMode: "live" | "test" | null;
+}
+
 export interface StoreSettings {
   currency: string;
+  /**
+   * Whether the signed-in user owns this store.
+   *
+   * The storefront resolves its merchant from the environment rather than from
+   * a session, so the manager screens render for anyone — but connecting a
+   * payment account is guarded server-side by `assertMerchantOwner`, and a
+   * button that always fails is worse than one that explains itself.
+   */
+  isOwner: boolean;
+  merchantId: string;
   name: string;
-  /** Masked at rest. The real key never reaches this screen. */
-  razorpayKeyId: string;
+  /** Who to sign in as, named when the viewer is not that person. */
+  ownerEmail: string | null;
+  razorpay: RazorpayConnection;
   slug: string;
   team: TeamMember[];
 }

@@ -15,8 +15,10 @@ import type { BuildValidation } from "@workspace/commerce/compatibility";
 import { validateBuild } from "@workspace/commerce/compatibility";
 import { type ToolSet, tool } from "ai";
 import { z } from "zod";
+import { assembleBuild } from "../build-assembly";
 import type { AgentContext } from "../context";
-import { formatPaise } from "../money";
+import { formatPaise, rupeesToPaise } from "../money";
+import { optional } from "./schema";
 
 /**
  * The build and cart tools.
@@ -109,12 +111,96 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z
-          .uuid()
-          .optional()
-          .describe("Set only when this line belongs to a build."),
+        buildId: optional(z.uuid()).describe(
+          "Set only when this line belongs to a build."
+        ),
         productId: z.uuid(),
         quantity: z.number().int().min(1).max(10).default(1),
+      }),
+    }),
+
+    /**
+     * A whole machine, chosen deterministically.
+     *
+     * Before this the agent had `recommendProducts` per category and nothing
+     * that assembled a machine, so a build was eight searches, eight
+     * compatibility questions and a running total the model had to keep in its
+     * head — inside a twelve-step budget. It mostly ran out of steps, and the
+     * storefront worked around it by doing the whole thing client-side and
+     * never calling the agent for a build at all.
+     *
+     * The choosing stays out of the model's hands on purpose (§4): the budget
+     * split, the socket and form-factor rules and the compatibility engine
+     * decide, exactly as they do for the storefront's own screen — it is
+     * literally the same function. What the model does with the result is the
+     * part it is good at: saying which part it would change and why.
+     */
+    assembleBuild: tool({
+      description:
+        "Put together a complete, compatible PC for a budget and a use case, " +
+        "in one call. Use this the moment you know roughly what they want to " +
+        "spend and what it is for — do not assemble a machine by searching " +
+        "for parts one category at a time. Returns every slot with the part " +
+        "chosen, the running total, the compatibility verdict and, on some " +
+        "rows, one upgrade with the measured reason it costs more. Narrate " +
+        "it; do not recompute it. Save it with createBuild once they are happy.",
+      execute: async ({ budgetRupees, targetResolution, useCase }) => {
+        const assembled = await assembleBuild({
+          /*
+           * Converted here rather than by the model, which asked for paise
+           * multiplied a ₹1,25,000 budget by ten and built to ₹12,500. A
+           * tenth of a budget is indistinguishable from a real one to
+           * everything downstream, so the mistake surfaces as nothing worse
+           * than a cheap machine. See `tools/requirements.ts`.
+           */
+          budgetPaise:
+            budgetRupees === undefined
+              ? undefined
+              : rupeesToPaise(budgetRupees),
+          merchantId: ctx.merchantId,
+          targetResolution,
+          useCase,
+        });
+
+        return {
+          basis: assembled.basis,
+          /* The engine's words, so the model narrates rather than judges. */
+          compatibility: assembled.message,
+          estimatedWattage: assembled.wattage,
+          slots: assembled.slots.map((slot) => ({
+            category: slot.slug,
+            name: slot.candidate.product.name,
+            pricePaise: slot.candidate.product.price,
+            productId: slot.candidate.product.id,
+            required: slot.required,
+            slot: slot.label,
+            stock: slot.candidate.product.stock,
+            upgrade: slot.upgrade
+              ? {
+                  extraPaise: slot.upgrade.deltaPaise,
+                  name: slot.upgrade.candidate.product.name,
+                  productId: slot.upgrade.candidate.product.id,
+                  /* From the spec columns. Never "better performance". */
+                  reason: slot.upgrade.reason,
+                }
+              : null,
+          })),
+          totalPaise: assembled.totalPaise,
+        };
+      },
+      inputSchema: z.object({
+        budgetRupees: optional(z.number().positive()).describe(
+          "What they can spend, in rupees, exactly as they said it. 80000 " +
+            "for ₹80,000 — do not convert to paise. Omit if they have not " +
+            "said, and you will get a mid-range machine to react to."
+        ),
+        targetResolution: optional(z.string().max(40)).describe(
+          'As they said it: "1080p", "1440p", "4K".'
+        ),
+        useCase: optional(z.string().max(200)).describe(
+          "Gaming, streaming, editing, development, CAD. Moves the budget " +
+            "split — editing spends on cores, gaming on the card."
+        ),
       }),
     }),
 
@@ -147,8 +233,8 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z.uuid().optional(),
-        items: z.array(selectionSchema).max(20).optional(),
+        buildId: optional(z.uuid()),
+        items: optional(z.array(selectionSchema).max(20)),
       }),
     }),
 
@@ -267,21 +353,14 @@ export function builderTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        buildId: z
-          .uuid()
-          .optional()
-          .describe(
-            "The buildId getCart shows against this line. Omit it only for a " +
-              "line whose buildId is null."
-          ),
+        buildId: optional(z.uuid()).describe(
+          "The buildId getCart shows against this line. Omit it only for a " +
+            "line whose buildId is null."
+        ),
         productId: z.uuid(),
-        quantity: z
-          .number()
-          .int()
-          .min(1)
-          .max(10)
-          .optional()
-          .describe("Omit to remove the line entirely."),
+        quantity: optional(z.number().int().min(1).max(10)).describe(
+          "Omit to remove the line entirely."
+        ),
       }),
     }),
 
@@ -303,7 +382,7 @@ export function builderTools(ctx: AgentContext) {
       inputSchema: z.object({
         buildId: z.uuid(),
         items: z.array(selectionSchema).min(1).max(20),
-        name: z.string().min(2).max(120).optional(),
+        name: optional(z.string().min(2).max(120)),
       }),
     }),
   } satisfies ToolSet;
