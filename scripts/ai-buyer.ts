@@ -34,9 +34,14 @@ interface CatalogProduct {
 interface Manifest {
   endpoints: {
     create_order: string;
+    /** Present once a deployment supports buyer-side delegation. */
+    mandates?: string;
     order_status: string;
+    pay?: string;
     payment_link: string;
   };
+  /** The buyer's own bounds, when this deployment publishes them. */
+  mandates?: { note: string; refusals: string[] };
   policy: { approval_required: boolean; per_conversation_cap_paise: number };
   stores: { catalog: string; name: string; slug: string }[];
 }
@@ -238,19 +243,95 @@ async function main() {
 
   console.log("\n      Approved by the merchant.");
 
-  // 6. Hand off payment. The agent never touches card details.
-  log("6/6", "Requesting a payment link...");
+  /*
+   * 6. Pay.
+   *
+   * This step used to print a URL and stop, which is where "transactable by an
+   * AI buyer end to end" stopped being true. Whether it can be done without a
+   * person is not assumed: the manifest says whether this deployment supports
+   * buyer-side delegation, and the script asks before trying — which is the
+   * whole point of publishing bounds rather than only enforcing them.
+   *
+   * A refusal is not a crash. Every one of them has the same remedy, and the
+   * script takes it: fall back to the link a human can open, and say why.
+   */
+  if (!manifest.endpoints.pay) {
+    log("6/6", "This deployment has no unattended payment. Asking for a link...");
 
+    await handOff(order.id);
+
+    return;
+  }
+
+  log("6/6", "Paying from the buyer's standing authorisation...");
+
+  const paid = await fetch(`${APP_URL}/api/payments/pay`, {
+    body: JSON.stringify({ orderId: order.id }),
+    headers: { "content-type": "application/json", "x-api-key": API_KEY },
+    method: "POST",
+  });
+
+  const settlement = (await paid.json()) as {
+    data?: {
+      message: string;
+      remainingPaise: number;
+      simulated: boolean;
+      totalPaise: number;
+    };
+    error?: { code: string; message: string };
+  };
+
+  const result = settlement.data;
+
+  if (!(paid.ok && result)) {
+    const error = settlement.error;
+
+    console.log(`      Refused: ${error?.code ?? paid.status}`);
+    console.log(`      ${error?.message ?? "No reason given."}`);
+    console.log("      Nothing was charged. Falling back to a payment link.");
+
+    await handOff(order.id);
+
+    return;
+  }
+
+  console.log("");
+  console.log(`Done. Paid ${rupees(result.totalPaise)} with nobody watching.`);
+  console.log(`  ${result.message}`);
+
+  if (result.simulated) {
+    console.log(
+      "  Settled through the simulated instrument — this store has no Razorpay"
+    );
+    console.log(
+      "  recurring entitlement, and the payment record says so rather than"
+    );
+    console.log("  pretending otherwise.");
+  }
+
+  console.log("");
+  console.log(`Audit trail: ${APP_URL}/api/agent/trace/${order.id}`);
+
+  process.exit(0);
+}
+
+/**
+ * The fallback, and the end of the run.
+ *
+ * A payment link is the honest answer whenever the agent may not pay: the
+ * purchase is real, the order stands, and a person can finish it.
+ */
+async function handOff(orderId: string): Promise<void> {
   const link = await getJson<{ data: { paymentLinkUrl: string } }>(
     `${APP_URL}/api/payments/links`,
-    { body: JSON.stringify({ orderId: order.id }), method: "POST" }
+    { body: JSON.stringify({ orderId }), method: "POST" }
   );
 
   console.log("");
-  console.log("Done. Payment link for the human to complete:");
+  console.log("Payment link for the human to complete:");
   console.log(`  ${link.data.paymentLinkUrl}`);
   console.log("");
-  console.log(`Audit trail: ${APP_URL}/api/agent/trace/${order.id}`);
+  console.log(`Audit trail: ${APP_URL}/api/agent/trace/${orderId}`);
 
   process.exit(0);
 }

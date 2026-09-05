@@ -63,6 +63,12 @@ export async function POST(request: NextRequest): Promise<Response> {
      * rather than 403: the request is well-formed and permitted, the account
      * is simply not in a state that can satisfy it, and the caller's next move
      * is a payment link rather than a different credential.
+     *
+     * This branch is only for a buyer who never had one. A mandate that was
+     * withdrawn or has lapsed still comes back from `findMandate`, so
+     * `chargeMandate` can refuse it with the reason that is actually true —
+     * "you took this back", with the date — rather than the blander answer
+     * below.
      */
     if (!mandate) {
       return fail(

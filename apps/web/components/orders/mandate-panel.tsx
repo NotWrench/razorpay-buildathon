@@ -47,8 +47,24 @@ async function reasonFor(response: Response): Promise<string> {
   }
 }
 
+/**
+ * A local copy on purpose.
+ *
+ * `formatPaise` lives in `@workspace/payments`, and importing it here would
+ * pull the database client and the Razorpay SDK into the client bundle for the
+ * sake of one Intl call. The rule it duplicates is small and stated in both
+ * places: no decimals on whole rupees, two when there are paise, never one.
+ */
 function rupees(paise: number): string {
-  return `₹${(paise / 100).toLocaleString("en-IN")}`;
+  const value = paise / 100;
+  const decimals = Number.isInteger(value) ? 0 : 2;
+
+  return new Intl.NumberFormat("en-IN", {
+    currency: "INR",
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+    style: "currency",
+  }).format(value);
 }
 
 function Established({

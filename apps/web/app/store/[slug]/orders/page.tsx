@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { MandatePanel } from "@/components/orders/mandate-panel";
 import { OrderList } from "@/components/orders/order-list";
 import { listBuyerOrders } from "@/lib/queries/orders";
-import { findMandate } from "@workspace/payments";
+import { findLiveMandate } from "@workspace/payments";
 import { currentBuyer } from "@/lib/store/buyer";
 import { requireStore } from "@/lib/store/context";
 
@@ -36,7 +36,7 @@ export default async function OrdersPage({
    * it did or did not pay for — and because withdrawing it is the thing
    * somebody comes looking for after seeing a charge they did not expect.
    */
-  const mandate = await findMandate({
+  const mandate = await findLiveMandate({
     buyerIdentifier: buyer.identifier,
     merchantId: merchant.id,
   });

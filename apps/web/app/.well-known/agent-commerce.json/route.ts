@@ -47,7 +47,15 @@ export async function GET(request: NextRequest): Promise<Response> {
         },
         capabilities: {
           create_order: true,
-          direct_charge: false,
+          /*
+           * True now, and precisely bounded — which is why it needs the note
+           * beside it. No agent can charge on its own say-so; one can charge a
+           * buyer who authorised it in advance, inside caps that buyer set and
+           * may withdraw. A bare `true` here would read as the first thing.
+           */
+          direct_charge: true,
+          direct_charge_note:
+            "Only against a buyer mandate. See the mandates block: an order no mandate covers still returns a payment link for a human.",
           payment_link: true,
           read_catalog: true,
           refund: false,
@@ -63,8 +71,15 @@ export async function GET(request: NextRequest): Promise<Response> {
            * ecosystem's own language. A door nobody is told about is a door
            * nobody uses.
            */
+          /*
+           * The two the buyer's own delegation needs. Published, because an
+           * agent that cannot discover whether unattended payment exists here
+           * has to find out by placing an order and stalling at the end of it.
+           */
+          mandates: `${origin}/api/payments/mandates`,
           mcp: `${origin}/api/mcp/{slug}`,
           order_status: `${origin}/api/payments/orders/{orderId}`,
+          pay: `${origin}/api/payments/pay`,
           payment_link: `${origin}/api/payments/links`,
         },
         /*
@@ -86,9 +101,31 @@ export async function GET(request: NextRequest): Promise<Response> {
             url: `${origin}/api/mcp/{slug}`,
           },
         ],
+        /*
+         * The buyer's half of the bargain, published beside the merchant's.
+         *
+         * Every bound this document advertised was the seller's. A counterparty
+         * could learn what the store would allow and nothing about what its own
+         * principal had authorised — so the last step of a purchase was always a
+         * surprise. These are the terms on which payment can complete without a
+         * person, and the failures to expect when it cannot.
+         */
+        mandates: {
+          establish: "POST the mandates endpoint with maxPerOrderPaise, maxTotalPaise and days. A mandate is scoped to one store, exactly as an API key is.",
+          note: "A buyer may authorise this deployment to charge them without a human present, within caps and an expiry they set. Where a mandate covers an order, POST the pay endpoint settles it outright; where none does, fall back to payment_link.",
+          refusals: [
+            "MANDATE_REQUIRED — the buyer has no standing authorisation here.",
+            "MANDATE_EXHAUSTED — the lifetime cap has no room for this order.",
+            "MANDATE_EXPIRED — the authorisation has lapsed.",
+            "MANDATE_REVOKED — the buyer withdrew it.",
+            "MANDATE_OVER_PER_ORDER_CAP — this single order is over the per-order cap.",
+          ],
+          revocable: "The buyer may withdraw a mandate at any time. The next charge refuses; charges already settled stand.",
+          settlement_note: "A mandate without a Razorpay token settles through the simulated instrument, and every response and audit entry says so. Never treat a simulated settlement as a gateway one.",
+        },
         policy: {
           approval_note:
-            "Every agent order is created as pending_approval with no payment instrument attached. A human merchant must approve it before it can be paid. Poll order_status to observe the decision.",
+            "An agent order is created as pending_approval with no payment instrument attached unless the store has said otherwise — see agent_orders_require_approval per store below. Poll order_status to observe the decision.",
           approval_required: true,
           currency: "INR",
           explanation_required:
@@ -132,7 +169,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           },
           {
             name: "ap2",
-            note: "Not implemented. The mandate this protocol signs is expressed here as the merchant's approval of a pending_approval order, and the bounds a mandate would carry are published per store below.",
+            note: "Not implemented, but the shape is now here rather than merely analogous: a buyer signs bounds in advance (the mandates block above), an agent transacts inside them, and the authority is revocable. What is missing is AP2's wire format and its cryptographic signing, not its model.",
             status: "unimplemented",
           },
           {

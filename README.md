@@ -16,7 +16,7 @@ The track asks for one of two things. This does both:
 | The track asks | Where it is |
 | --- | --- |
 | An agent that **grows a merchant's revenue** on Razorpay test-mode APIs | `/manager` — campaign drafting with a budget and an end date, bounded price moves, margin-aware discounting, reorder and attach-rate analysis |
-| A merchant that is **transactable by an AI buyer end to end** | `GET /.well-known/agent-commerce.json` → `GET /store/{slug}/catalog.json` → `POST /api/payments/orders` → merchant approval → payment link → webhook settlement. Proven by `bun run ai-buyer` |
+| A merchant that is **transactable by an AI buyer end to end** | `GET /.well-known/agent-commerce.json` → `GET /store/{slug}/catalog.json` → `POST /api/payments/orders` → merchant approval → `POST /api/payments/pay` against the buyer's own mandate → settlement. No human in the loop, and no step that only *our* agent can take. Proven by `bun run ai-buyer` |
 
 ---
 
@@ -42,11 +42,28 @@ and is the first thing the approving merchant reads. Campaigns carry
    spending limit that merchant chose for it. Used against another store, it is
    refused.
 
-**Gated.** Every tool that moves money returns `user-approval` and suspends the
-loop for a human. An order placed by an AI buyer is created `pending_approval`
-with **no payment instrument attached** — Razorpay is not called at all until a
-merchant approves. `AGENT_AUTO_APPROVE_CEILING_PAISE` ships at `0`, so the
-bypass exists only to show that the bound is a decision.
+**Gated — which does not mean a person clicks every time.** It means no money
+moves outside an explicit, bounded, revocable and *published* authority. A
+human clicking is the crudest way to satisfy that and the only one that cannot
+survive agent-to-agent commerce, which is the premise of UAP, AP2 and x402.
+
+So both sides of the counter can delegate, in numbers, in advance:
+
+| Gate | Who delegates | The object |
+| --- | --- | --- |
+| Whether the merchant must approve an agent's order | Merchant | `merchant_policy`, plus a per-key ceiling on the API key they issued |
+| Whether the agent may pay | Buyer | `buyer_mandates` — one store, a per-order cap, a lifetime cap, an expiry |
+
+Everything with no delegation behind it still stops. A tool that moves money
+returns `user-approval` and suspends the loop; an agent order is created
+`pending_approval` with **no payment instrument attached**, and Razorpay is not
+called until it clears. What changed is that "it cleared" can now mean *the
+merchant said so in advance* rather than only *the merchant just clicked*.
+
+Both delegations are published in the manifest, so a counterparty learns the
+terms before spending a request discovering them. Withdrawal is one button on
+the buyer's own orders page, and the next charge refuses on the mandate's own
+rule — `checkMandate` reads `revokedAt` before it reads any cap.
 
 **The audit trail is a screen.** `/manager/activity` is one stream: human
 actions, agent actions and failures interleaved, because the question a merchant
@@ -68,6 +85,9 @@ and `audit_logs` and surfaced as something the agent can say out loud:
 | The buyer closes the checkout window | The order is cancelled — the server decides whether it really was abandoned |
 | The model searches the web off-topic | `SEARCH_GUARDRAIL_BLOCKED` |
 | A campaign runs out of budget | It stops applying at quote time, without a job needing to notice |
+| A buyer's standing authorisation is spent | `MANDATE_EXHAUSTED` — nothing charged, the agent says how much is left and hands over a payment link |
+| It lapsed before the agent used it | `MANDATE_EXPIRED` — the agent says when, and falls back to a link |
+| The buyer withdrew it mid-conversation | `MANDATE_REVOKED` — the next charge refuses on the mandate's own rule, not on anything remembered |
 
 **Test mode is enforced, not assumed.** Razorpay stamps the mode into the key
 id, so an `rzp_live_` key is refused at every point credentials resolve — the
@@ -140,8 +160,21 @@ It knows one URL and an API key; everything else it discovers over HTTP the way
 a third party would. That constraint is the point — if it works, the merchant is
 genuinely transactable by an AI buyer, not merely by *our* AI.
 
-It stops at `pending_approval`, because that is what is supposed to happen.
-Approve the order at `/manager/orders` and it resumes to a payment link.
+It stops at `pending_approval` unless the merchant has said otherwise. Approve
+the order at `/manager/orders` and it resumes — and if the buyer has authorised
+the store at `/store/{slug}/orders`, it **pays and settles on its own**, then
+prints what is left on the authorisation. If they have not, it prints a payment
+link, because that is the honest answer when nobody delegated anything.
+
+Withdraw the authorisation between two runs and watch the second one refuse.
+That is a better demonstration of "revocable" than any paragraph here.
+
+> **On settlement.** `payments.createRecurringPayment` needs Recurring Payments
+> enabled on the Razorpay account. Where that entitlement is absent a mandate
+> settles through a **simulated** instrument — and says so on the payment
+> record, in the audit entry, in the API response and on the buyer's screen,
+> with a payment id deliberately not `pay_`-shaped. A labelled simulation is
+> honest; an unlabelled one is a lie about money.
 
 ---
 
@@ -185,7 +218,7 @@ model chooses products and quantities and nothing else.
 | Package | What it owns |
 | --- | --- |
 | `packages/ai` | Both agents, 63 tools, guardrails, policy, catalog search, embeddings, memory, audit |
-| `packages/payments` | Razorpay: cart pricing, orders, approval, payment links, capture, refund, HMAC verification, idempotent webhook settlement |
+| `packages/payments` | Razorpay: cart pricing, orders, approval policy, buyer mandates and unattended charging, payment links, capture, refund, HMAC verification, idempotent webhook settlement |
 | `packages/commerce` | The deterministic compatibility engine — rules with a real `insufficient_data` state, never a guess |
 | `packages/db` | Drizzle schema and migrations for both databases |
 | `packages/mcp` | The store's domain capabilities over MCP, scoped server-side |

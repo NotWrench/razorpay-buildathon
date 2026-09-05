@@ -2,6 +2,7 @@ import { buyerMandates, type BuyerMandate, db } from "@workspace/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { recordAudit, recordFailure } from "./audit";
 import { PaymentError } from "./errors";
+import { formatPaise as rupees } from "./money";
 
 /** Re-exported so a caller bounding a mandate need not also import the schema. */
 export type { BuyerMandate } from "@workspace/db";
@@ -56,10 +57,6 @@ export interface MandateBounds {
   merchantId: string;
   revokedAt: Date | null;
   spentPaise: number;
-}
-
-function rupees(paise: number): string {
-  return `₹${(paise / 100).toLocaleString("en-IN")}`;
 }
 
 /**
@@ -128,14 +125,42 @@ export function checkMandate(
 }
 
 /**
- * This buyer's live authorisation for this store, or nothing.
+ * This buyer's most recent authorisation for this store, or nothing.
  *
  * Absence is not a failure — it is the ordinary case, and it means the
  * purchase falls back to the payment link and a human. Only a mandate that
  * exists and does not cover the order is an error worth logging, which is why
  * this returns `null` rather than throwing.
+ *
+ * **Revoked and expired rows are returned too, deliberately.** Filtering them
+ * out here would make `checkMandate`'s `MANDATE_REVOKED` and `MANDATE_EXPIRED`
+ * unreachable from the live path, and every withdrawal would surface as the
+ * blander "you have no authorisation here" — which is true only in the sense
+ * that matters least. A buyer who withdrew a mandate an hour ago is owed "you
+ * took this back", with the date, and so is the failure log. Deciding *why* a
+ * mandate cannot pay is `checkMandate`'s job, and it cannot do it for a row it
+ * never sees.
+ *
+ * Callers that want only a usable mandate — the buyer's own panel, which must
+ * not render a withdrawn authorisation as live — check `revokedAt` themselves.
  */
 export async function findMandate(params: {
+  buyerIdentifier: string;
+  merchantId: string;
+}): Promise<BuyerMandate | null> {
+  const row = await db.query.buyerMandates.findFirst({
+    orderBy: desc(buyerMandates.createdAt),
+    where: and(
+      eq(buyerMandates.buyerIdentifier, params.buyerIdentifier),
+      eq(buyerMandates.merchantId, params.merchantId)
+    ),
+  });
+
+  return row ?? null;
+}
+
+/** The same lookup, narrowed to one that could actually pay for something. */
+export async function findLiveMandate(params: {
   buyerIdentifier: string;
   merchantId: string;
 }): Promise<BuyerMandate | null> {

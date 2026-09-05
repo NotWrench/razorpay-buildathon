@@ -625,7 +625,9 @@ Authentication + authorization happen before tool execution.
 
 Razorpay handles payment processing.
 
-The AI may explain checkout/payment steps and guide the customer, but it should not fabricate payment outcomes.
+The AI may explain checkout/payment steps and guide the customer, and — where the customer has granted a standing authorisation with caps and an expiry — it may *initiate* a payment against it. It still may not fabricate payment outcomes, and that rule matters more once the agent can start one: initiating a charge and knowing it succeeded are different facts, and only the gateway and the settlement path establish the second.
+
+A payment settled through the simulated instrument must always be reported as simulated. That is not an outcome the agent may round up.
 
 Payment state must be confirmed through trusted backend/payment-provider data.
 

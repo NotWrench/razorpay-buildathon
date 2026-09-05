@@ -1,5 +1,5 @@
 import { getMerchantBySlug } from "@workspace/ai";
-import { establishMandate, findMandate } from "@workspace/payments";
+import { establishMandate, findLiveMandate } from "@workspace/payments";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { resolveActor } from "@/lib/api/actor";
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     const merchant = await getMerchantBySlug(slug);
-    const mandate = await findMandate({
+    const mandate = await findLiveMandate({
       buyerIdentifier: actor.identifier,
       merchantId: merchant.id,
     });
