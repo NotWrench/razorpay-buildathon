@@ -2,6 +2,7 @@ import { db, payments } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { recordAudit } from "./audit";
 import { getMerchantGateway } from "./client";
+import { isTestKeyId } from "./mode";
 import { getAppUrl } from "./env";
 import { PaymentError, toPaymentError } from "./errors";
 import { getOrderOrThrow } from "./orders";
@@ -20,6 +21,15 @@ export interface CreatePaymentLinkInput {
 }
 
 const DAY_IN_SECONDS = 24 * 60 * 60;
+
+/**
+ * The hosted link is a page a human opens on their own phone, often hours
+ * later and with no other context. Razorpay draws no test badge on it, so the
+ * description is the only place the page can say that the money is not real.
+ */
+function describe(description: string, keyId: string): string {
+  return isTestKeyId(keyId) ? `[Test mode] ${description}` : description;
+}
 
 /**
  * Creates a hosted Razorpay Payment Link for an approved order.
@@ -64,7 +74,10 @@ export async function createPaymentLinkForOrder(input: CreatePaymentLinkInput) {
         email: input.customer?.email,
         name: input.customer?.name,
       },
-      description: input.description ?? `Payment for order ${order.id}`,
+      description: describe(
+        input.description ?? `Payment for order ${order.id}`,
+        gateway.credentials.keyId
+      ),
       expire_by:
         input.expireBy ?? Math.floor(Date.now() / 1000) + DAY_IN_SECONDS,
       notify: {
