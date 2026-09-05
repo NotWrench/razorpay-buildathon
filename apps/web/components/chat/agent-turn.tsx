@@ -12,8 +12,8 @@ import {
   AnsweredQuestion,
   AskBuyerQuestion,
 } from "@/components/chat/ask-buyer";
+import { Markdown } from "@/components/chat/markdown";
 import { ReasoningTrail } from "@/components/chat/reasoning-trail";
-import { StreamedText } from "@/components/chat/streamed-text";
 import { PillLink } from "@/components/common/pill-link";
 import { shellRoutes } from "@/lib/routes";
 
@@ -450,27 +450,23 @@ export function AgentTurn({
           }
 
           if (part.type === "text") {
-            const text = textOf(part);
-
             return (
-              <StreamedText
+              <Markdown
                 /*
-                 * Pre-wrap because the model writes in lines: a short list or
-                 * a two-column table arrives with newlines in it, and collapsed
-                 * whitespace turns that into one unreadable run of pipes.
+                 * The lines the model writes are structure, not whitespace: a
+                 * short list, a two-column table, a bolded part name. Held as
+                 * pre-wrapped text that arrived as a run of pipes and stray
+                 * asterisks, so it is parsed instead.
+                 *
+                 * No word-by-word reveal here. That animation only ever read
+                 * as the network's own cadence — every word already sent was
+                 * shown — and it cannot survive block markup, since a table
+                 * cannot be built one word at a time. The stream still arrives
+                 * a token at a time; the answer just re-lays out as it does.
                  */
-                className="t-body-lg whitespace-pre-wrap leading-relaxed"
-                id={key}
+                className="t-body-lg text-bone"
                 key={key}
-                /*
-                 * Every word the model has sent is shown: the reveal is the
-                 * network's cadence rather than a timer's, and running a
-                 * second clock over a stream that already arrives a token at a
-                 * time only makes the answer later than it is.
-                 */
-                shown={text.split(" ").length}
-                streaming={false}
-                text={text}
+                text={textOf(part)}
               />
             );
           }
