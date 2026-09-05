@@ -21,6 +21,14 @@ export {
   type RazorpayCredentials,
   resolveMerchantCredentials,
 } from "./client";
+export {
+  type MandateBounds,
+  type MandateCheck,
+  type MandateRefusal,
+  assertMandateCovers,
+  checkMandate,
+  findMandate,
+} from "./mandate-policy";
 export { getAppUrl, getRazorpayEnv, type RazorpayEnv } from "./env";
 export { PaymentError, type PaymentErrorCode, toPaymentError } from "./errors";
 export {

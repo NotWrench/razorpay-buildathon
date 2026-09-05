@@ -360,3 +360,80 @@ export const campaigns = pgTable(
     index("campaigns_status_idx").on(table.status),
   ]
 );
+
+/**
+ * What a buyer authorised their agent to spend here, and until when.
+ *
+ * The mirror image of an API key. A merchant issues a key that says "this
+ * counterparty may trade with my shop, up to this much"; a mandate is the
+ * buyer saying "my agent may pay this shop, up to this much per order and this
+ * much in total, until this date". Both are delegations with numbers on them,
+ * both are revocable, and both are published rather than merely enforced — a
+ * counterparty that cannot read the terms before engaging has to discover them
+ * by failing.
+ *
+ * This is the object that lets a purchase complete without a human in the
+ * loop, and the reason that is not a weakening of the approval gate: nothing
+ * moves outside a bound somebody explicitly set. The gate did not disappear,
+ * it moved from the moment of purchase to the moment of delegation, where the
+ * person deciding has time to read the numbers.
+ *
+ * It lives in the platform database rather than beside the agent's own tables
+ * because it is authoritative commerce state — §15 of `AGENTS.md`. What the
+ * agent *did* with a mandate is agent data; the mandate itself is not.
+ */
+export const buyerMandates = pgTable(
+  "buyer_mandates",
+  {
+    /** Who delegated. Matches `orders.buyerIdentifier`, guests included. */
+    buyerIdentifier: text("buyer_identifier").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    /** When the authority lapses on its own, whether or not anyone acts. */
+    expiresAt: timestamp("expires_at").notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    /**
+     * Which implementation charges this mandate.
+     *
+     * `recurring` is a real Razorpay token charged through
+     * `payments.createRecurringPayment`. `simulated` settles through the same
+     * path without calling the gateway, for a deployment whose account has no
+     * recurring entitlement — and it says so on every record it writes, because
+     * a labelled simulation is honest and an unlabelled one is a lie about
+     * money.
+     */
+    instrument: text("instrument", { enum: ["recurring", "simulated"] })
+      .default("simulated")
+      .notNull(),
+    /** The most one order may take. Bounds a mistake to a single purchase. */
+    maxPerOrderPaise: integer("max_per_order_paise").notNull(),
+    /** The most this mandate may ever spend. Bounds the sequence. */
+    maxTotalPaise: integer("max_total_paise").notNull(),
+    /** One store, exactly like an API key. A mandate is not a wallet. */
+    merchantId: uuid("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    razorpayCustomerId: text("razorpay_customer_id"),
+    razorpayTokenId: text("razorpay_token_id"),
+    /**
+     * Withdrawn, rather than deleted.
+     *
+     * A mandate that authorised three charges has to stay readable after it is
+     * revoked, or the trail cannot explain payments it already made. Revocation
+     * is a fact with a time on it, and "when did you take this back?" is a
+     * question the audit stream should be able to answer.
+     */
+    revokedAt: timestamp("revoked_at"),
+    /** Consumed so far, in paise. Advanced only by a settled charge. */
+    spentPaise: integer("spent_paise").default(0).notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    /** The signed-in account, when there is one. Null for a guest. */
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("buyer_mandates_buyerIdentifier_idx").on(table.buyerIdentifier),
+    index("buyer_mandates_merchantId_idx").on(table.merchantId),
+  ]
+);

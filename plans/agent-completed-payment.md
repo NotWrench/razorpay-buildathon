@@ -144,11 +144,22 @@ createdAt / updatedAt
 stay readable by the audit trail after it is withdrawn, or the trail cannot
 explain payments it already made.
 
-**New guardrail** `assertMandateCovers(mandate, totalPaise, merchantId)` in
-`packages/ai/src/guardrails.ts`, beside `assertKeyScope`. Checks, in order:
-merchant scope, revocation, expiry, per-order cap, remaining total. It fails
-**before** Razorpay is called, exactly as `assertSpendCapFor` does — nothing
-half-charged, nothing to unwind.
+**New guardrail** `assertMandateCovers`. Checks, in order: merchant scope,
+revocation, expiry, per-order cap, remaining total. It fails **before** Razorpay
+is called, exactly as `assertSpendCapFor` does — nothing half-charged, nothing
+to unwind. The order of those checks is itself a decision: "you took this back"
+is the true answer even when the mandate is also out of money, and it is the one
+the buyer needs to hear.
+
+**Departure.** It lives in `packages/payments/src/mandate-policy.ts`, not in
+`packages/ai/src/guardrails.ts` as written above — the same lesson Phase 1
+learned about `resolveOrderApproval`. The charge path cannot import the agent
+layer, so a bound written there would bind only the caller that remembered to
+run it. `guardrails.ts` re-exports it, because "what bounds an agent" is a
+question people ask of that file. The decision is split into a pure
+`checkMandate` (no database, and the clock passed in) and an
+`assertMandateCovers` that logs and throws, so the boundary cases are testable
+without a seeded row and without waiting for a date to pass.
 
 **Three failure codes** for `failures` and the README table, all recoverable in
 the same turn by falling back to a payment link:

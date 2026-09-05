@@ -3,6 +3,7 @@ import { addresses } from "./addresses";
 import { account, apikey, session, user, verification } from "./auth";
 import { buildItems, builds } from "./builds";
 import {
+  buyerMandates,
   campaigns,
   merchantPolicy,
   merchants,
@@ -57,6 +58,7 @@ export {
 } from "./auth";
 export { buildItems, builds } from "./builds";
 export {
+  buyerMandates,
   campaigns,
   merchantPolicy,
   merchants,
@@ -107,6 +109,7 @@ export const projectSchema = {
   buildItemsRelations,
   builds,
   buildsRelations,
+  buyerMandates,
   campaigns,
   campaignsRelations,
   cartItems,
@@ -183,3 +186,5 @@ export type Payment = InferSelectModel<typeof payments>;
 export type NewPayment = InferInsertModel<typeof payments>;
 export type Campaign = InferSelectModel<typeof campaigns>;
 export type NewCampaign = InferInsertModel<typeof campaigns>;
+export type BuyerMandate = InferSelectModel<typeof buyerMandates>;
+export type NewBuyerMandate = InferInsertModel<typeof buyerMandates>;

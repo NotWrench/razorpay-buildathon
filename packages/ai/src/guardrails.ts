@@ -212,6 +212,24 @@ export async function assertWithinSpendCap(
   );
 }
 
+/**
+ * The buyer's own bound, re-exported so it sits beside the others.
+ *
+ * The rule itself lives in `@workspace/payments` because the charge path
+ * cannot import this package — the same lesson `resolveOrderApproval` learned.
+ * It is surfaced here because "what bounds an agent" is a question somebody
+ * asks of this file, and an answer that is only true in another package is an
+ * answer nobody finds.
+ */
+export {
+  type MandateBounds,
+  type MandateCheck,
+  type MandateRefusal,
+  assertMandateCovers,
+  checkMandate,
+  findMandate,
+} from "@workspace/payments";
+
 export interface MarginBreach {
   costPaise: number;
   discountedPricePaise: number;
