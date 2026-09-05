@@ -101,7 +101,10 @@ export const getActivity = cache(
       failed:
         row.action.includes("FAILED") ||
         row.action.includes("BREACHED") ||
-        row.action.includes("DENIED"),
+        row.action.includes("DENIED") ||
+        // A mandate that would not stretch is a refusal, and the merchant's
+        // "did not work" filter is where somebody looks for it.
+        row.action.includes("REFUSED"),
       failureType: row.orderId
         ? (failureByOrder.get(row.orderId) ?? null)
         : null,

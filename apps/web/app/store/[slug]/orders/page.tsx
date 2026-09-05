@@ -1,7 +1,9 @@
 import { AssistantDock } from "@/components/assistant/assistant-dock";
 import { PageHeader } from "@/components/common/page-header";
+import { MandatePanel } from "@/components/orders/mandate-panel";
 import { OrderList } from "@/components/orders/order-list";
 import { listBuyerOrders } from "@/lib/queries/orders";
+import { findMandate } from "@workspace/payments";
 import { currentBuyer } from "@/lib/store/buyer";
 import { requireStore } from "@/lib/store/context";
 
@@ -28,6 +30,17 @@ export default async function OrdersPage({
     merchantId: merchant.id,
   });
 
+  /*
+   * The buyer's standing authorisation sits with their orders rather than on a
+   * settings screen, because it is only ever interesting next to the purchases
+   * it did or did not pay for — and because withdrawing it is the thing
+   * somebody comes looking for after seeing a charge they did not expect.
+   */
+  const mandate = await findMandate({
+    buyerIdentifier: buyer.identifier,
+    merchantId: merchant.id,
+  });
+
   return (
     <>
       <main className="mx-auto max-w-5xl px-4 py-6">
@@ -41,6 +54,22 @@ export default async function OrdersPage({
         />
 
         <OrderList entries={entries} slug={slug} />
+
+        <MandatePanel
+          mandate={
+            mandate
+              ? {
+                  expiresAt: mandate.expiresAt.toISOString(),
+                  id: mandate.id,
+                  instrument: mandate.instrument,
+                  maxPerOrderPaise: mandate.maxPerOrderPaise,
+                  maxTotalPaise: mandate.maxTotalPaise,
+                  spentPaise: mandate.spentPaise,
+                }
+              : null
+          }
+          slug={slug}
+        />
       </main>
 
       <AssistantDock

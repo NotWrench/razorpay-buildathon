@@ -24,9 +24,11 @@ export {
 export {
   type ChargeInput,
   type ChargeResult,
+  type EstablishMandateInput,
   type MandateChargeResult,
   type PaymentInstrument,
   chargeMandate,
+  establishMandate,
   instrumentFor,
   revokeMandate,
 } from "./mandates";

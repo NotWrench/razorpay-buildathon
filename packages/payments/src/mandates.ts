@@ -238,6 +238,101 @@ export async function chargeMandate(params: {
   return { check, context: settled, simulated: charged.simulated };
 }
 
+export interface EstablishMandateInput {
+  buyerContact?: string | null;
+  buyerEmail?: string | null;
+  buyerIdentifier: string;
+  expiresAt: Date;
+  maxPerOrderPaise: number;
+  maxTotalPaise: number;
+  merchantId: string;
+  razorpayCustomerId?: string | null;
+  razorpayTokenId?: string | null;
+  userId?: string | null;
+}
+
+/**
+ * Records a buyer's standing authorisation.
+ *
+ * The instrument is derived rather than chosen by the caller. A mandate backed
+ * by a real Razorpay token is `recurring`; one without is `simulated`, and
+ * says so on every record it later writes. Letting the caller name it would
+ * make it possible to mark a tokenless mandate `recurring` and have the
+ * failure surface at the moment money was meant to move.
+ *
+ * The bounds are clamped to something positive and finite here rather than
+ * trusted, because this is the one write in the system where the person
+ * setting the number and the person protected by it are the same — a buyer who
+ * fat-fingers an extra zero has authorised the extra zero.
+ */
+export async function establishMandate(
+  input: EstablishMandateInput
+): Promise<BuyerMandate> {
+  const maxPerOrderPaise = Math.max(1, Math.floor(input.maxPerOrderPaise));
+  const maxTotalPaise = Math.max(
+    maxPerOrderPaise,
+    Math.floor(input.maxTotalPaise)
+  );
+
+  if (input.expiresAt.getTime() <= Date.now()) {
+    throw new PaymentError(
+      "MANDATE_REFUSED",
+      "An authorisation has to expire in the future to be worth anything."
+    );
+  }
+
+  const instrument =
+    input.razorpayTokenId && input.razorpayCustomerId
+      ? "recurring"
+      : "simulated";
+
+  const [created] = await db
+    .insert(buyerMandates)
+    .values({
+      buyerContact: input.buyerContact ?? null,
+      buyerEmail: input.buyerEmail ?? null,
+      buyerIdentifier: input.buyerIdentifier,
+      expiresAt: input.expiresAt,
+      instrument,
+      maxPerOrderPaise,
+      maxTotalPaise,
+      merchantId: input.merchantId,
+      razorpayCustomerId: input.razorpayCustomerId ?? null,
+      razorpayTokenId: input.razorpayTokenId ?? null,
+      userId: input.userId ?? null,
+    })
+    .returning();
+
+  if (!created) {
+    throw new PaymentError(
+      "MANDATE_REFUSED",
+      "Failed to record the authorisation."
+    );
+  }
+
+  /*
+   * The delegation itself is an auditable event, and the first row of the four
+   * this feature is meant to produce. A merchant reading /manager/activity
+   * should be able to see the authority arrive before they see it used.
+   */
+  await recordAudit({
+    action: "MANDATE_ESTABLISHED",
+    actorId: input.buyerIdentifier,
+    actorType: "human_buyer",
+    explanation: `The buyer authorised unattended payment up to ${created.maxPerOrderPaise} paise per order and ${created.maxTotalPaise} paise in total, until ${created.expiresAt.toDateString()}.`,
+    merchantId: input.merchantId,
+    metadata: {
+      expiresAt: created.expiresAt.toISOString(),
+      instrument,
+      mandateId: created.id,
+      maxPerOrderPaise: created.maxPerOrderPaise,
+      maxTotalPaise: created.maxTotalPaise,
+    },
+  });
+
+  return created;
+}
+
 /**
  * Withdraws a mandate.
  *
