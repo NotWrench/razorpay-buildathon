@@ -111,11 +111,11 @@ function SiteFooter() {
         <div className="rule-section mt-16 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 pt-8 pb-12">
           <div className="flex items-center gap-4">
             <Link
-              aria-label="Nexus, home"
+              aria-label="Alfred, home"
               className="flex items-baseline gap-1"
               href={shellRoutes.home}
             >
-              <span className="t-display-sm font-bold text-bone">NEXUS</span>
+              <span className="t-display-sm font-bold text-bone">ALFRED</span>
               <span
                 aria-hidden
                 className="size-[5px] rounded-full bg-lacquer"
@@ -123,7 +123,7 @@ function SiteFooter() {
             </Link>
             <span aria-hidden className="h-4 w-px bg-hairline" />
             <p className="t-body-sm text-smoke">
-              © {new Date().getFullYear()} Nexus Systems, Bengaluru.
+              © {new Date().getFullYear()} Alfred Systems, Bengaluru.
             </p>
           </div>
 

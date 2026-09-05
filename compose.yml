@@ -1,7 +1,7 @@
 services:
   project-db:
     image: pgvector/pgvector:pg17
-    container_name: razorpay-buildathon-project-db
+    container_name: alfred-project-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${PROJECT_DB_NAME:-razorpay_project}
@@ -20,7 +20,7 @@ services:
 
   agent-db:
     image: pgvector/pgvector:pg17
-    container_name: razorpay-buildathon-agent-db
+    container_name: alfred-agent-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${AGENT_DB_NAME:-razorpay_agent_memory}

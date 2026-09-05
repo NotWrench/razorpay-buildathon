@@ -25,7 +25,7 @@ import { shellRoutes } from "@/lib/routes";
 export const metadata: Metadata = {
   description:
     "Prebuilt machines and components, with a shopping agent that checks the parts fit before you buy.",
-  title: "NEXUS — the store that checks the parts fit",
+  title: "ALFRED — the store that checks the parts fit",
 };
 
 /** Which machines answer to which use case, read off the catalogue. */

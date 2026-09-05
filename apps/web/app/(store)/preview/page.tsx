@@ -185,7 +185,7 @@ const EXISTING_ROUTES: PreviewRoute[] = [
   {
     built: true,
     description: "The original storefront, untouched by this build.",
-    href: route("/store/nexus-pc"),
+    href: route("/store/alfred"),
     prompt: "—",
   },
   {

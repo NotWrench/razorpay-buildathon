@@ -159,11 +159,11 @@ function ChatChrome({
         <BackButton />
 
         <Link
-          aria-label="Nexus, home"
+          aria-label="Alfred, home"
           className="flex shrink-0 items-baseline gap-1"
           href={shellRoutes.home}
         >
-          <span className="t-display-sm font-bold text-bone">NEXUS</span>
+          <span className="t-display-sm font-bold text-bone">ALFRED</span>
           <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
         </Link>
 

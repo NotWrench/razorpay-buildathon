@@ -16,7 +16,7 @@
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const API_KEY = process.env.AI_BUYER_API_KEY;
-const STORE_SLUG = process.env.AI_BUYER_STORE_SLUG ?? "nova-electronics";
+const STORE_SLUG = process.env.AI_BUYER_STORE_SLUG ?? "alfred";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_ATTEMPTS = 100;

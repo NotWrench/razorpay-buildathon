@@ -68,7 +68,7 @@ import {
  */
 const CATALOG_LISTED_DAYS_AGO = 120;
 
-const STORE_SLUG = "nova-electronics";
+const STORE_SLUG = "alfred";
 
 /**
  * Who the demo store belongs to.
@@ -122,7 +122,7 @@ async function ensureOwner(): Promise<string> {
   await auth.api.signUpEmail({
     body: {
       email: OWNER_EMAIL,
-      name: "Nova PC",
+      name: "Alfred",
       password: OWNER_PASSWORD,
     },
   });
@@ -186,7 +186,7 @@ async function main() {
   const [merchant] = await db
     .insert(merchants)
     .values({
-      businessName: "Nova PC",
+      businessName: "Alfred",
       currency: "INR",
       storeSlug: STORE_SLUG,
       userId,

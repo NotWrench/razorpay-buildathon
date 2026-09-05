@@ -179,7 +179,7 @@ function SiteHeader({ cartCount = 0, initialUser }: SiteHeaderProps) {
           href={shellRoutes.home}
           style={{ transform: "scale(calc(1 - 0.08 * var(--hp)))" }}
         >
-          <span className="t-display-sm font-bold text-bone">NEXUS</span>
+          <span className="t-display-sm font-bold text-bone">ALFRED</span>
           <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
         </Link>
 

@@ -5,8 +5,8 @@ brought up by `bun run db:up`.
 
 | Database | Port | Container | Holds |
 | --- | --- | --- | --- |
-| `razorpay_project` | 5443 | `razorpay-buildathon-project-db` | Business and auth data: `user`, `session`, `account`, `apikey`, `merchants`, `products`, `orders`, `order_items`, `payments`, `campaigns` |
-| `razorpay_agent_memory` | 5445 | `razorpay-buildathon-agent-db` | Everything the AI agents write: `conversations`, `conversation_messages`, `reasoning_logs`, `ai_recommendations`, `agent_memory_long`, `audit_logs`, `failures` |
+| `razorpay_project` | 5443 | `alfred-project-db` | Business and auth data: `user`, `session`, `account`, `apikey`, `merchants`, `products`, `orders`, `order_items`, `payments`, `campaigns` |
+| `razorpay_agent_memory` | 5445 | `alfred-agent-db` | Everything the AI agents write: `conversations`, `conversation_messages`, `reasoning_logs`, `ai_recommendations`, `agent_memory_long`, `audit_logs`, `failures` |
 
 ## Why the agent data is separate
 

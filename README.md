@@ -1,4 +1,4 @@
-# Nova PC — agentic commerce on Razorpay
+# Alfred — agentic commerce on Razorpay
 
 **Razorpay Buildathon · Track 01 — AI Growth & Agentic Commerce**
 
@@ -105,7 +105,7 @@ bun install
 cp .env.example .env      # then fill in the four keys below
 bun run db:up             # two Postgres 17 + pgvector containers
 bun run db:migrate        # both databases
-bun run seed              # Nova PC: catalog, specs, inventory, order history
+bun run seed              # Alfred: catalog, specs, inventory, order history
 bun run embed             # product embeddings for semantic search
 bun run dev
 ```
@@ -121,7 +121,7 @@ Four values in `.env` actually matter; everything else has a working default.
 
 Then:
 
-- **Storefront** — <http://localhost:3000/store/nova-electronics>
+- **Storefront** — <http://localhost:3000/store/alfred>
 - **Merchant** — <http://localhost:3000/manager>
 - **Manifest** — <http://localhost:3000/.well-known/agent-commerce.json>
 
@@ -143,7 +143,7 @@ effective policy travels with it, because a merchant may be stricter than the
 platform and an agent planning against the platform number would plan wrong.
 
 ```bash
-curl -s localhost:3000/store/nova-electronics/catalog.json | jq '.products[0]'
+curl -s localhost:3000/store/alfred/catalog.json | jq '.products[0]'
 ```
 
 Live prices in paise, live stock, typed specifications, a readiness score per
@@ -271,7 +271,7 @@ stay manual — they need a live database, a seeded catalog and real model quota
 
 ```bash
 bun run nightly                          # every store
-bun run nightly -- --slug nova-electronics
+bun run nightly -- --slug alfred
 ```
 
 One unattended run of the merchant agent per store: it reads two sales windows,

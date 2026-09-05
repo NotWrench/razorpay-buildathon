@@ -88,7 +88,7 @@ import { CAPABILITIES, capabilitiesFor, findCapability } from "@workspace/mcp";
 import { createCheckoutOrderFromCart } from "@workspace/payments";
 import { count, eq, inArray } from "drizzle-orm";
 
-const SLUG = process.env.AI_BUYER_STORE_SLUG ?? "nova-electronics";
+const SLUG = process.env.AI_BUYER_STORE_SLUG ?? "alfred";
 
 let passed = 0;
 let failed = 0;

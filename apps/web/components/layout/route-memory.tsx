@@ -19,7 +19,7 @@ import { useEffect } from "react";
  * should not survive the tab.
  */
 
-const KEY = "nexus:last-store-path";
+const KEY = "alfred:last-store-path";
 
 function rememberStorePath(path: string): void {
   try {

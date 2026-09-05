@@ -46,7 +46,7 @@ function ManagerRail() {
           className="flex items-baseline gap-1"
           href={managerRoutes.assistant}
         >
-          <span className="t-display-sm font-bold text-bone">NEXUS</span>
+          <span className="t-display-sm font-bold text-bone">ALFRED</span>
           <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
         </Link>
         <Label className="lg:mt-1.5 lg:block">Manager</Label>

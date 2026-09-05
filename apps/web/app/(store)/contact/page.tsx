@@ -33,9 +33,9 @@ export default function ContactPage() {
               Write to{" "}
               <a
                 className="text-bone underline-offset-4 transition-colors duration-micro hover:text-ember hover:underline"
-                href="mailto:help@nexus.systems"
+                href="mailto:help@alfred.systems"
               >
-                help@nexus.systems
+                help@alfred.systems
               </a>{" "}
               and quote your order number if you have one. We answer within a
               working day.
@@ -46,7 +46,7 @@ export default function ContactPage() {
         {
           body: (
             <p>
-              Nexus Systems, Bengaluru. Support runs Monday to Saturday; the
+              Alfred Systems, Bengaluru. Support runs Monday to Saturday; the
               assistant does not stop.
             </p>
           ),

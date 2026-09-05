@@ -224,7 +224,7 @@ function SearchOverlay() {
         <div className="centre-mask-inner flex h-full flex-col overflow-y-auto px-8 py-8 lg:px-16">
           <div className="flex items-center justify-between">
             <span className="flex items-baseline gap-1">
-              <span className="t-display-sm font-bold text-bone">NEXUS</span>
+              <span className="t-display-sm font-bold text-bone">ALFRED</span>
               <span
                 aria-hidden
                 className="size-[5px] rounded-full bg-lacquer"
@@ -238,14 +238,14 @@ function SearchOverlay() {
           <div className="mx-auto mt-16 w-full max-w-[1280px]">
             <div className="relative flex items-end gap-6">
               <label className="sr-only" htmlFor="search-field">
-                Search Nexus
+                Search Alfred
               </label>
               <input
                 autoComplete="off"
                 className="search-field t-display-lg w-full bg-transparent pb-5 text-[clamp(30px,4.8vw,54px)] text-bone outline-none placeholder:text-smoke"
                 id="search-field"
                 onChange={onChange}
-                placeholder="Search Nexus"
+                placeholder="Search Alfred"
                 ref={inputRef}
                 type="search"
                 value={term}

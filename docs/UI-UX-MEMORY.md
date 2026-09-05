@@ -298,7 +298,7 @@ Seven bands at `/`, alternating full-bleed and contained. No two contained grids
 | 3 The assistant | `components/landing/assistant-band.tsx` |
 | 4 The lineup | `components/product/prebuilt-row.tsx` — `PrebuiltRow` + `PrebuiltRows`, **prompt 06 reuses this** |
 | 5 Shop by component | `components/landing/component-band.tsx` |
-| 6 Why NEXUS | `components/landing/why-band.tsx` — three hand-drawn SVGs |
+| 6 Why ALFRED | `components/landing/why-band.tsx` — three hand-drawn SVGs |
 | 7 Footer | the shell's |
 | Page | `app/(store)/page.tsx` |
 | New | `components/common/pill-link.tsx` · `packages/ui/.../motion/ken-burns.tsx` |

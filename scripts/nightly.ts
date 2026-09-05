@@ -8,7 +8,7 @@
  * an assistant.
  *
  *   bun run nightly              # every store
- *   bun run nightly -- --slug nova-electronics
+ *   bun run nightly -- --slug alfred
  *
  * Point cron, Task Scheduler or a systemd timer at it. For a Vercel
  * deployment, `vercel.json` schedules `/api/cron/briefing`, which does the same

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "razorpay-buildathon",
+      "name": "alfred",
       "devDependencies": {
         "@biomejs/biome": "^2.5.11",
         "@workspace/typescript-config": "workspace:*",

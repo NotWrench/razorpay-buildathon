@@ -110,7 +110,7 @@ function AuthScreen({ configured, heroSrc, next }: AuthScreenProps) {
 
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link className="flex items-baseline gap-1" href={shellRoutes.home}>
-            <span className="t-display-sm font-bold text-bone">NEXUS</span>
+            <span className="t-display-sm font-bold text-bone">ALFRED</span>
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 
@@ -131,7 +131,7 @@ function AuthScreen({ configured, heroSrc, next }: AuthScreenProps) {
             className="mb-10 flex items-baseline gap-1 lg:hidden"
             href={shellRoutes.home}
           >
-            <span className="t-display-sm font-bold text-bone">NEXUS</span>
+            <span className="t-display-sm font-bold text-bone">ALFRED</span>
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 

@@ -7,7 +7,7 @@ export default function AboutPage() {
   return (
     <ProsePage
       intro="We sell PC components, and we build complete machines out of them. Those are the same catalogue, priced the same way."
-      kicker="Nexus Systems"
+      kicker="Alfred Systems"
       sections={[
         {
           body: (

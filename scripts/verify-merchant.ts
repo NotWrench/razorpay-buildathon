@@ -284,7 +284,7 @@ async function main() {
   }
 
   const merchant = await getMerchantBySlug(
-    process.env.AI_BUYER_STORE_SLUG ?? "nova-electronics"
+    process.env.AI_BUYER_STORE_SLUG ?? "alfred"
   );
 
   const [conversation] = await agentDb

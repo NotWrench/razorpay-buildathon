@@ -22,7 +22,7 @@ bun run dev
 
 Four tabs, in this order, so no beat waits on a page load:
 
-1. `http://localhost:3000/store/nova-electronics/assistant`
+1. `http://localhost:3000/store/alfred/assistant`
 2. `http://localhost:3000/manager`
 3. `http://localhost:3000/manager/orders`
 4. `http://localhost:3000/manager/activity`
@@ -36,7 +36,7 @@ with a **₹25,000 cap** (beat 7 depends on that number being low), and put it i
 **Sanity check** — if this prints a product, everything is up:
 
 ```bash
-curl -s localhost:3000/store/nova-electronics/catalog.json | jq '.products[0].name'
+curl -s localhost:3000/store/alfred/catalog.json | jq '.products[0].name'
 ```
 
 ---
@@ -206,7 +206,7 @@ integration to find out.
 ### If there is a spare minute
 
 ```bash
-bun run nightly -- --slug nova-electronics
+bun run nightly -- --slug alfred
 ```
 
 The merchant agent with nobody watching. It reads, it reasons, it leaves at most
@@ -223,7 +223,7 @@ Then show `/manager/activity`: those entries carry an **unattended** badge.
 | Assistant returns nothing | No model key, or the provider's quota is spent | Check `AI_PROVIDER` matches the key you set. Everything except chat still works |
 | Search returns odd results | Embeddings not built, or built with a different model | `bun run embed` |
 | `ai-buyer` gets 401 | `AI_BUYER_API_KEY` unset or revoked | Issue a fresh key at `/manager/agents` |
-| `ai-buyer` gets "issued for a different store" | Key scoped to another merchant | Expected. Issue one for `nova-electronics` |
+| `ai-buyer` gets "issued for a different store" | Key scoped to another merchant | Expected. Issue one for `alfred` |
 | Checkout window refuses to open | An `rzp_live_` key reached it | Expected, and the point. Use `rzp_test_` |
 | Order stays `created` after paying | Webhook cannot reach localhost | Use the payment-link callback, or expose the port |
 | Manager screens are empty | Signed in as someone who owns no store | `SEED_OWNER_EMAIL` must be your Google address; re-run `bun run seed` |
