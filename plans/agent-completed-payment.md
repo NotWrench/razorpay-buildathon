@@ -1,5 +1,41 @@
 # Plan — Agent-completed payment: two delegations, no human in the loop
 
+> **Status: implemented, 2026-09-05.** All six phases shipped, in `0a81c28`,
+> `c9db99b`, `891c8d9`, `b95fda5`, `6a7b454` and `394e649`. `bun run typecheck`
+> and `bun run test` green after each; 288 tests, 22 of them new.
+>
+> Four departures from what is written below, each recorded in place at the
+> phase it belongs to. Three of them are the same lesson learned three times:
+> **`ai → payments → commerce → db` decides where a rule lives.** The approval
+> policy, the mandate guardrail and the rupee formatter all began this plan
+> sitting in `@workspace/ai` and all three had to move, because the order path
+> cannot import the agent layer and a bound written there binds only the caller
+> that remembered to run it. The fourth was a genuine mistake in the design:
+> pointing the buyer's confirmation card at the *merchant's* ceiling, which
+> would have let a shop suppress its own customer's confirmation.
+>
+> Two things were found by running it rather than by reading it, and neither is
+> in this plan:
+>
+> - **`MANDATE_REVOKED` was unreachable.** `findMandate` filtered out revoked
+>   rows, so a withdrawal came back as the blander "you have no authorisation
+>   here" — true only in the sense that matters least. The row is now returned
+>   either way and `checkMandate` says what is actually wrong; `findLiveMandate`
+>   serves the callers that must not render a withdrawn mandate as live.
+> - **The refusal messages had their own rupee formatter**, which printed
+>   ₹16,850.90 as "₹16,850.9" — the exact bug `formatPaise` already carries a
+>   comment about. That is what sent the formatter across the package boundary.
+>
+> Verified against the running app and both databases: authorise, order,
+> charge, settle, withdraw, refuse. §6's four rows are real.
+>
+> **Still outstanding, and it is a dashboard question rather than a code one:**
+> whether this Razorpay account has Recurring Payments enabled. Until it does,
+> every mandate settles through the `simulated` instrument — labelled on the
+> payment record, the audit entry, the API response, the buyer's screen and in
+> a payment id deliberately not `pay_`-shaped. §7 is why that cannot block
+> anything.
+
 > Measured against the tree at `260192a` (master, clean) on 2026-09-05.
 > Scope: make the AI-buyer path complete **end to end**, without weakening any
 > bound the project publishes.
