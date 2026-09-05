@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { RestockScreen } from "@/components/manager/restock-screen";
-import { getRestock } from "@/lib/data";
+import { getManagerProducts, getRestock } from "@/lib/data";
 
 /** What is running out, plus whatever the assistant drafted about it. */
 
@@ -17,7 +17,15 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Restock · Manager" };
 
 export default async function ManagerRestockPage() {
-  const { drafts, rows } = await getRestock();
+  /*
+   * The catalogue comes along so an operator can put something on the order
+   * that the threshold rule did not catch. It is the same cached read the
+   * products page makes, not a second query.
+   */
+  const [{ drafts, rows }, catalogue] = await Promise.all([
+    getRestock(),
+    getManagerProducts(),
+  ]);
 
-  return <RestockScreen drafts={drafts} rows={rows} />;
+  return <RestockScreen catalogue={catalogue} drafts={drafts} rows={rows} />;
 }

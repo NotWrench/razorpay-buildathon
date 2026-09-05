@@ -3,7 +3,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useId, useState } from "react";
 
 /**
@@ -20,21 +20,34 @@ const POPUP =
 const BACKDROP =
   "fixed inset-0 z-70 bg-void/80 backdrop-blur-[4px] transition-opacity duration-exit data-ending-style:opacity-0 data-starting-style:opacity-0";
 
-/** A plain confirmation: two words and two ways out. */
+/**
+ * A plain confirmation: two words and two ways out.
+ *
+ * `children` is for the rare confirmation that needs one field before it can
+ * be answered — how many units to order, say. `tone` decides which of the two
+ * confirm shapes it wears: destructive is lacquer text, constructive is the
+ * one filled pill, because "order 20 of these" is not the same question as
+ * "delete this".
+ */
 function ConfirmDialog({
   body,
+  children,
   confirmLabel,
   onConfirm,
   onOpenChange,
   open,
   title,
+  tone = "destructive",
 }: {
   body: string;
+  /** An optional field, between the description and the buttons. */
+  children?: ReactNode;
   confirmLabel: string;
   onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   title: string;
+  tone?: "destructive" | "constructive";
 }) {
   const cancel = useCallback(() => onOpenChange(false), [onOpenChange]);
 
@@ -55,18 +68,26 @@ function ConfirmDialog({
             {body}
           </Dialog.Description>
 
+          {children ? <div className="mt-6">{children}</div> : null}
+
           <div className="mt-7 flex items-center justify-end gap-4">
             <Pill onClick={cancel} size="sm" variant="ghost">
               Cancel
             </Pill>
-            <Pill
-              className="text-lacquer hover:text-ember"
-              onClick={confirm}
-              size="sm"
-              variant="text"
-            >
-              {confirmLabel}
-            </Pill>
+            {tone === "constructive" ? (
+              <Pill onClick={confirm} size="sm">
+                {confirmLabel}
+              </Pill>
+            ) : (
+              <Pill
+                className="text-ember hover:text-bone"
+                onClick={confirm}
+                size="sm"
+                variant="text"
+              >
+                {confirmLabel}
+              </Pill>
+            )}
           </div>
         </Dialog.Popup>
       </Dialog.Portal>
@@ -151,7 +172,7 @@ function TypedConfirmDialog({
               Cancel
             </Pill>
             <Pill
-              className="text-lacquer hover:text-ember disabled:text-smoke"
+              className="text-ember hover:text-bone disabled:text-smoke"
               disabled={!armed}
               onClick={confirm}
               size="sm"

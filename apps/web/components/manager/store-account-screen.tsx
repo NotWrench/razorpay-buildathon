@@ -26,7 +26,7 @@ function Section({
   title: string;
 }) {
   return (
-    <section className={first ? "" : "mt-12 border-hairline border-t pt-12"}>
+    <section className={first ? "" : "rule-section mt-12 pt-12"}>
       <Label>{title}</Label>
       <div className="mt-6">{children}</div>
     </section>
@@ -82,9 +82,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
 
   return (
     <div className="px-5 pt-14 pb-24 sm:px-8 lg:px-8 2xl:px-12">
-      <h1 className="t-display-md text-bone leading-none">
-        Account
-      </h1>
+      <h1 className="t-display-md text-bone leading-none">Account</h1>
 
       <div className="mt-14 max-w-[640px]">
         <Section first title="Store details">
@@ -110,16 +108,14 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
         </Section>
 
         <Section title="Team">
-          <div className="border-hairline border-t">
+          <div>
             {settings.team.map((member) => (
               <div
-                className="flex flex-wrap items-center justify-between gap-5 border-hairline border-b py-4"
+                className="flex flex-wrap items-center justify-between gap-5 py-4"
                 key={member.id}
               >
                 <div className="min-w-0">
-                  <p className="t-body truncate text-bone">
-                    {member.name}
-                  </p>
+                  <p className="t-body truncate text-bone">{member.name}</p>
                   <p className="t-body-sm mt-0.5 truncate text-smoke">
                     {member.email}
                   </p>
@@ -143,7 +139,7 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
           </p>
           <div className="mt-5">
             <Pill
-              className="text-lacquer hover:text-ember"
+              className="text-ember hover:text-bone"
               onClick={onOpenClose}
               size="sm"
               variant="text"

@@ -92,6 +92,8 @@ function ProductSheet({
                       alt=""
                       category={entry.product.category}
                       className="h-[70%] w-auto"
+                      sizes="220px"
+                      src={entry.product.imageUrl || undefined}
                     />
                   ) : (
                     <>

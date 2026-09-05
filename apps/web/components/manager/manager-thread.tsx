@@ -28,13 +28,13 @@ function ResultTable({ table }: { table: ManagerTable }) {
       <Label>{table.title}</Label>
 
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full border-hairline border-t">
+        <table className="w-full">
           <thead>
             <tr>
               {table.columns.map((heading, index) => (
                 <th
                   className={cn(
-                    "border-hairline border-b py-2 font-normal",
+                    "py-2.5 font-normal",
                     index === 0 ? "text-left" : "text-right"
                   )}
                   key={heading}
@@ -56,7 +56,7 @@ function ResultTable({ table }: { table: ManagerTable }) {
                     className={cn(
                       /* 16px rhythm: this side of the product is denser than
                          the storefront on purpose. */
-                      "t-body border-hairline border-b py-2 text-bone",
+                      "t-body py-2.5 text-bone",
                       table.numeric.includes(index)
                         ? "text-right font-mono tabular-nums"
                         : "text-left"
@@ -95,9 +95,15 @@ function ManagerThread({
 
         return (
           <div className="chat-turn" key={turn.id}>
-            <p className="t-body text-smoke">{turn.question}</p>
+            {/* The question is a block, not a line of grey text above one.
+                Two turns of plain paragraphs read as four paragraphs. */}
+            <div className="flex justify-end">
+              <p className="t-body-sm max-w-[80%] rounded-[18px] rounded-br-[6px] bg-riser px-4 py-2.5 text-bone">
+                {turn.question}
+              </p>
+            </div>
 
-            <div className="mt-4">
+            <div className="mt-5">
               <StreamedText
                 className="t-body"
                 id={turn.id}

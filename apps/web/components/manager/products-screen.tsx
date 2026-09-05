@@ -1,70 +1,182 @@
 "use client";
 
-import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
-import { cn } from "@workspace/ui/lib/utils";
-import { Copy, Pencil, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ProductRender } from "@/components/common/product-render";
 import { ConfirmDialog } from "@/components/manager/manager-dialogs";
 import { ManagerHeading } from "@/components/manager/manager-heading";
-import type { ManagerColumn } from "@/components/manager/manager-table";
-import { ManagerTable, RowAction } from "@/components/manager/manager-table";
+import {
+  ManagerMenu,
+  ManagerMenuGroup,
+  ManagerMenuItem,
+} from "@/components/manager/manager-menu";
+import { ManagerSearch } from "@/components/manager/manager-search";
+import { ProductCard } from "@/components/manager/product-card";
 import { ProductSheet } from "@/components/manager/product-sheet";
 import type { ManagerProduct } from "@/lib/data/types";
 
 /**
- * The catalogue, as a list of things you can change.
+ * The catalogue, as a grid of things you can change.
  *
  * No analysis here — which products sell and which are never seen is the
  * summary's job, and answering it twice in two voices is how an operator stops
  * believing either one. This screen knows names, prices, stock and status.
+ *
+ * Filter and Sort used to be two pills that did nothing. They do something
+ * now, and there is a search beside them, because a catalogue you cannot
+ * narrow is a catalogue you scroll.
+ *
+ * Nothing here reaches the server: saving, duplicating, removing and ordering
+ * all move local state and say so in the toast.
  */
 
-function ProductActions({
-  entry,
-  onDuplicate,
-  onEdit,
-  onRemove,
-}: {
-  entry: ManagerProduct;
-  onDuplicate: (entry: ManagerProduct) => void;
-  onEdit: (entry: ManagerProduct) => void;
-  onRemove: (entry: ManagerProduct) => void;
-}) {
-  const edit = useCallback(() => onEdit(entry), [entry, onEdit]);
-  const duplicate = useCallback(() => onDuplicate(entry), [entry, onDuplicate]);
-  const remove = useCallback(() => onRemove(entry), [entry, onRemove]);
+type SortId = "name" | "price" | "stock" | "status";
+type StatusFilter = "all" | "live" | "draft";
 
-  return (
-    <>
-      <RowAction label={`Edit ${entry.product.name}`} onClick={edit}>
-        <Pencil aria-hidden className="size-3.5" />
-      </RowAction>
-      <RowAction label={`Duplicate ${entry.product.name}`} onClick={duplicate}>
-        <Copy aria-hidden className="size-3.5" />
-      </RowAction>
-      <RowAction
-        label={`Remove ${entry.product.name}`}
-        onClick={remove}
-        tone="lacquer"
-      >
-        <Trash2 aria-hidden className="size-3.5" />
-      </RowAction>
-    </>
+const SORTS: { id: SortId; label: string }[] = [
+  { id: "name", label: "Name" },
+  { id: "price", label: "Price" },
+  { id: "stock", label: "Stock" },
+  { id: "status", label: "Status" },
+];
+
+const STATUSES: { id: StatusFilter; label: string }[] = [
+  { id: "all", label: "Any status" },
+  { id: "live", label: "Live only" },
+  { id: "draft", label: "Drafts only" },
+];
+
+const COMPARE: Record<
+  SortId,
+  (a: ManagerProduct, b: ManagerProduct) => number
+> = {
+  name: (a, b) => a.product.name.localeCompare(b.product.name),
+  price: (a, b) => a.product.pricePaise - b.product.pricePaise,
+  status: (a, b) => a.status.localeCompare(b.status),
+  stock: (a, b) => a.stock - b.stock,
+};
+
+const ANY_CATEGORY = "__any__";
+
+function matches(entry: ManagerProduct, query: string) {
+  const needle = query.trim().toLowerCase();
+
+  if (needle.length === 0) {
+    return true;
+  }
+
+  return [entry.product.name, entry.product.brand, entry.product.category].some(
+    (field) => field.toLowerCase().includes(needle)
   );
 }
 
-const productKey = (entry: ManagerProduct) => entry.product.id;
+/** The quantity field inside the order dialog. */
+function QuantityField({
+  onChange,
+  value,
+}: {
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  const id = useId();
+
+  const change = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) =>
+      onChange(Math.max(1, Number(event.target.value) || 0)),
+    [onChange]
+  );
+
+  return (
+    <div>
+      <Label htmlFor={id}>Units</Label>
+      <input
+        className="t-num-sm mt-2 h-[52px] w-full rounded-full border border-hairline bg-void px-5 text-bone outline-none transition-colors duration-micro focus:border-bone"
+        id={id}
+        inputMode="numeric"
+        onChange={change}
+        value={value}
+      />
+    </div>
+  );
+}
 
 function ProductsScreen({ products }: { products: ManagerProduct[] }) {
+  const [rows, setRows] = useState(products);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ManagerProduct | null>(null);
   const [removing, setRemoving] = useState<ManagerProduct | null>(null);
-  const [rows, setRows] = useState(products);
+  const [ordering, setOrdering] = useState<ManagerProduct | null>(null);
+  const [quantity, setQuantity] = useState(10);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const [query, setQuery] = useState("");
+  const [sortId, setSortId] = useState<SortId>("name");
+  const [descending, setDescending] = useState(false);
+  const [category, setCategory] = useState<string>(ANY_CATEGORY);
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [lowOnly, setLowOnly] = useState(false);
+
+  const categories = useMemo(() => {
+    const seen = new Set(rows.map((entry) => entry.product.category as string));
+
+    return [...seen].sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const shown = useMemo(() => {
+    const filtered = rows.filter(
+      (entry) =>
+        matches(entry, query) &&
+        (category === ANY_CATEGORY || entry.product.category === category) &&
+        (status === "all" || entry.status === status) &&
+        (!lowOnly || entry.stock <= entry.lowAt)
+    );
+    const sorted = [...filtered].sort(COMPARE[sortId]);
+
+    return descending ? sorted.reverse() : sorted;
+  }, [category, descending, lowOnly, query, rows, sortId, status]);
+
+  const filtering =
+    query.trim().length > 0 ||
+    category !== ANY_CATEGORY ||
+    status !== "all" ||
+    lowOnly;
+
+  const onSort = useCallback(
+    (id: string) => {
+      const next = id as SortId;
+
+      setDescending((current) => (sortId === next ? !current : false));
+      setSortId(next);
+    },
+    [sortId]
+  );
+
+  const onStatus = useCallback(
+    (id: string) => setStatus(id as StatusFilter),
+    []
+  );
+
+  const toggleLow = useCallback(() => setLowOnly((current) => !current), []);
+
+  const onClearFilters = useCallback(() => {
+    setQuery("");
+    setCategory(ANY_CATEGORY);
+    setStatus("all");
+    setLowOnly(false);
+  }, []);
+
+  const onToggle = useCallback((id: string) => {
+    setSelected((current) =>
+      current.includes(id)
+        ? current.filter((entry) => entry !== id)
+        : [...current, id]
+    );
+  }, []);
+
+  const clearSelection = useCallback(() => setSelected([]), []);
 
   const onAdd = useCallback(() => {
     setEditing(null);
@@ -85,6 +197,37 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
     toast(`Duplicated ${entry.product.name} as a draft.`);
   }, []);
 
+  const onOrderOpen = useCallback((entry: ManagerProduct) => {
+    setQuantity(Math.max(10, entry.lowAt * 2));
+    setOrdering(entry);
+  }, []);
+
+  const onOrderChange = useCallback(
+    (open: boolean) => setOrdering(open ? ordering : null),
+    [ordering]
+  );
+
+  const onOrderConfirm = useCallback(() => {
+    if (!ordering) {
+      return;
+    }
+
+    toast(
+      `Added to restock — ${quantity} × ${ordering.product.name}. Nothing has been sent.`
+    );
+    setOrdering(null);
+  }, [ordering, quantity]);
+
+  const onBulkOrder = useCallback(() => {
+    toast(`Added ${selected.length} lines to restock. Nothing has been sent.`);
+    setSelected([]);
+  }, [selected.length]);
+
+  const onRemoveOpen = useCallback(
+    (open: boolean) => setRemoving(open ? removing : null),
+    [removing]
+  );
+
   const onRemoveConfirm = useCallback(() => {
     if (!removing) {
       return;
@@ -95,128 +238,143 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
     setRows((current) =>
       current.filter((entry) => entry.product.id !== gone.product.id)
     );
+    setSelected((current) =>
+      current.filter((entry) => entry !== gone.product.id)
+    );
     setRemoving(null);
     toast(`${gone.product.name} removed.`);
   }, [removing]);
 
-  const onRemoveOpen = useCallback(
-    (open: boolean) => setRemoving(open ? removing : null),
-    [removing]
-  );
-
-  const columns = useMemo<ManagerColumn<ManagerProduct>[]>(
-    () => [
-      {
-        id: "image",
-        label: "Image",
-        render: (entry) => (
-          <ImageGround className="size-11 rounded-[10px] p-1.5">
-            <ProductRender alt="" category={entry.product.category} />
-          </ImageGround>
-        ),
-        width: "64px",
-      },
-      {
-        id: "name",
-        label: "Name",
-        render: (entry) => (
-          <div className="min-w-0">
-            <p className="t-body truncate text-bone">
-              {entry.product.name}
-            </p>
-            <Label className="mt-0.5 block">{entry.product.category}</Label>
-          </div>
-        ),
-        sort: (a, b) => a.product.name.localeCompare(b.product.name),
-        width: "auto",
-      },
-      {
-        align: "right",
-        id: "price",
-        label: "Price",
-        render: (entry) => (
-          /* The hovered row outlines this cell: the price is the thing an
-             operator changes most, and the outline says so without adding a
-             pencil to every row. */
-          <span className="t-num-sm inline-flex h-8 items-center rounded-full border border-transparent px-3 text-bone transition-colors duration-micro group-hover:border-hairline">
-            {formatPaise(entry.product.pricePaise)}
-          </span>
-        ),
-        sort: (a, b) => a.product.pricePaise - b.product.pricePaise,
-        width: "9rem",
-      },
-      {
-        align: "right",
-        id: "stock",
-        label: "Stock",
-        render: (entry) => (
-          <span
-            className={cn(
-              "t-num-sm",
-              entry.stock <= entry.lowAt ? "text-amber" : "text-bone"
-            )}
-          >
-            {entry.stock}
-          </span>
-        ),
-        sort: (a, b) => a.stock - b.stock,
-        width: "6rem",
-      },
-      {
-        id: "status",
-        label: "Status",
-        render: (entry) => (
-          <span className="t-body-sm text-smoke">
-            {entry.status === "live" ? "Live" : "Draft"}
-          </span>
-        ),
-        sort: (a, b) => a.status.localeCompare(b.status),
-        width: "6rem",
-      },
-    ],
-    []
-  );
-
-  const actions = useCallback(
-    (entry: ManagerProduct) => (
-      <ProductActions
-        entry={entry}
-        onDuplicate={onDuplicate}
-        onEdit={onEdit}
-        onRemove={setRemoving}
-      />
-    ),
-    [onDuplicate, onEdit]
-  );
+  const sortLabel = SORTS.find((entry) => entry.id === sortId)?.label ?? "Name";
 
   return (
     <div className="px-5 pt-14 pb-24 sm:px-8 lg:px-8 2xl:px-12">
-      <ManagerHeading count={`${rows.length} products`} title="Products">
-        <Pill size="sm" variant="ghost">
-          Filter
-        </Pill>
-        <Pill size="sm" variant="text">
-          Sort: name
-        </Pill>
+      <ManagerHeading
+        count={
+          shown.length === rows.length
+            ? `${rows.length} products`
+            : `${shown.length} of ${rows.length}`
+        }
+        title="Products"
+      >
+        <ManagerSearch
+          className="w-full sm:w-[240px]"
+          label="Search the catalogue"
+          onValueChange={setQuery}
+          placeholder="Name, brand, category"
+          value={query}
+        />
+
+        <ManagerMenu label="Filter">
+          <ManagerMenuGroup label="Category" />
+          <ManagerMenuItem
+            onSelect={setCategory}
+            selected={category === ANY_CATEGORY}
+            value={ANY_CATEGORY}
+          >
+            Any category
+          </ManagerMenuItem>
+          {categories.map((slug) => (
+            <ManagerMenuItem
+              key={slug}
+              onSelect={setCategory}
+              selected={category === slug}
+              value={slug}
+            >
+              {slug}
+            </ManagerMenuItem>
+          ))}
+
+          <ManagerMenuGroup label="Status" />
+          {STATUSES.map((entry) => (
+            <ManagerMenuItem
+              key={entry.id}
+              onSelect={onStatus}
+              selected={status === entry.id}
+              value={entry.id}
+            >
+              {entry.label}
+            </ManagerMenuItem>
+          ))}
+
+          <ManagerMenuGroup label="Stock" />
+          <ManagerMenuItem onSelect={toggleLow} selected={lowOnly} value="low">
+            Low stock only
+          </ManagerMenuItem>
+        </ManagerMenu>
+
+        <ManagerMenu
+          label="Sort"
+          value={`${sortLabel} ${descending ? "▼" : "▲"}`}
+        >
+          {SORTS.map((entry) => (
+            <ManagerMenuItem
+              key={entry.id}
+              onSelect={onSort}
+              selected={sortId === entry.id}
+              value={entry.id}
+            >
+              {entry.label}
+            </ManagerMenuItem>
+          ))}
+        </ManagerMenu>
+
         <Pill onClick={onAdd} size="sm">
           Add product
         </Pill>
       </ManagerHeading>
 
-      <ManagerTable
-        actions={actions}
-        columns={columns}
-        empty={
-          <div className="flex flex-col items-start gap-5">
-            <p className="t-body text-smoke">Nothing in the catalogue.</p>
+      {shown.length === 0 ? (
+        <div className="flex flex-col items-start gap-5 py-14">
+          <p className="t-body text-smoke">
+            {filtering
+              ? "Nothing matches those filters."
+              : "Nothing in the catalogue."}
+          </p>
+          {filtering ? (
+            <Pill onClick={onClearFilters} size="sm" variant="text">
+              Clear filters
+            </Pill>
+          ) : (
             <Pill onClick={onAdd} size="sm" variant="ghost">
               Add the first product
             </Pill>
+          )}
+        </div>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {shown.map((entry) => (
+            <ProductCard
+              entry={entry}
+              key={entry.product.id}
+              onDuplicate={onDuplicate}
+              onEdit={onEdit}
+              onOrder={onOrderOpen}
+              onRemove={setRemoving}
+              onToggle={onToggle}
+              selected={selected.includes(entry.product.id)}
+              selecting={selected.length > 0}
+            />
+          ))}
+        </ul>
+      )}
+
+      {/* Mirrors restock's footer: one line of arithmetic, one filled pill. */}
+      {selected.length > 0 ? (
+        <div className="sticky bottom-0 mt-8 flex flex-wrap items-center justify-between gap-5 border-hairline border-t bg-void py-5">
+          <span className="t-num-xs text-smoke">
+            {selected.length} selected
+          </span>
+          <div className="flex items-center gap-4">
+            <Pill onClick={clearSelection} size="sm" variant="text">
+              Clear
+            </Pill>
+            <Pill onClick={onBulkOrder} size="sm">
+              Add to restock
+            </Pill>
           </div>
-        }
-        rowKey={productKey}
-        rows={rows}
-      />
+        </div>
+      ) : null}
 
       <ProductSheet
         entry={editing}
@@ -224,6 +382,23 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
         onSave={onSave}
         open={sheetOpen}
       />
+
+      <ConfirmDialog
+        body={`How many units of ${ordering?.product.name ?? "this product"} should join the restock list?${ordering ? ` ${ordering.stock} on hand today.` : ""}`}
+        confirmLabel="Add to restock"
+        onConfirm={onOrderConfirm}
+        onOpenChange={onOrderChange}
+        open={ordering !== null}
+        title="Order more"
+        tone="constructive"
+      >
+        <QuantityField onChange={setQuantity} value={quantity} />
+        {ordering ? (
+          <p className="t-num-xs mt-3 text-smoke">
+            estimated {formatPaise(quantity * ordering.product.pricePaise)}
+          </p>
+        ) : null}
+      </ConfirmDialog>
 
       <ConfirmDialog
         body={`${removing?.product.name ?? "This product"} will be taken off the store. Orders that already contain it are unaffected.`}

@@ -2,6 +2,7 @@
 
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
+import { cn } from "@workspace/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import { toast } from "sonner";
@@ -14,13 +15,16 @@ import type { Finding } from "@/lib/data/types";
  * so an empty window says so in a line rather than promoting the fourth-most
  * interesting number to advice.
  *
+ * Three cards abreast rather than three stacked rows: the findings used to be
+ * the last thing above the composer and the reason it sat off-screen.
+ *
  * Every action drafts. The pills are ghost, not solid: approving is a decision
  * and a filled red button is how a decision gets made by accident.
  */
 
 const URGENCY_ORDER = { high: 0, low: 2, medium: 1 } as const;
 
-function FindingRow({ finding }: { finding: Finding }) {
+function FindingCard({ finding }: { finding: Finding }) {
   const panelId = useId();
   const [open, setOpen] = useState(false);
 
@@ -31,57 +35,62 @@ function FindingRow({ finding }: { finding: Finding }) {
   }, [finding.action]);
 
   return (
-    <div className="border-hairline border-b py-7">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <p className="t-body text-bone">{finding.headline}</p>
-          <p className="t-body mt-1.5 text-smoke">{finding.action}</p>
+    <div className="flex flex-col rounded-[20px] border border-hairline bg-panel p-5">
+      <div className="flex items-start gap-3">
+        {/* Only the urgent one is marked. A dot on every card is a dot on
+            none of them. */}
+        <span
+          aria-hidden
+          className={cn(
+            "mt-2 size-[5px] shrink-0 rounded-full",
+            finding.urgency === "high" ? "bg-lacquer" : "bg-transparent"
+          )}
+        />
+        <p className="t-body min-w-0 flex-1 text-bone">{finding.headline}</p>
+      </div>
 
-          <button
-            aria-controls={panelId}
-            aria-expanded={open}
-            className="t-body-sm mt-3 flex items-center gap-1.5 text-smoke outline-none transition-colors duration-micro hover:text-bone focus-visible:text-bone"
-            onClick={toggle}
-            type="button"
-          >
-            Evidence
-            <ChevronDown
-              aria-hidden
-              className={
-                open
-                  ? "size-3.5 rotate-180 transition-transform duration-micro"
-                  : "size-3.5 transition-transform duration-micro"
-              }
-            />
-          </button>
+      <p className="t-body-sm mt-2 pl-[17px] text-smoke">{finding.action}</p>
 
-          {open ? (
-            <div className="evidence mt-4" id={panelId}>
-              <dl className="flex flex-wrap gap-x-10 gap-y-3">
-                {finding.evidence.map((row) => (
-                  <div key={row.label}>
-                    <Label as="dt">{row.label}</Label>
-                    <dd className="t-num-sm mt-1 text-bone">
-                      {row.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              {/* The window is part of the evidence. A number without the
-                  period it was measured over is not evidence at all. */}
-              <p className="t-num-xs mt-3 text-smoke">
-                {finding.window}
-              </p>
-            </div>
-          ) : null}
+      <button
+        aria-controls={panelId}
+        aria-expanded={open}
+        className="t-body-sm mt-4 flex items-center gap-1.5 self-start pl-[17px] text-smoke outline-none transition-colors duration-micro hover:text-bone focus-visible:text-bone"
+        onClick={toggle}
+        type="button"
+      >
+        Evidence
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            "size-3.5 transition-transform duration-micro",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      {open ? (
+        <div className="evidence mt-4 pl-[17px]" id={panelId}>
+          <dl className="flex flex-wrap gap-x-8 gap-y-3">
+            {finding.evidence.map((row) => (
+              <div key={row.label}>
+                <Label as="dt">{row.label}</Label>
+                <dd className="t-num-sm mt-1 text-bone">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {/* The window is part of the evidence. A number without the period
+              it was measured over is not evidence at all. */}
+          <p className="t-num-xs mt-3 text-smoke">{finding.window}</p>
         </div>
+      ) : null}
 
-        {finding.proposedAction ? (
-          <Pill className="shrink-0" onClick={draft} size="sm" variant="ghost">
+      {finding.proposedAction ? (
+        <div className="mt-5 pt-1 pl-[17px]">
+          <Pill onClick={draft} size="sm" variant="ghost">
             {finding.proposedAction.label}
           </Pill>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -91,7 +100,7 @@ function FindingsList({
   title = "What I'd do",
 }: {
   findings: Finding[];
-  /** The thread reuses these rows under its own heading. */
+  /** The thread reuses these cards under its own heading. */
   title?: string;
 }) {
   const ranked = [...findings]
@@ -103,13 +112,13 @@ function FindingsList({
       <Label>{title}</Label>
 
       {ranked.length === 0 ? (
-        <p className="t-body mt-5 text-smoke">
+        <p className="t-body mt-4 text-smoke">
           Nothing needs you in this window.
         </p>
       ) : (
-        <div className="mt-5 border-hairline border-t">
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ranked.map((finding) => (
-            <FindingRow finding={finding} key={finding.id} />
+            <FindingCard finding={finding} key={finding.id} />
           ))}
         </div>
       )}

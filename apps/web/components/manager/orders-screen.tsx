@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
@@ -7,6 +8,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { TypedConfirmDialog } from "@/components/manager/manager-dialogs";
 import { ManagerHeading } from "@/components/manager/manager-heading";
+import { ManagerSearch } from "@/components/manager/manager-search";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable } from "@/components/manager/manager-table";
 import type { ManagerOrder, ManagerOrderState } from "@/lib/data/types";
@@ -14,9 +16,15 @@ import type { ManagerOrder, ManagerOrderState } from "@/lib/data/types";
 /**
  * Orders, and the two things you do to them.
  *
- * Status is plain smoke text. Only the states that are not the normal course
- * of business get colour — Cancelled in lacquer, Refunded in amber — because a
- * column where every row is coloured is a column nobody reads.
+ * Still a table, because an order is six values and a column is the right
+ * shape for that. What changed is that the five filters were five loose pills
+ * with no sense of being one control and no idea how many orders were behind
+ * each of them — they are one track now, and each segment carries its count.
+ *
+ * Status wears a chip so the column has an edge to scan down, but the colour
+ * rule is unchanged: only the states that are not the normal course of
+ * business get any — Cancelled in ember, Refunded in amber. A column where
+ * every row is coloured is a column nobody reads.
  */
 
 const FILTERS: { id: string; label: string }[] = [
@@ -36,22 +44,37 @@ const STATE_WORD: Record<ManagerOrderState, string> = {
 };
 
 const STATE_TONE: Record<ManagerOrderState, string> = {
-  cancelled: "text-lacquer",
-  due: "text-smoke",
-  fulfilled: "text-smoke",
-  new: "text-smoke",
-  refunded: "text-amber",
+  cancelled: "border-ember/40 text-ember",
+  due: "border-hairline text-smoke",
+  fulfilled: "border-hairline text-smoke",
+  new: "border-smoke/40 text-bone",
+  refunded: "border-amber/40 text-amber",
 };
 
 const orderKey = (order: ManagerOrder) => order.id;
 
-function FilterPill({
+function StatusChip({ state }: { state: ManagerOrderState }) {
+  return (
+    <span
+      className={cn(
+        "t-body-sm inline-flex h-7 items-center rounded-full border px-3",
+        STATE_TONE[state]
+      )}
+    >
+      {STATE_WORD[state]}
+    </span>
+  );
+}
+
+function FilterSegment({
   active,
+  count,
   id,
   label,
   onSelect,
 }: {
   active: boolean;
+  count: number;
   id: string;
   label: string;
   onSelect: (id: string) => void;
@@ -59,18 +82,33 @@ function FilterPill({
   const click = useCallback(() => onSelect(id), [id, onSelect]);
 
   return (
-    <Pill
+    <button
       aria-pressed={active}
-      className={cn(active && "border-bone bg-bone text-void hover:bg-bone")}
+      className={cn(
+        "t-body-sm flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 font-medium transition-colors duration-micro",
+        "outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-bone focus-visible:outline-offset-[3px]",
+        active ? "bg-bone text-void" : "text-smoke hover:text-bone"
+      )}
       onClick={click}
-      size="sm"
-      variant="ghost"
+      type="button"
     >
       {label}
-    </Pill>
+      <span
+        className={cn("t-num-xs", active ? "text-void/55" : "text-smoke/70")}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
 
+/**
+ * What is in the order, and the two things you can do about it.
+ *
+ * The lines carry no image — an order line is a name, a quantity and a price,
+ * and there is no product record behind it to render — so this stays
+ * typographic and gets its structure from a totals rule instead.
+ */
 function OrderLines({
   onFulfil,
   onRefund,
@@ -84,23 +122,36 @@ function OrderLines({
   const refund = useCallback(() => onRefund(order), [onRefund, order]);
 
   return (
-    <div>
-      <ul>
+    <div className="max-w-[560px]">
+      <Label>Items</Label>
+
+      <dl className="mt-3">
         {order.lines.map((line) => (
-          <li
+          <div
             className="flex items-baseline justify-between gap-6 py-1.5"
             key={line.name}
           >
-            <span className="t-body-sm min-w-0 truncate text-smoke">
-              {line.quantity > 1 ? `${line.quantity} × ` : ""}
+            <dt className="t-body-sm min-w-0 truncate text-bone">
+              {line.quantity > 1 ? (
+                <span className="font-mono text-smoke tabular-nums">
+                  {line.quantity} ×{" "}
+                </span>
+              ) : null}
               {line.name}
-            </span>
-            <span className="t-num-xs shrink-0 text-smoke">
+            </dt>
+            <dd className="t-num-xs shrink-0 text-smoke">
               {formatPaise(line.pricePaise * line.quantity)}
-            </span>
-          </li>
+            </dd>
+          </div>
         ))}
-      </ul>
+      </dl>
+
+      <div className="mt-3 flex items-baseline justify-between gap-6 border-hairline border-t pt-3">
+        <span className="t-num-xs text-smoke">{order.itemCount} items</span>
+        <span className="t-num-sm text-bone">
+          {formatPaise(order.totalPaise)}
+        </span>
+      </div>
 
       <div className="mt-5 flex gap-3">
         <Pill onClick={fulfil} size="sm" variant="ghost">
@@ -116,22 +167,42 @@ function OrderLines({
 
 function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [refunding, setRefunding] = useState<ManagerOrder | null>(null);
   const [rows, setRows] = useState(orders);
 
-  const shown = useMemo(
-    () =>
-      filter === "all" ? rows : rows.filter((order) => order.state === filter),
-    [filter, rows]
-  );
+  const counts = useMemo(() => {
+    const tally: Record<string, number> = { all: rows.length };
+
+    for (const entry of rows) {
+      tally[entry.state] = (tally[entry.state] ?? 0) + 1;
+    }
+
+    return tally;
+  }, [rows]);
+
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+
+    return rows.filter(
+      (order) =>
+        (filter === "all" || order.state === filter) &&
+        (needle.length === 0 ||
+          order.id.toLowerCase().includes(needle) ||
+          order.customer.toLowerCase().includes(needle))
+    );
+  }, [filter, query, rows]);
 
   const onToggle = useCallback(
     (key: string) => setOpenKey((current) => (current === key ? null : key)),
     []
   );
 
-  const showAll = useCallback(() => setFilter("all"), []);
+  const showAll = useCallback(() => {
+    setFilter("all");
+    setQuery("");
+  }, []);
 
   const onFulfil = useCallback((order: ManagerOrder) => {
     setRows((current) =>
@@ -169,12 +240,10 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "order",
         label: "Order",
         render: (order) => (
-          <span className="t-num-sm text-bone">
-            {order.id}
-          </span>
+          <span className="t-num-sm text-bone">{order.id}</span>
         ),
         sort: (a, b) => a.id.localeCompare(b.id),
-        width: "8rem",
+        width: "9rem",
       },
       {
         id: "customer",
@@ -189,20 +258,16 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "date",
         label: "Date",
         render: (order) => (
-          <span className="t-num-xs text-smoke">
-            {order.placedOn}
-          </span>
+          <span className="t-num-xs text-smoke">{order.placedOn}</span>
         ),
-        width: "9rem",
+        width: "10rem",
       },
       {
         align: "right",
         id: "items",
         label: "Items",
         render: (order) => (
-          <span className="t-num-xs text-smoke">
-            {order.itemCount}
-          </span>
+          <span className="t-num-xs text-smoke">{order.itemCount}</span>
         ),
         sort: (a, b) => a.itemCount - b.itemCount,
         width: "5rem",
@@ -212,23 +277,19 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "total",
         label: "Total",
         render: (order) => (
-          <span className="t-num-sm text-bone">
+          <span className="t-num-md text-bone">
             {formatPaise(order.totalPaise)}
           </span>
         ),
         sort: (a, b) => a.totalPaise - b.totalPaise,
-        width: "9rem",
+        width: "10rem",
       },
       {
         align: "right",
         id: "status",
         label: "Status",
-        render: (order) => (
-          <span className={cn("t-body-sm", STATE_TONE[order.state])}>
-            {STATE_WORD[order.state]}
-          </span>
-        ),
-        width: "7rem",
+        render: (order) => <StatusChip state={order.state} />,
+        width: "9rem",
       },
     ],
     []
@@ -243,25 +304,45 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
 
   return (
     <div className="px-5 pt-14 pb-24 sm:px-8 lg:px-8 2xl:px-12">
-      <ManagerHeading count={`${shown.length} orders`} title="Orders" />
+      <ManagerHeading
+        count={
+          shown.length === rows.length
+            ? `${rows.length} orders`
+            : `${shown.length} of ${rows.length}`
+        }
+        title="Orders"
+      >
+        <ManagerSearch
+          className="w-full sm:w-[240px]"
+          label="Search orders"
+          onValueChange={setQuery}
+          placeholder="Order number or customer"
+          value={query}
+        />
+      </ManagerHeading>
 
-      <div className="flex flex-wrap gap-3 pb-6">
-        {FILTERS.map((entry) => (
-          <FilterPill
-            active={filter === entry.id}
-            id={entry.id}
-            key={entry.id}
-            label={entry.label}
-            onSelect={setFilter}
-          />
-        ))}
+      {/* One control, not five pills: the segments share a track so the eye
+          reads them as the same question asked five ways. */}
+      <div className="-mx-1 overflow-x-auto px-1 pb-6">
+        <div className="inline-flex items-center gap-1 rounded-full border border-hairline bg-panel p-1">
+          {FILTERS.map((entry) => (
+            <FilterSegment
+              active={filter === entry.id}
+              count={counts[entry.id] ?? 0}
+              id={entry.id}
+              key={entry.id}
+              label={entry.label}
+              onSelect={setFilter}
+            />
+          ))}
+        </div>
       </div>
 
       <ManagerTable
         columns={columns}
         empty={
           <div className="flex flex-col items-start gap-5">
-            <p className="t-body text-smoke">No orders in this filter.</p>
+            <p className="t-body text-smoke">No orders match that.</p>
             {/* A way out, not a label. An empty state whose only affordance
                 is a word you cannot press is a dead end with manners. */}
             <Pill onClick={showAll} size="sm" variant="text">
@@ -274,6 +355,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         openKey={openKey}
         rowKey={orderKey}
         rows={shown}
+        stickyHead
       />
 
       <TypedConfirmDialog

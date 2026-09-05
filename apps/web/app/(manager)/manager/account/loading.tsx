@@ -11,9 +11,7 @@ export default function Loading() {
       <div className="mt-14 max-w-[640px]">
         {SECTIONS.map((section, index) => (
           <div
-            className={
-              index === 0 ? "" : "mt-12 border-hairline border-t pt-12"
-            }
+            className={index === 0 ? "" : "rule-section mt-12 pt-12"}
             key={section}
           >
             <Shimmer className="h-3 w-28" radius="pill" />

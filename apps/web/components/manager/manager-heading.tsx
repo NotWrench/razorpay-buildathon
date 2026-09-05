@@ -18,14 +18,8 @@ function ManagerHeading({
   return (
     <div className="flex flex-wrap items-center justify-between gap-6 pb-8">
       <div className="flex items-baseline gap-4">
-        <h1 className="t-display-md text-bone leading-none">
-          {title}
-        </h1>
-        {count ? (
-          <span className="t-num-xs text-smoke">
-            {count}
-          </span>
-        ) : null}
+        <h1 className="t-display-md text-bone leading-none">{title}</h1>
+        {count ? <span className="t-num-xs text-smoke">{count}</span> : null}
       </div>
 
       {children ? (
