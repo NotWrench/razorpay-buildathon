@@ -144,10 +144,10 @@ function NamedProducts({
   }
 
   return (
-    <div className="border-hairline border-t">
+    <div>
       {named.map((product) => (
         <PillLink
-          className="flex h-auto w-full items-center gap-3 rounded-none border-hairline border-b py-3"
+          className="flex h-auto w-full items-center gap-3 rounded-none py-3"
           href={shellRoutes.product(String(product.id))}
           key={String(product.id)}
           size="sm"
@@ -214,7 +214,7 @@ function CartLine({ output }: { output: ToolPart["output"] }) {
   const count = lines.length || Number(output?.lineCount ?? 0);
 
   return (
-    <div className="flex items-center gap-4 border-hairline border-t border-b py-3.5">
+    <div className="flex items-center gap-4 py-3.5">
       <span className="t-body-sm flex-1 text-bone">
         {count === 1 ? "1 line in the cart" : `${count} lines in the cart`}
       </span>
@@ -257,9 +257,7 @@ function OrderLine({
   return (
     <div className="surface-card rounded-[20px] border border-hairline bg-panel px-5 py-4">
       <Label>Order</Label>
-      <p className="t-num-md mt-2 text-bone">
-        {formatPaise(totalPaise)}
-      </p>
+      <p className="t-num-md mt-2 text-bone">{formatPaise(totalPaise)}</p>
       <p className="t-body mt-2 text-smoke leading-relaxed">
         {output?.message ?? "Nothing has been charged."}
       </p>
@@ -300,7 +298,7 @@ function ToolResult({
     case "tool-createPaymentLink":
       return (
         <a
-          className="t-body text-lacquer underline underline-offset-4"
+          className="t-body text-ember underline underline-offset-4"
           href={String(output.paymentLinkUrl ?? "")}
           rel="noreferrer"
           target="_blank"

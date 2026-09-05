@@ -8,7 +8,13 @@
 @source "../**/*.{ts,tsx}";
 
 /*
- * Ember v3 — dark only.
+ * Arctic Mono — dark only.
+ *
+ * Black, white, and one red. The page is black but never pure black: every
+ * surface is white mixed into it, which is what stops a dark UI reading as a
+ * hole in the screen. Secondary text is a neutral grey, not a warm one — the
+ * previous palette tinted both text greys towards brown and the whole site
+ * read slightly sepia.
  *
  * The raw palette lives on :root and is repeated on .dark so nothing depends
  * on the theme toggle. shadcn's semantic names are repointed at those raws,
@@ -17,21 +23,34 @@
  *
  * --riser is the depth mechanism: an image ground is always lighter than the
  * card it sits inside, so a render separates from the page without a border.
+ * That matters more now than it did — with the row rules gone, an edge and a
+ * step in value are the only structure left.
  */
 
 :root,
 .dark {
-  --void: #060606;
-  --carbon: #0e0e0e;
-  --panel: #161616;
-  --riser: #1f1f1f;
-  --hairline: #2a2a2a;
-  --smoke: #8e8b87;
-  --bone: #f2f0ed;
-  --lacquer: #c8102e;
-  --ember: #e8253f;
-  --verdant: #6e8f6b;
-  --amber: #c9922e;
+  --void: #0a0a0a;
+  --carbon: #111111;
+  --panel: #181818;
+  --riser: #232323;
+  --hairline: #2e2e2e;
+  --smoke: #a3a3a3;
+  --bone: #ffffff;
+  --lacquer: #d61332;
+  --ember: #ff2d4b;
+
+  /*
+   * Green and amber are retired, not deleted. Monochrome plus one accent only
+   * works if the accent stays scarce, and three status colours spent it three
+   * ways. A passing check is now unremarkable — grey, the same as any other
+   * settled fact — and anything asking for attention is red.
+   *
+   * The names survive so the ~30 `text-verdant` / `text-amber` call sites keep
+   * compiling. If a warning ever needs to be told apart from a failure again,
+   * --ember against --lacquer is the pair to reach for.
+   */
+  --verdant: var(--smoke);
+  --amber: var(--ember);
 
   --background: var(--void);
   --foreground: var(--bone);
@@ -47,8 +66,22 @@
   --muted-foreground: var(--smoke);
   --accent: var(--riser);
   --accent-foreground: var(--bone);
-  --destructive: var(--lacquer);
+  /*
+   * Red splits by job. --lacquer is red as a *fill*: a button, a dot, a badge,
+   * anything with white sitting on top of it, where white-on-lacquer is 5.25:1.
+   * --ember is red as *text* on the page ground, where lacquer only reaches
+   * 3.77:1 and every use of it is small — an error, "out of stock", a
+   * cancelled order, a discount. --destructive is the text case, so it is
+   * ember. Nothing in the app fills solid with it; the destructive button and
+   * badge are a 10% tint under red text.
+   */
+  --destructive: var(--ember);
   --destructive-foreground: #ffffff;
+  /*
+   * --hairline is no longer a row divider. Those are gone. What is left is the
+   * edge of something you can act on: a field, a select, the ring on the
+   * gallery thumbnail you have selected.
+   */
   --border: var(--hairline);
   --input: var(--hairline);
   --ring: var(--bone);
@@ -68,13 +101,39 @@
   --sidebar-border: var(--hairline);
   --sidebar-ring: var(--bone);
 
+  /*
+   * The line render's three greys.
+   *
+   * `ProductRender` draws every part that has no photograph, and it used to
+   * carry #2E2E2E / #4A4A4A / #666666 as literals in the component — tuned by
+   * eye against the old --riser and therefore invisible the moment the ground
+   * moved. They are tokens now, and they are deliberately spaced: shell fills,
+   * edge outlines, detail picks out the one thing that says which part this
+   * is. All three have to clear the ground gradient, which runs from a little
+   * above --riser down to --panel.
+   */
+  --render-shell: #303030;
+  --render-edge: #5c5c5c;
+  --render-detail: #8a8a8a;
+
   /* 20px cards. Image grounds are 16px, overlays 28px, buttons full pill. */
   --radius: 1.25rem;
 
-  --font-display: var(--font-display-face, Archivo, system-ui, sans-serif);
-  --font-sans: var(--font-sans-face, "Inter Tight", system-ui, sans-serif);
-  --font-serif: Georgia, serif;
-  --font-mono: var(--font-mono-face, "JetBrains Mono", monospace);
+  /*
+   * Two faces, one family. Geist sets everything you read as language; Geist
+   * Mono sets everything you read as a value — a price, a wattage, a count, a
+   * label, a machine name.
+   *
+   * --font-display points at the sans rather than getting a third face of its
+   * own. A display face that is a heavier cut of the body face is what makes a
+   * page look designed rather than assembled, and Geist has the weight range
+   * to carry a 72px headline and a 13px paragraph without either looking
+   * borrowed.
+   */
+  --font-display: var(--font-sans-face, Geist, system-ui, sans-serif);
+  --font-sans: var(--font-sans-face, Geist, system-ui, sans-serif);
+  --font-serif: var(--font-sans-face, Geist, system-ui, sans-serif);
+  --font-mono: var(--font-mono-face, "Geist Mono", ui-monospace, monospace);
 
   --letter-spacing: 0em;
   --tracking-normal: 0em;
@@ -241,21 +300,30 @@
  *
  *   1. A `.t-*` class sets face, size, weight, tracking and leading. Nothing
  *      else — never colour. Colour carries meaning here (smoke is secondary,
- *      verdant passes, lacquer is a problem) and has to stay visible at the
- *      call site rather than hiding inside a type class.
- *   2. Mono is for numbers. Prices, wattage, counts, SKUs. Never prose.
+ *      lacquer is a problem) and has to stay visible at the call site rather
+ *      than hiding inside a type class.
+ *   2. Mono is for values, not for prose. A price, a wattage, a count, a SKU,
+ *      a small-caps label, a machine name — things you scan and compare
+ *      rather than read. Everything that is language is sans. This is the rule
+ *      the site broke when it briefly set paragraphs in a monospace, and it
+ *      broke them for the reason the rule exists: equal widths make a column
+ *      of numbers line up and make a sentence stop having word shapes.
  *
  * These sit in `components` rather than `utilities` deliberately: a Tailwind
  * utility should still win, so `text-lg` on a `.t-body` does what the next
  * person expects instead of losing to a specificity fight.
  */
 @layer components {
-  /* Display — Archivo, tight, for headlines and section openers. */
+  /*
+   * Display — Geist at 600/700, set tight, for headlines and section openers.
+   * A grotesque wants negative tracking at size: the larger the type, the more
+   * the default spacing looks like gaps rather than rhythm.
+   */
   .t-display-xl {
     font-family: var(--font-display);
     font-size: var(--text-3xl);
     font-weight: 700;
-    line-height: 0.95;
+    line-height: 0.98;
     letter-spacing: var(--tracking-tighter);
   }
 
@@ -263,7 +331,7 @@
     font-family: var(--font-display);
     font-size: var(--text-2xl);
     font-weight: 600;
-    line-height: 1.02;
+    line-height: 1.04;
     letter-spacing: var(--tracking-tighter);
   }
 
@@ -271,7 +339,7 @@
     font-family: var(--font-display);
     font-size: var(--text-xl);
     font-weight: 600;
-    line-height: 1.1;
+    line-height: 1.12;
     letter-spacing: var(--tracking-tight);
   }
 
@@ -279,7 +347,7 @@
     font-family: var(--font-display);
     font-size: var(--text-lg);
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.22;
     letter-spacing: var(--tracking-tight);
   }
 
@@ -292,14 +360,14 @@
    * Pair it with a size from the scale (`text-2xl`, `text-xl`, `text-base`).
    */
   .t-model {
-    font-family: var(--font-display);
+    font-family: var(--font-mono);
     font-weight: 500;
     line-height: 1;
     text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
   }
 
-  /* Body — Inter Tight. Everything functional. */
+  /* Body — Geist. Everything functional, everything that is language. */
   .t-body-lg {
     font-family: var(--font-sans);
     font-size: var(--text-base);
@@ -325,13 +393,18 @@
   }
 
   /*
-   * The label. Sans, small caps, 11px, 0.14em — never mono, which is what
-   * stops the site reading as a terminal. This replaces four competing
-   * spellings of the same idiom (`tracking-widest`, `-wider`, `-wide`, and a
-   * literal `[0.14em]`). It sets no colour; pair it with `text-smoke`.
+   * The label. Mono, small caps, 11px, 0.14em.
+   *
+   * Mono here on purpose. A label is not language you read, it is a key you
+   * scan against a value, and setting it in the same face as that value binds
+   * the pair together. With the row rules gone this is doing structural work —
+   * a grey mono label against a white mono value is what tells two rows apart
+   * where a line used to. It replaces four competing spellings of the same
+   * thing (`tracking-widest`, `-wider`, `-wide`, and a literal `[0.14em]`). It
+   * sets no colour; pair it with `text-smoke`.
    */
   .t-label {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: var(--text-2xs);
     font-weight: 500;
     line-height: 1.3;
@@ -340,9 +413,9 @@
   }
 
   /*
-   * Numbers. Tabular so a column of prices never jitters as it re-renders.
-   * The base layer's `.font-mono` rule can't reach these, since they set the
-   * family directly, so each one carries its own tabular-nums.
+   * Numbers. Geist Mono, tabular, so a column of prices never jitters as it
+   * re-renders. The base layer's `.font-mono` rule can't reach these, since
+   * they set the family directly, so each carries its own tabular-nums.
    */
   .t-num-lg,
   .t-num-md,
@@ -399,20 +472,26 @@
 /*
  * Surfaces and rules.
  *
- * The palette gave every card the same treatment — a lighter rectangle on a
- * darker page — and every divider the same 1px #2a2a2a, 157 times over. At
- * that point the eye stops reading them as structure and starts reading them
- * as texture, which is most of what "plain" meant.
+ * This comment used to observe that every divider was the same 1px hairline,
+ * 157 times over, and that at that point the eye stops reading them as
+ * structure and starts reading them as texture. The conclusion it drew was to
+ * add a second, heavier weight. The conclusion Arctic Mono draws is that the
+ * row divider was never carrying its own weight, and it is gone: rows are
+ * separated by space and by the contrast between a grey label and a white
+ * value, which is what was doing the work in any case.
  *
- * Two additions, both inside §4.4's rules (no glow, no red borders):
+ * What is left is three things, none of which is a row divider:
  *
  *   1. A card gets a 1px top edge of near-white at very low alpha. That is how
- *      a real surface catches the light coming down the page, and it is the
- *      cheapest way to make a dark UI read as physical rather than flat. It is
- *      an edge, not a glow: no blur, no spread, one pixel.
- *   2. A section opening gets a heavier rule than a row divider. Same
- *      vocabulary, two weights, so a boundary that means "new section" stops
- *      looking like a boundary that means "next row".
+ *      a real surface catches the light coming down the page, and with the
+ *      rules gone it is most of what tells you a card is a card. It is an
+ *      edge, not a glow: no blur, no spread, one pixel.
+ *   2. `.rule-section` — the one rule that survived, because a section
+ *      boundary is a real boundary. It is deliberately heavier than the old
+ *      hairline: now that it is the only horizontal line on most pages, it can
+ *      afford to mean something.
+ *   3. The image ground, which separates a render from its card by a step in
+ *      value rather than by drawing a box around it.
  */
 @layer components {
   .surface-card {

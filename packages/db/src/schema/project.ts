@@ -1,4 +1,5 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { addresses } from "./addresses";
 import { account, apikey, session, user, verification } from "./auth";
 import { buildItems, builds } from "./builds";
 import {
@@ -45,6 +46,7 @@ import { productSpecs } from "./specs";
  * the agent tables are absent so they are not created here.
  */
 
+export { addresses } from "./addresses";
 export {
   type ApiKeyMetadata,
   account,
@@ -98,6 +100,7 @@ export { type PciePowerConnector, productSpecs } from "./specs";
 export const projectSchema = {
   account,
   accountRelations,
+  addresses,
   apikey,
   apikeyRelations,
   buildItems,

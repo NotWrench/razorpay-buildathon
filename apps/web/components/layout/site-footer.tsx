@@ -10,7 +10,7 @@ import { shellRoutes } from "@/lib/routes";
  * The wordmark across the bottom is set at `--panel` on `--void`: enormous and
  * almost invisible, which is the point — it closes the page without asking for
  * attention. 64px of clear space above it, because an earlier version let
- * content run straight into the hairline.
+ * content run straight into the footer's top edge.
  */
 
 const COLUMNS: { heading: string; links: { href: Route; label: string }[] }[] =
@@ -87,8 +87,8 @@ function SiteFooter() {
           <div>
             <Label>Talk to us</Label>
             <p className="t-body mt-5 max-w-[38ch] text-smoke">
-              Questions about a part, a build or an order. The assistant
-              answers instantly; a person answers within a day.
+              Questions about a part, a build or an order. The assistant answers
+              instantly; a person answers within a day.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <PillLink href={shellRoutes.assistant} size="sm" variant="ghost">
@@ -103,7 +103,7 @@ function SiteFooter() {
 
         {/*
           The mark used to close this page at clamp(4rem,18vw,16rem) — up to
-          256px — painted `text-panel`, which is #161616 on #060606: a contrast
+          256px — painted `text-panel`, which is --panel on --void: a contrast
           ratio of about 1.1:1. It was the largest element on the site and it
           rendered as a smudge. It sits in the legal strip now, at the size the
           header uses, where it reads as a signature instead.
@@ -116,7 +116,10 @@ function SiteFooter() {
               href={shellRoutes.home}
             >
               <span className="t-display-sm font-bold text-bone">NEXUS</span>
-              <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
+              <span
+                aria-hidden
+                className="size-[5px] rounded-full bg-lacquer"
+              />
             </Link>
             <span aria-hidden className="h-4 w-px bg-hairline" />
             <p className="t-body-sm text-smoke">

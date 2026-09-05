@@ -18,13 +18,11 @@ function ShopFallback({ name }: { name: string }) {
   return (
     <>
       <section>
-        <div className="h-[240px] w-full bg-[linear-gradient(155deg,#262626_0%,#151515_100%)] lg:h-[280px]" />
+        <div className="ground-surface h-[240px] w-full lg:h-[280px]" />
         <div className="mx-auto w-full max-w-[1280px] px-8 lg:px-16">
           <div className="relative -mt-14 flex flex-wrap items-end justify-between gap-6">
             <div>
-              <h1 className="t-display-lg text-bone leading-none">
-                {name}
-              </h1>
+              <h1 className="t-display-lg text-bone leading-none">{name}</h1>
               <p className="mt-3 h-5" />
             </div>
             <Shimmer className="h-9 w-40" radius="pill" />

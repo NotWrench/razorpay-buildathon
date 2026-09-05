@@ -43,7 +43,7 @@ function TextRow({
   const handleClick = useCallback(() => onActivate(row), [onActivate, row]);
 
   return (
-    <li className="border-hairline border-b">
+    <li>
       <button
         className={cn(ROW_BASE, active && ROW_ACTIVE)}
         onClick={handleClick}
@@ -51,9 +51,7 @@ function TextRow({
       >
         <span className="t-body flex-1 text-bone">{label}</span>
         {count === undefined ? null : (
-          <span className="t-num-xs text-smoke">
-            {count}
-          </span>
+          <span className="t-num-xs text-smoke">{count}</span>
         )}
       </button>
     </li>
@@ -79,7 +77,12 @@ function ProductTile({
         type="button"
       >
         <ImageGround className="aspect-[4/3] p-4">
-          <ProductRender alt={product.name} category={product.category} />
+          <ProductRender
+            alt={product.name}
+            category={product.category}
+            sizes="(min-width: 768px) 200px, 40vw"
+            src={product.imageUrl || undefined}
+          />
         </ImageGround>
         <span className="t-body-sm mt-3 block text-bone">{product.name}</span>
         <span className="t-num-xs mt-1 block text-smoke">

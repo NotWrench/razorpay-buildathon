@@ -283,11 +283,17 @@ export interface SavedBuild {
 }
 
 export interface SavedAddress {
+  city: string;
   id: string;
   /** "Home", "Office" — the shopper's own word for it. */
   label: string;
-  lines: string[];
+  line1: string;
+  line2: string | null;
+  phone: string | null;
+  pincode: string;
+  /** The one checkout would reach for. At most one per buyer. */
   primary: boolean;
+  state: string;
 }
 
 export interface AccountFigures {

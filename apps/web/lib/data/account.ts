@@ -1,4 +1,5 @@
 import {
+  addresses,
   agentDb,
   buildItems,
   builds,
@@ -12,7 +13,13 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { cache } from "react";
 import { currentBuyer } from "@/lib/store/buyer";
 import { storeId } from "./store";
-import type { Account, AccountOrder, OrderState, SavedBuild } from "./types";
+import type {
+  Account,
+  AccountOrder,
+  OrderState,
+  SavedAddress,
+  SavedBuild,
+} from "./types";
 
 /**
  * The signed-in shopper's own page.
@@ -64,24 +71,37 @@ export const getAccount = cache(async (): Promise<Account> => {
     eq(orders.buyerIdentifier, buyer.identifier)
   );
 
-  const [orderRows, buildRows, conversationCount] = await Promise.all([
-    db.select().from(orders).where(scope).orderBy(desc(orders.createdAt)),
-    db
-      .select({
-        id: builds.id,
-        name: builds.name,
-        updatedAt: builds.updatedAt,
-      })
-      .from(builds)
-      .where(
-        and(
-          eq(builds.merchantId, merchantId),
-          eq(builds.buyerIdentifier, buyer.identifier)
+  const [orderRows, buildRows, conversationCount, addressRows] =
+    await Promise.all([
+      db.select().from(orders).where(scope).orderBy(desc(orders.createdAt)),
+      db
+        .select({
+          id: builds.id,
+          name: builds.name,
+          updatedAt: builds.updatedAt,
+        })
+        .from(builds)
+        .where(
+          and(
+            eq(builds.merchantId, merchantId),
+            eq(builds.buyerIdentifier, buyer.identifier)
+          )
         )
-      )
-      .orderBy(desc(builds.updatedAt)),
-    countConversations(merchantId, buyer.identifier),
-  ]);
+        .orderBy(desc(builds.updatedAt)),
+      countConversations(merchantId, buyer.identifier),
+      db
+        .select()
+        .from(addresses)
+        .where(
+          and(
+            eq(addresses.merchantId, merchantId),
+            eq(addresses.buyerIdentifier, buyer.identifier)
+          )
+        )
+        /* Primary first, then newest. The default address is the one the page
+         leads with and the one checkout would reach for. */
+        .orderBy(desc(addresses.primary), desc(addresses.createdAt)),
+    ]);
 
   const [lines, buildTotals] = await Promise.all([
     linesFor(orderRows.map((order) => order.id)),
@@ -118,9 +138,19 @@ export const getAccount = cache(async (): Promise<Account> => {
   const since = orderRows.at(-1)?.createdAt ?? new Date();
 
   return {
-    /* No address book exists yet. An empty list renders an empty section,
-       which is true; two invented addresses would not be. */
-    addresses: [],
+    addresses: addressRows.map(
+      (row): SavedAddress => ({
+        city: row.city,
+        id: row.id,
+        label: row.label,
+        line1: row.line1,
+        line2: row.line2,
+        phone: row.phone,
+        pincode: row.pincode,
+        primary: row.primary === "yes",
+        state: row.state,
+      })
+    ),
     builds: savedBuilds,
     email: buyer.isGuest ? "Guest session" : buyer.identifier,
     figures: {

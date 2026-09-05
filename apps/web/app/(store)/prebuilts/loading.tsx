@@ -22,7 +22,7 @@ export default function PrebuiltsLoading() {
           <Shimmer className="h-11 w-36" radius="pill" />
         </div>
 
-        <div className="mt-12 space-y-8 border-hairline border-t pt-8">
+        <div className="mt-12 space-y-8 pt-8">
           <div className="grid gap-9 lg:grid-cols-[44%_1fr]">
             <Shimmer className="aspect-[4/3]" radius="ground" />
             <div>

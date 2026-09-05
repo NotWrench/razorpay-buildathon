@@ -1,9 +1,9 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
-import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Label } from "@workspace/ui/components/label";
 import { Stagger } from "@workspace/ui/components/motion/stagger";
 import Link from "next/link";
-import { ProductRender } from "@/components/common/product-render";
+import { PhotoGround } from "@/components/common/photo-ground";
+import { landingImages } from "@/lib/landing-images";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -35,16 +35,31 @@ function UseCaseBand({ tiles }: { tiles: UseCaseTile[] }) {
             href={shellRoutes.byUse(tile.value)}
             key={tile.value}
           >
-            <ImageGround className="relative aspect-[4/3] rounded-[20px] p-8 transition-transform duration-micro group-hover:-translate-y-0.5">
-              <ProductRender
-                alt={tile.label}
-                category={tile.category}
-                className="transition-transform duration-standard group-hover:scale-[1.03]"
+            <PhotoGround
+              alt={tile.label}
+              category={tile.category}
+              className="aspect-[4/3] rounded-[20px] transition-transform duration-micro group-hover:-translate-y-0.5"
+              fallbackClassName="p-8"
+              imageClassName="transition-transform duration-standard group-hover:scale-[1.03]"
+              sizes="(min-width: 1024px) 300px, 45vw"
+              src={landingImages.useCase[tile.value]?.src ?? undefined}
+            >
+              {/*
+                The name is set over the photograph, so it needs a floor. This
+                used to be belt-and-braces: the tile's padding left a strip of
+                flat ground under the label and the scrim only had to darken
+                it. The photograph now runs to the bottom edge, so the scrim is
+                the only thing between white text and a lit studio floor — hence
+                the deeper ramp.
+              */}
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-[45%] bg-[linear-gradient(180deg,transparent_0%,color-mix(in_srgb,var(--void)_35%,transparent)_55%,color-mix(in_srgb,var(--void)_92%,transparent)_100%)]"
               />
               <span className="t-model absolute inset-x-6 bottom-5 text-base text-bone">
                 {tile.label}
               </span>
-            </ImageGround>
+            </PhotoGround>
             {tile.machines > 0 ? (
               <p className="t-num-xs mt-3 text-smoke">
                 {tile.machines} {tile.machines === 1 ? "machine" : "machines"}

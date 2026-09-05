@@ -26,7 +26,7 @@ function FullSpecs({ machine }: { machine: PrebuiltDetail }) {
 
   return (
     <section className="mx-auto w-full max-w-[1280px] px-8 lg:px-16" id="specs">
-      <div className="border-hairline border-t">
+      <div>
         <button
           aria-controls={panelId}
           aria-expanded={open}

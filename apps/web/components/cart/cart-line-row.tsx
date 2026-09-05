@@ -51,7 +51,7 @@ export function CartLineRow({
         </div>
 
         {line.priceChanged ? (
-          <p className="mt-1 text-amber-600 text-xs dark:text-amber-400">
+          <p className="mt-1 text-amber text-xs">
             Price changed since you added this — it was{" "}
             <Money
               currency={currency}

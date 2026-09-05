@@ -224,9 +224,7 @@ function SearchOverlay() {
         <div className="centre-mask-inner flex h-full flex-col overflow-y-auto px-8 py-8 lg:px-16">
           <div className="flex items-center justify-between">
             <span className="flex items-baseline gap-1">
-              <span className="t-display-sm font-bold text-bone">
-                NEXUS
-              </span>
+              <span className="t-display-sm font-bold text-bone">NEXUS</span>
               <span
                 aria-hidden
                 className="size-[5px] rounded-full bg-lacquer"
@@ -244,7 +242,7 @@ function SearchOverlay() {
               </label>
               <input
                 autoComplete="off"
-                className="search-field t-display-lg w-full bg-transparent pb-5 text-[clamp(32px,5vw,56px)] text-bone outline-none placeholder:text-smoke"
+                className="search-field t-display-lg w-full bg-transparent pb-5 text-[clamp(30px,4.8vw,54px)] text-bone outline-none placeholder:text-smoke"
                 id="search-field"
                 onChange={onChange}
                 placeholder="Search Nexus"
@@ -281,7 +279,7 @@ function SearchOverlay() {
                   {categories.length > 0 ? (
                     <>
                       <Label>Start here</Label>
-                      <ul className="mt-4 border-hairline border-t">
+                      <ul className="mt-4">
                         {categories.map((category) => (
                           <TextRow
                             active={activeKey === `category-${category.slug}`}
@@ -305,7 +303,7 @@ function SearchOverlay() {
                   {suggestions.length > 0 ? (
                     <>
                       <Label>Suggestions</Label>
-                      <ul className="mt-4 border-hairline border-t">
+                      <ul className="mt-4">
                         {suggestions.map((suggestion) => (
                           <TextRow
                             active={activeKey === `suggestion-${suggestion}`}

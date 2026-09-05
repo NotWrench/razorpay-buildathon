@@ -11,10 +11,7 @@ export default function CartLoading() {
       <div className="mt-12 grid gap-14 lg:grid-cols-[1fr_380px]">
         <div>
           {ROWS.map((row) => (
-            <div
-              className="flex items-center gap-5 border-hairline border-b py-6"
-              key={row}
-            >
+            <div className="flex items-center gap-5 py-6" key={row}>
               <Shimmer className="size-[72px] shrink-0" radius="ground" />
               <div className="flex-1">
                 <Shimmer className="h-4 w-64" radius="pill" />

@@ -15,7 +15,7 @@ import type { Account } from "@/lib/data/types";
 /**
  * Settings, with no cards at all.
  *
- * Sections are separated by a full-width hairline and 96px of air. A card
+ * Sections are separated by a full-width section rule and 96px of air. A card
  * around each group would turn a quiet list of preferences into five competing
  * panels, and there is nothing here that needs to be lifted off the page.
  *
@@ -60,7 +60,7 @@ function Section({
   title: string;
 }) {
   return (
-    <section className={first ? "" : "mt-12 border-hairline border-t pt-12"}>
+    <section className={first ? "" : "rule-section mt-12 pt-12"}>
       <Label>{title}</Label>
       <div className="mt-6">{children}</div>
     </section>
@@ -155,9 +155,7 @@ function SettingsScreen({ account }: { account: Account }) {
 
   return (
     <div className="max-w-[640px]">
-      <h1 className="t-display-md text-bone leading-none">
-        Settings
-      </h1>
+      <h1 className="t-display-md text-bone leading-none">Settings</h1>
 
       <div className="mt-16">
         <Section first title="Account">
@@ -231,7 +229,7 @@ function SettingsScreen({ account }: { account: Account }) {
 
           <div className="mt-5">
             <Pill
-              className="text-lacquer hover:text-ember"
+              className="text-ember hover:text-bone"
               onClick={onClearMemory}
               size="sm"
               variant="text"

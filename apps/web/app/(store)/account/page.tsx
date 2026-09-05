@@ -5,7 +5,7 @@ import { AddressList } from "@/components/account/address-list";
 import { OrderTable } from "@/components/account/order-table";
 import { SavedBuilds } from "@/components/account/saved-builds";
 import { PillLink } from "@/components/common/pill-link";
-import { getAccount } from "@/lib/data";
+import { getAccount, storeSlug } from "@/lib/data";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -19,7 +19,9 @@ import { shellRoutes } from "@/lib/routes";
 export const metadata: Metadata = { title: "Account" };
 
 export default async function AccountPage() {
-  const account = await getAccount();
+  /* The slug the address and build actions post to — they are scoped per
+     store, the same as the cart and the builder. */
+  const [account, slug] = await Promise.all([getAccount(), storeSlug()]);
   const isGuest = account.email === "Guest session";
 
   return (
@@ -53,12 +55,12 @@ export default async function AccountPage() {
 
       <section id="builds">
         <Label>Saved builds</Label>
-        <SavedBuilds builds={account.builds} />
+        <SavedBuilds builds={account.builds} slug={slug} />
       </section>
 
       <section id="addresses">
         <Label>Addresses</Label>
-        <AddressList addresses={account.addresses} />
+        <AddressList addresses={account.addresses} slug={slug} />
       </section>
     </div>
   );

@@ -13,12 +13,9 @@ export default function ProductLoading() {
       <div className="grid gap-14 lg:grid-cols-[55%_1fr]">
         <div>
           <Shimmer className="aspect-[4/3] rounded-[20px]" radius="card" />
-          <div className="mt-5 flex gap-4">
-            <Shimmer className="size-[72px]" radius="ground" />
-            <Shimmer className="size-[72px]" radius="ground" />
-            <Shimmer className="size-[72px]" radius="ground" />
-            <Shimmer className="size-[72px]" radius="ground" />
-          </div>
+          {/* No thumbnail rail. A product carries one photograph, and the
+              gallery only draws the rail above one view — four shimmering
+              squares were promising a control that never arrived. */}
         </div>
 
         <div>
@@ -30,7 +27,7 @@ export default function ProductLoading() {
             <Shimmer className="h-11 w-40" radius="pill" />
             <Shimmer className="h-11 w-40" radius="pill" />
           </div>
-          <div className="mt-8 border-hairline border-t border-b py-6">
+          <div className="mt-8 py-6">
             <Shimmer className="h-3 w-28" radius="pill" />
             <Shimmer className="mt-4 h-5 w-64" radius="pill" />
             <Shimmer className="mt-3 h-4 w-full" radius="pill" />

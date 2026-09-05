@@ -127,10 +127,7 @@ export default async function LandingPage() {
           {/* No primary row here. The hero owns this page's one filled pill;
               the listing at /prebuilts is where a machine gets to be the
               recommended one. Two solid reds on one page is one too many. */}
-          <PrebuiltRows
-            className="mt-8 border-hairline border-t"
-            prebuilts={lineup}
-          />
+          <PrebuiltRows className="mt-8" prebuilts={lineup} />
 
           <div className="mt-10 flex justify-center">
             <PillLink href={shellRoutes.prebuilts} variant="text">

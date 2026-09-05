@@ -23,12 +23,9 @@ export default function Loading() {
 
       <div>
         <Shimmer className="h-3 w-28" radius="pill" />
-        <div className="mt-6 border-hairline border-t">
+        <div className="mt-6">
           {ROWS.map((row) => (
-            <div
-              className="flex items-center gap-6 border-hairline border-b py-5"
-              key={row}
-            >
+            <div className="flex items-center gap-6 py-5" key={row}>
               <Shimmer className="h-4 w-28" radius="pill" />
               <Shimmer className="h-3 w-24" radius="pill" />
               <Shimmer className="h-3 flex-1" radius="pill" />

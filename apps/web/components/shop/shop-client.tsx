@@ -9,6 +9,10 @@ import { AssistantDock } from "@/components/dock/assistant-dock";
 import { ComponentCard } from "@/components/product/component-card";
 import type { ActiveFilter } from "@/components/shop/category-band";
 import { CategoryBand } from "@/components/shop/category-band";
+import {
+  type CategoryTile,
+  CategoryTiles,
+} from "@/components/shop/category-tiles";
 import { FilterSheet } from "@/components/shop/filter-sheet";
 import type { CatalogPage, ProductSort } from "@/lib/data/types";
 import { route } from "@/lib/routes";
@@ -28,6 +32,10 @@ const PAGE_SIZE = 9;
 
 interface ShopClientProps {
   category?: CategorySlug;
+  /** Empty on a category page, where the tiles are not drawn. */
+  categoryTiles: CategoryTile[];
+  /** Resolved by the server page; this component cannot touch the disk. */
+  heroSrc?: string;
   name: string;
   page: CatalogPage;
   params: ShopParams;
@@ -38,6 +46,8 @@ interface ShopClientProps {
 function ShopClient({
   name,
   category,
+  categoryTiles,
+  heroSrc,
   page,
   params,
   pathname,
@@ -72,7 +82,15 @@ function ShopClient({
   const onClear = useCallback(() => {
     const next = new URLSearchParams(query);
 
-    for (const key of ["brand", "build", "inStock", "max", "min", "q", "spec"]) {
+    for (const key of [
+      "brand",
+      "build",
+      "inStock",
+      "max",
+      "min",
+      "q",
+      "spec",
+    ]) {
       next.delete(key);
     }
 
@@ -171,12 +189,15 @@ function ShopClient({
         activeFilters={activeFilters}
         category={category}
         filterCount={countActiveFilters(params)}
+        heroSrc={heroSrc}
         name={name}
         onOpenFilters={onOpenFilters}
         onSort={onSort}
         sort={params.sort ?? "newest"}
         total={page.total}
       />
+
+      {category ? null : <CategoryTiles tiles={categoryTiles} />}
 
       <div className="mx-auto w-full max-w-[1280px] px-8 pt-12 lg:px-16">
         {items.length === 0 ? (

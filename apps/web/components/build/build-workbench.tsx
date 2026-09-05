@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions/build";
 import type { BuildSlotEntry } from "@/lib/queries/builds";
 import type { CatalogProduct } from "@/lib/queries/catalog";
+import { storeRoutes } from "@/lib/routes";
 import { SlotRow } from "./slot-row";
 
 /**
@@ -49,7 +50,7 @@ export function BuildWorkbench({
       // A build created by the first pick needs to become the page's build,
       // otherwise the next pick would start a second one.
       if (!buildId && data?.buildId) {
-        router.replace(`/store/${slug}/build?buildId=${data.buildId}`);
+        router.replace(storeRoutes(slug).buildWith(data.buildId));
       }
     },
   });

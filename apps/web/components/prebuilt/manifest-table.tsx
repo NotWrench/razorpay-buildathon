@@ -45,9 +45,9 @@ function ManifestTable({ machine }: { machine: PrebuiltDetail }) {
     <section className="mx-auto w-full max-w-[1280px] px-8 lg:px-16">
       <Label>What&rsquo;s inside</Label>
 
-      <ul className="mt-8 border-hairline border-t">
+      <ul className="mt-8">
         {machine.manifest.map((entry) => (
-          <li className="border-hairline border-b py-5" key={entry.slot}>
+          <li className="py-5" key={entry.slot}>
             <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
               <Label className="w-32 shrink-0">{entry.slot}</Label>
               <Link

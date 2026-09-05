@@ -38,7 +38,7 @@ export function MerchantToolOutput({ part }: { part: ToolPartShape }) {
             <Stat label="Units" value={String(output.unitsSold)} />
           </dl>
           {output.pendingAgentOrders > 0 ? (
-            <p className="mt-2 text-amber-700 text-xs dark:text-amber-400">
+            <p className="mt-2 text-amber text-xs">
               {output.pendingAgentOrders} agent order(s) waiting on your
               approval.
             </p>
@@ -722,9 +722,7 @@ function CampaignDraftCard({ draft }: { draft: Output }) {
     <ToolCard title="Draft campaign" tone="warning">
       <p>{draft.summary}</p>
       {draft.note ? (
-        <p className="mt-1 text-amber-700 text-xs dark:text-amber-400">
-          {draft.note}
-        </p>
+        <p className="mt-1 text-amber text-xs">{draft.note}</p>
       ) : null}
       {draft.projection ? (
         <div className="mt-2 rounded-sm bg-muted/50 p-2 text-xs">

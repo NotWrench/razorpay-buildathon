@@ -84,7 +84,7 @@ function ComponentCardSkeleton() {
       <Shimmer className="aspect-[16/10]" radius="ground" />
       <Shimmer className="mt-5 h-3 w-16" radius="pill" />
       <Shimmer className="mt-3 h-[38px] w-full" radius="pill" />
-      <div className="mt-4 border-hairline border-t border-b py-[7px]">
+      <div className="mt-4 py-2.5">
         <Shimmer className="h-4 w-full" radius="pill" />
         <Shimmer className="mt-3 h-4 w-full" radius="pill" />
         <Shimmer className="mt-3 h-4 w-full" radius="pill" />

@@ -44,7 +44,7 @@ function linkifyParts(check: CompatibilityCheck): ReactNode {
     nodes.push(remaining.slice(0, at));
     nodes.push(
       <Link
-        className="text-bone underline decoration-hairline underline-offset-4 transition-colors duration-micro hover:decoration-smoke"
+        className="text-bone underline-offset-4 transition-colors duration-micro hover:text-ember hover:underline"
         href={shellRoutes.product(product.id)}
         key={product.id}
       >
@@ -62,7 +62,7 @@ function linkifyParts(check: CompatibilityCheck): ReactNode {
 function CompatibilityStrip({ report }: { report?: CompatibilityReport }) {
   if (!report) {
     return (
-      <div className="border-hairline border-t border-b py-6">
+      <div className="py-6">
         <Label>Compatibility</Label>
         <p className="t-body mt-3 text-smoke">
           No build open yet. Start one and this page will check every part
@@ -81,7 +81,7 @@ function CompatibilityStrip({ report }: { report?: CompatibilityReport }) {
     report.checks[0];
 
   return (
-    <div className="border-hairline border-t border-b py-6">
+    <div className="py-6">
       <div className="flex items-baseline justify-between gap-4">
         <Label>Compatibility</Label>
         {report.buildName ? (

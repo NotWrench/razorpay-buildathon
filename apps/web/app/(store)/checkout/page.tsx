@@ -25,20 +25,16 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-6 py-2.5">
       <Label>{label}</Label>
-      <span className="t-num-sm text-bone">
-        {value}
-      </span>
+      <span className="t-num-sm text-bone">{value}</span>
     </div>
   );
 }
 
 function Total({ paise }: { paise: number }) {
   return (
-    <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
+    <div className="mt-5 flex items-baseline justify-between gap-6 pt-5">
       <Label>Total</Label>
-      <span className="t-num-lg text-bone">
-        {formatPaise(paise)}
-      </span>
+      <span className="t-num-lg text-bone">{formatPaise(paise)}</span>
     </div>
   );
 }
@@ -59,22 +55,18 @@ export default async function CheckoutPage({
 
     return (
       <div className="mx-auto w-full max-w-[640px] px-5 pt-14 pb-24 sm:px-8">
-        <h1 className="t-display-lg text-bone leading-none">
-          Checkout
-        </h1>
+        <h1 className="t-display-lg text-bone leading-none">Checkout</h1>
 
         <div className="surface-card mt-12 rounded-[20px] bg-panel p-7">
           <div className="flex items-baseline justify-between gap-6">
             <Label>Your build</Label>
-            <span className="t-num-xs text-smoke">
-              {build.length} parts
-            </span>
+            <span className="t-num-xs text-smoke">{build.length} parts</span>
           </div>
 
           <ul className="mt-5">
             {build.map((part) => (
               <li
-                className="flex items-baseline justify-between gap-6 border-hairline border-t py-3"
+                className="flex items-baseline justify-between gap-6 py-2.5"
                 key={part.id}
               >
                 <span className="t-body min-w-0 truncate text-bone">
@@ -104,9 +96,7 @@ export default async function CheckoutPage({
 
   return (
     <div className="mx-auto w-full max-w-[640px] px-5 pt-14 pb-24 sm:px-8">
-      <h1 className="t-display-lg text-bone leading-none">
-        Checkout
-      </h1>
+      <h1 className="t-display-lg text-bone leading-none">Checkout</h1>
 
       <div className="surface-card mt-12 rounded-[20px] bg-panel p-7">
         <Row label="Items" value={String(items)} />
@@ -115,7 +105,7 @@ export default async function CheckoutPage({
         {cart.discountPaise > 0 ? (
           <div className="flex items-baseline justify-between gap-6 py-2.5">
             <Label>Discount</Label>
-            <span className="t-num-sm text-lacquer">
+            <span className="t-num-sm text-ember">
               −{formatPaise(cart.discountPaise)}
             </span>
           </div>

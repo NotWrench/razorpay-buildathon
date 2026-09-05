@@ -13,7 +13,7 @@ import type { ShopParams } from "@/lib/shop-params";
  * The filter sheet — a left panel, because that is what buys the grid its
  * width.
  *
- * "Compatible with my build" sits alone above a hairline with real space
+ * "Compatible with my build" sits alone at the top with real space
  * around it. Everything else in here is a normal facet; that one is what the
  * compatibility engine earns, and putting it in the list with the others would
  * throw the only interesting control on the page away.
@@ -49,20 +49,16 @@ function FacetRow({
     <li>
       <button
         className={cn(
-          "flex w-full items-center justify-between gap-4 border-hairline border-b px-3 py-3 text-left transition-colors duration-micro hover:bg-panel",
+          "flex w-full items-center justify-between gap-4 px-3 py-3 text-left transition-colors duration-micro hover:bg-panel",
           active && "bg-panel"
         )}
         onClick={handleClick}
         type="button"
       >
-        <span
-          className={cn("t-body", active ? "text-bone" : "text-smoke")}
-        >
+        <span className={cn("t-body", active ? "text-bone" : "text-smoke")}>
           {facet.value}
         </span>
-        <span className="t-num-xs text-smoke">
-          {facet.count}
-        </span>
+        <span className="t-num-xs text-smoke">{facet.count}</span>
       </button>
     </li>
   );
@@ -182,7 +178,7 @@ function FilterSheet({
                 against. A control that silently matches everything is worse
                 than one that is not offered. */}
             {page.buildName ? (
-              <div className="border-hairline border-b pb-8">
+              <div className="pb-8">
                 <Toggle
                   checked={Boolean(params.compatibleOnly)}
                   label="Compatible with my build"
@@ -217,7 +213,7 @@ function FilterSheet({
             {page.brands.length > 1 ? (
               <div className="mt-8">
                 <Label>Brand</Label>
-                <ul className="mt-3 border-hairline border-t">
+                <ul className="mt-3">
                   {page.brands.map((facet) => (
                     <FacetRow
                       active={Boolean(params.brands?.includes(facet.value))}
@@ -234,7 +230,7 @@ function FilterSheet({
               spec.values.length > 1 ? (
                 <div className="mt-8" key={spec.label}>
                   <Label>{spec.label}</Label>
-                  <ul className="mt-3 border-hairline border-t">
+                  <ul className="mt-3">
                     {spec.values.map((facet) => (
                       <FacetRow
                         active={Boolean(

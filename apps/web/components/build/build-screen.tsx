@@ -65,7 +65,7 @@ function SlotRow({
     slot.maxPerBuild !== null && slot.parts.length >= slot.maxPerBuild;
 
   return (
-    <div className="border-hairline border-b py-6">
+   <div className="py-6">
       <div className="flex items-baseline justify-between gap-6">
         <Label>{slot.name}</Label>
         {slot.required && slot.parts.length === 0 ? (
@@ -229,7 +229,7 @@ function BuildScreen({
           </div>
 
           {report ? (
-            <div className="mt-6 space-y-2 border-hairline border-t pt-6">
+   <div className="mt-6 space-y-2 pt-6">
               {report.checks.length === 0 ? (
                 <StatusLine
                   message="Nothing conflicts so far."
@@ -255,7 +255,7 @@ function BuildScreen({
               ) : null}
             </div>
           ) : (
-            <p className="t-body-sm mt-6 border-hairline border-t pt-6 text-smoke">
+   <p className="t-body-sm mt-6 pt-6 text-smoke">
               Pick a part and the checks start running.
             </p>
           )}

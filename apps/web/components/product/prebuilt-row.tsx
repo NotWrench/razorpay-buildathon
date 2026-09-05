@@ -1,12 +1,12 @@
-import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Label } from "@workspace/ui/components/label";
 import { PriceBlock } from "@workspace/ui/components/price-block";
 import { SpecList } from "@workspace/ui/components/spec-list";
 import { cn } from "@workspace/ui/lib/utils";
 import Link from "next/link";
+import { PhotoGround } from "@/components/common/photo-ground";
 import { PillLink } from "@/components/common/pill-link";
-import { ProductRender } from "@/components/common/product-render";
 import type { PrebuiltSummary } from "@/lib/data/types";
+import { machineImage } from "@/lib/landing-images";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -27,14 +27,28 @@ function PrebuiltRow({ prebuilt, primary = false }: PrebuiltRowProps) {
   const href = shellRoutes.prebuilt(prebuilt.slug);
 
   return (
-    <article className="group grid gap-9 py-8 transition-transform duration-micro hover:-translate-y-0.5 lg:grid-cols-[44%_1fr]">
-      <ImageGround className="aspect-[4/3] p-10">
-        <ProductRender
-          alt={`${prebuilt.name} tower`}
-          category="case"
-          className="transition-transform duration-standard group-hover:scale-[1.03]"
-        />
-      </ImageGround>
+    <article className="group grid gap-9 py-8 transition-transform duration-micro hover:-translate-y-0.5 lg:grid-cols-[minmax(0,300px)_1fr] lg:items-center">
+      {/*
+        A 300px track, not the 44% this row used to give the picture.
+
+        The machine shots are 2:3, and a 2:3 image in a 528px column is 792px
+        tall standing next to 377px of text — four rows of that took the listing
+        from 1840px to 3424px, most of it blank. At 300px the image is 450px, the
+        text is 377px, and `items-center` splits the remaining slack above and
+        below instead of pooling it under the buttons.
+
+        `items-center` also makes the ratio real: a stretched grid item has a
+        definite height, and `aspect-*` on one is silently ignored.
+      */}
+      <PhotoGround
+        alt={`${prebuilt.name} tower`}
+        category="case"
+        className="aspect-[2/3]"
+        fallbackClassName="p-10"
+        imageClassName="transition-transform duration-standard group-hover:scale-[1.03]"
+        sizes="(min-width: 1024px) 300px, 90vw"
+        src={machineImage(prebuilt.slug)}
+      />
 
       <div className="flex flex-col">
         <Link href={href}>
@@ -75,7 +89,10 @@ function PrebuiltRow({ prebuilt, primary = false }: PrebuiltRowProps) {
           >
             See this machine
           </PillLink>
-          <PillLink href={shellRoutes.prebuiltSpecs(prebuilt.slug)} variant="text">
+          <PillLink
+            href={shellRoutes.prebuiltSpecs(prebuilt.slug)}
+            variant="text"
+          >
             Specs →
           </PillLink>
         </div>
@@ -95,7 +112,7 @@ function PrebuiltRows({
   primarySlug?: string;
 }) {
   return (
-    <div className={cn("[&>*+*]:border-hairline [&>*+*]:border-t", className)}>
+    <div className={cn(className)}>
       {prebuilts.map((prebuilt) => (
         <PrebuiltRow
           key={prebuilt.slug}

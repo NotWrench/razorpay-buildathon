@@ -16,9 +16,15 @@ import Image from "next/image";
  * card, which is where most of these are.
  */
 
-const SHELL = "#2E2E2E";
-const EDGE = "#4A4A4A";
-const DETAIL = "#666666";
+/*
+ * On the tokens, not on three hexes picked by eye. These are read straight
+ * into SVG `fill` and `stroke` attributes, which take a var() the same as any
+ * CSS colour does, so the drawings follow the palette instead of drifting out
+ * of it the next time the ground changes.
+ */
+const SHELL = "var(--render-shell)";
+const EDGE = "var(--render-edge)";
+const DETAIL = "var(--render-detail)";
 
 interface ProductRenderProps {
   alt: string;
@@ -30,7 +36,8 @@ interface ProductRenderProps {
   src?: string;
 }
 
-const DEFAULT_SIZES = "(min-width: 1280px) 400px, (min-width: 768px) 45vw, 90vw";
+const DEFAULT_SIZES =
+  "(min-width: 1280px) 400px, (min-width: 768px) 45vw, 90vw";
 
 function Fan({ cx, cy, r }: { cx: number; cy: number; r: number }) {
   return (
@@ -378,8 +385,22 @@ function ProductRender({
   src,
 }: ProductRenderProps) {
   if (src) {
+    /*
+     * Contained, inside whatever padding the caller's ground carries.
+     *
+     * Everything that reaches this branch is a *catalogue* photograph — a
+     * product shot on white, from `image_url`. Cropping one to fill its box
+     * crops through the product, so it sits inside the box with air around it.
+     * The site's own photography wants the opposite treatment and goes through
+     * `PhotoGround`, which fills the frame edge to edge.
+     *
+     * `shrink-0` is load-bearing: this wrapper's only content is an absolutely
+     * positioned image, so its content width is zero and, as a flex child of
+     * the ground, `w-full` would otherwise lose to `flex-shrink`. That is what
+     * once rendered the assistant band's machine at 0px wide.
+     */
     return (
-      <div className={cn("relative h-full w-full", className)}>
+      <div className={cn("relative h-full w-full shrink-0", className)}>
         <Image
           alt={alt}
           className="object-contain"

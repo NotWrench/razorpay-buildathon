@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 
 import "@workspace/ui/globals.css";
 import { Toaster } from "@workspace/ui/components/sonner";
@@ -7,28 +7,36 @@ import { cn } from "@workspace/ui/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 
 /*
- * The three faces are exposed as *-face variables rather than as --font-sans
- * directly: next/font puts its variable on <html>, which is also :root, so a
- * same-named token in globals.css would be a source-order coin flip. The theme
- * reads these through var(--font-sans-face, fallback).
+ * Two faces from one family.
+ *
+ * The site briefly ran on a monospace alone. A monospace is a wonderful thing
+ * for a column of prices and a poor one for a paragraph: every glyph gets the
+ * same width whether it needs it or not, so `i` floats in space, `m` is
+ * squeezed, and the word shapes an eye reads by stop being shapes. It looked
+ * like a terminal pretending to be a shop.
+ *
+ * Geist and Geist Mono are drawn as one family, which is the point — they
+ * share proportions, weights and vertical metrics, so a price in mono sitting
+ * beside a name in sans reads as the same voice rather than two fonts in a
+ * room together. The technical feel the mono was there for survives, in the
+ * places where it means something: numbers, labels, and the machine name.
+ *
+ * Both are exposed as *-face variables rather than as --font-sans directly:
+ * next/font puts its variable on <html>, which is also :root, so a same-named
+ * token in globals.css would be a source-order coin flip. The theme reads them
+ * through var(--font-sans-face, fallback).
  */
 
-const fontDisplay = Archivo({
+const fontSans = Geist({
   subsets: ["latin"],
-  variable: "--font-display-face",
+  variable: "--font-sans-face",
   weight: ["400", "500", "600", "700"],
 });
 
-const fontSans = Inter_Tight({
-  subsets: ["latin"],
-  variable: "--font-sans-face",
-  weight: ["400", "500"],
-});
-
-const fontMono = JetBrains_Mono({
+const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono-face",
-  weight: ["400"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -50,7 +58,6 @@ export default function RootLayout({
       className={cn(
         "antialiased",
         "font-sans",
-        fontDisplay.variable,
         fontSans.variable,
         fontMono.variable
       )}

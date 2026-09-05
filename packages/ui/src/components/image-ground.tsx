@@ -19,12 +19,21 @@ interface ImageGroundProps {
  * here, so the one mechanism the design rests on is finally the token it was
  * always described as. The top edge is lifted a little above riser and the
  * bottom settles below it, which is what gives a flat render somewhere to sit.
+ *
+ * The gradient is for a line drawing, which is a diagram and wants air around
+ * it. A photograph never sees it: `PhotoGround` fills this box edge to edge, so
+ * the ground is covered. That is deliberate — floating a photograph on the
+ * gradient put two different darks together with a hard rectangle between them,
+ * and no amount of matching the colour underneath ever quite hid the join.
+ *
+ * `relative` and `overflow-hidden` are what let a filling photograph take this
+ * box's shape and its corner radius.
  */
 function ImageGround({ children, className, style }: ImageGroundProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center overflow-hidden rounded-[16px]",
+        "relative flex items-center justify-center overflow-hidden rounded-[16px]",
         "ground-surface",
         className
       )}

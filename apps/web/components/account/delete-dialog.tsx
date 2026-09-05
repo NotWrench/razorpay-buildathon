@@ -46,7 +46,7 @@ function DeleteDialog({ onConfirm }: { onConfirm: () => void }) {
   return (
     <Dialog.Root onOpenChange={onOpenChange} open={open}>
       <Dialog.Trigger
-        className="t-body text-lacquer transition-colors duration-micro hover:text-ember"
+        className="t-body text-ember transition-colors duration-micro hover:text-bone"
         render={<button type="button" />}
       >
         Delete account
@@ -80,7 +80,7 @@ function DeleteDialog({ onConfirm }: { onConfirm: () => void }) {
               Keep it
             </Pill>
             <Pill
-              className="text-lacquer hover:text-ember disabled:text-smoke"
+              className="text-ember hover:text-bone disabled:text-smoke"
               disabled={!armed}
               onClick={confirm}
               size="sm"

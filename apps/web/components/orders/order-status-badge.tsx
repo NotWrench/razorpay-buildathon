@@ -15,14 +15,12 @@ const ORDER_TONES: Record<string, string> = {
   created: "border-border",
   draft: "border-border bg-muted text-muted-foreground",
   failed: "border-destructive/40 bg-destructive/10 text-destructive",
-  paid: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  paid: "border-verdant/40 bg-verdant/10 text-verdant",
 };
 
 const APPROVAL_TONES: Record<string, string> = {
-  approved:
-    "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  pending_approval:
-    "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  approved: "border-verdant/40 bg-verdant/10 text-verdant",
+  pending_approval: "border-amber/40 bg-amber/10 text-amber",
   rejected: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 

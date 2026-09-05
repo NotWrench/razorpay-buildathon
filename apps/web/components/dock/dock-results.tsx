@@ -21,7 +21,7 @@ function ProductRow({
   product: DockResult & { kind: "product" };
 }) {
   return (
-    <div className="mt-4 flex items-center gap-4 border-hairline border-t border-b py-4">
+    <div className="mt-4 flex items-center gap-4 py-4">
       <ImageGround className="size-12 shrink-0 rounded-[12px] p-2">
         <ProductRender
           alt=""
@@ -50,8 +50,8 @@ function ComparisonTable({
   comparison: DockResult & { kind: "comparison" };
 }) {
   return (
-    <div className="mt-4 border-hairline border-t">
-      <div className="flex gap-3 border-hairline border-b py-3">
+    <div className="mt-4">
+      <div className="flex gap-3 py-3">
         <span className="w-20 shrink-0" />
         <span className="t-body-sm flex-1 truncate text-bone">
           {comparison.left.name}
@@ -64,10 +64,7 @@ function ComparisonTable({
         const same = row.left === row.right;
 
         return (
-          <div
-            className="flex gap-3 border-hairline border-b py-2.5"
-            key={row.label}
-          >
+          <div className="flex gap-3 py-3" key={row.label}>
             <Label className="w-20 shrink-0">{row.label}</Label>
             <span
               className={cn(
@@ -94,12 +91,9 @@ function ComparisonTable({
 
 function ListResult({ list }: { list: DockResult & { kind: "list" } }) {
   return (
-    <div className="mt-4 border-hairline border-t">
+    <div className="mt-4">
       {list.lines.map((line) => (
-        <div
-          className="flex items-center gap-3 border-hairline border-b py-2.5"
-          key={line.product.id}
-        >
+        <div className="flex items-center gap-3 py-3" key={line.product.id}>
           <ImageGround className="size-9 shrink-0 rounded-[10px] p-1.5">
             <ProductRender
               alt=""
@@ -111,9 +105,7 @@ function ListResult({ list }: { list: DockResult & { kind: "list" } }) {
           <span className="t-body-sm min-w-0 flex-1 truncate text-smoke">
             {line.product.name}
           </span>
-          <span className="t-num-xs text-smoke">
-            ×{line.quantity}
-          </span>
+          <span className="t-num-xs text-smoke">×{line.quantity}</span>
         </div>
       ))}
 

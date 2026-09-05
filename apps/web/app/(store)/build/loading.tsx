@@ -13,7 +13,7 @@ export default function BuildLoading() {
       <div className="mt-14 grid gap-12 lg:grid-cols-[1fr_360px] lg:items-start">
         <div>
           {SLOTS.map((slot) => (
-            <div className="border-hairline border-b py-6" key={slot}>
+   <div className="py-6"key={slot}>
               <Shimmer className="h-3 w-24" radius="pill" />
               <Shimmer className="mt-4 h-[76px] w-full" radius="ground" />
             </div>

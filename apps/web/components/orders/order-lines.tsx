@@ -37,7 +37,7 @@ export function OrderLines({
         </tr>
 
         {discountPaise > 0 ? (
-          <tr className="text-emerald-700 dark:text-emerald-400">
+          <tr className="text-verdant">
             <td className="py-1 pr-2">Discount</td>
             <td className="py-1 text-right tabular-nums">
               −<Money currency={currency} paise={discountPaise} size="sm" />

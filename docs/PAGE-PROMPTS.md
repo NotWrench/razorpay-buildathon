@@ -1,7 +1,11 @@
 # Superseded
 
-The image-generation prompts that lived here are gone. Generated mockups were only ever a preview crutch, and a poor one.
+The image-generation prompts that lived here are gone twice over. Generated
+*mockups* were a preview crutch and were dropped; what replaced them was
+`docs/BUILD-PROMPTS.md`, fourteen prompts that build the real pages.
 
-**Use `docs/BUILD-PROMPTS.md` instead** — fourteen sequential prompts that have Claude Code build the real thing, one previewable page at a time, against the plan in `docs/UI-DESIGN-PLAN.md`.
+For image prompts in the sense of **artwork the site actually ships** — the
+landing page's photography — see **`docs/IMAGE-PROMPTS.md`**, and the drop
+folder it writes into, `apps/web/public/landing/`.
 
 This file can be deleted.

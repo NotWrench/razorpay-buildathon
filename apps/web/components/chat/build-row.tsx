@@ -53,12 +53,12 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
   return (
     <div
       className={cn(
-        "grid items-center gap-6 border-hairline border-b py-5",
+        "grid items-center gap-6 py-5",
         "grid-cols-1 lg:grid-cols-[62%_1fr]",
         ROW_HEIGHT
       )}
     >
-      <div className="flex items-center gap-4 lg:border-hairline lg:border-r lg:pr-6">
+      <div className="flex items-center gap-4">
         <input
           checked={entry.selected}
           className="peer sr-only"
@@ -86,7 +86,12 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
         </label>
 
         <ImageGround className="size-14 shrink-0 rounded-[12px] p-2">
-          <ProductRender alt="" category={part.category} />
+          <ProductRender
+            alt=""
+            category={part.category}
+            sizes="56px"
+            src={part.imageUrl || undefined}
+          />
         </ImageGround>
 
         <div className="min-w-0 flex-1">
@@ -132,7 +137,12 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
       {entry.upgrade && !entry.swapped ? (
         <div className="flex items-center gap-4">
           <ImageGround className="size-11 shrink-0 rounded-[12px] p-2">
-            <ProductRender alt="" category={entry.upgrade.product.category} />
+            <ProductRender
+              alt=""
+              category={entry.upgrade.product.category}
+              sizes="44px"
+              src={entry.upgrade.product.imageUrl || undefined}
+            />
           </ImageGround>
 
           <div className="min-w-0 flex-1">
@@ -146,7 +156,7 @@ function BuildRow({ entry, onRevert, onSwap, onToggle }: BuildRowProps) {
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="t-num-xs text-lacquer">
+            <p className="t-num-xs text-ember">
               +{formatPaise(entry.upgrade.deltaPaise)}
             </p>
             <Pill className="mt-2" onClick={swap} size="sm" variant="ghost">

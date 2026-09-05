@@ -14,7 +14,7 @@ import type { CartLine } from "@/lib/data/types";
 import { shellRoutes } from "@/lib/routes";
 
 /**
- * One line, as a row on a hairline rather than a card.
+ * One line, as a row in a list rather than a card.
  *
  * A cart is a list of things you already decided on; giving each one a card
  * makes the page look like a shelf you are still browsing.
@@ -57,7 +57,7 @@ function CartRow({
   return (
     <li
       className={cn(
-        "border-hairline border-b py-6 transition-opacity duration-exit",
+        "py-6 transition-opacity duration-exit",
         exiting && "pointer-events-none opacity-0"
       )}
       ref={handleRef}

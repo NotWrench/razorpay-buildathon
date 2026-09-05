@@ -26,20 +26,20 @@ export interface ThemeOption {
 
 export const THEMES: ThemeOption[] = [
   {
-    accent: "#c8102e",
-    ground: "#060606",
+    accent: "#d61332",
+    ground: "#0a0a0a",
     id: "black-red",
-    ink: "#f2f0ed",
+    ink: "#ffffff",
     name: "Black + Red",
-    surface: "#1f1f1f",
+    surface: "#232323",
   },
   {
     accent: "#7c5cff",
-    ground: "#060606",
+    ground: "#0a0a0a",
     id: "black-purple",
-    ink: "#f2f0ed",
+    ink: "#ffffff",
     name: "Black + Purple",
-    surface: "#1f1f1f",
+    surface: "#232323",
   },
   {
     accent: "#6d4bd8",

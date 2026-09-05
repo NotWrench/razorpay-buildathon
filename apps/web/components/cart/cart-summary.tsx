@@ -34,9 +34,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-6 py-2.5">
       <Label>{label}</Label>
-      <span className="t-num-sm text-bone">
-        {value}
-      </span>
+      <span className="t-num-sm text-bone">{value}</span>
     </div>
   );
 }
@@ -55,7 +53,7 @@ function CartSummary({
       {discountPaise > 0 ? (
         <div className="flex items-baseline justify-between gap-6 py-2.5">
           <Label>Discount</Label>
-          <span className="t-num-sm text-lacquer">
+          <span className="t-num-sm text-ember">
             −{formatPaise(discountPaise)}
           </span>
         </div>
@@ -67,7 +65,7 @@ function CartSummary({
       />
       {taxPaise > 0 ? <Row label="Tax" value={formatPaise(taxPaise)} /> : null}
 
-      <div className="mt-5 flex items-baseline justify-between gap-6 border-hairline border-t pt-5">
+      <div className="mt-5 flex items-baseline justify-between gap-6 pt-5">
         <Label>Total</Label>
         <CountUp
           className="t-num-lg text-bone"

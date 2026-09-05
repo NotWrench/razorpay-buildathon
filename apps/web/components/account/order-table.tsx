@@ -6,7 +6,7 @@ import { useCallback, useId, useState } from "react";
 import type { AccountOrder } from "@/lib/data/types";
 
 /**
- * Orders, on hairlines.
+ * Orders, on nothing but spacing.
  *
  * Status is plain text, and only `cancelled` gets colour. Three green ticks
  * and a red cross in a column teaches the eye to skip the column; one red word
@@ -31,7 +31,7 @@ function OrderRow({ order }: { order: AccountOrder }) {
   const toggle = useCallback(() => setOpen((current) => !current), []);
 
   return (
-    <div className="border-hairline border-b">
+    <div>
       <button
         aria-controls={panelId}
         aria-expanded={open}
@@ -43,12 +43,8 @@ function OrderRow({ order }: { order: AccountOrder }) {
         onClick={toggle}
         type="button"
       >
-        <span className="t-num-sm text-bone">
-          {order.id}
-        </span>
-        <span className="t-num-xs text-smoke">
-          {order.placedOn}
-        </span>
+        <span className="t-num-sm text-bone">{order.id}</span>
+        <span className="t-num-xs text-smoke">{order.placedOn}</span>
         <span className="t-num-xs text-smoke">
           {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
         </span>
@@ -58,7 +54,7 @@ function OrderRow({ order }: { order: AccountOrder }) {
         <span
           className={cn(
             "t-body-sm md:text-right",
-            order.state === "cancelled" ? "text-lacquer" : "text-smoke"
+            order.state === "cancelled" ? "text-ember" : "text-smoke"
           )}
         >
           {STATE_WORD[order.state]}
@@ -89,7 +85,7 @@ function OrderRow({ order }: { order: AccountOrder }) {
 
 function OrderTable({ orders }: { orders: AccountOrder[] }) {
   return (
-    <div className="mt-6 border-hairline border-t">
+    <div className="mt-6">
       {orders.map((order) => (
         <OrderRow key={order.id} order={order} />
       ))}

@@ -5,6 +5,7 @@ import { Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { ComponentMenu } from "@/components/layout/component-menu";
 import { HeaderAccount } from "@/components/layout/header-account";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UseCaseMenu } from "@/components/layout/use-case-menu";
@@ -13,15 +14,27 @@ import { shellRoutes } from "@/lib/routes";
 import type { CurrentUser } from "@/lib/session";
 
 /**
- * The header, driven by one number.
+ * The header, driven by one number and one flag.
  *
  * `--hp` runs 0 → 1 over the first 120px of scroll, and height, wordmark
- * scale, background alpha, blur and the hairline all read off it. A threshold
- * class would make the header snap at one scroll position; interpolating means
- * it is never caught mid-jump.
+ * scale, background alpha and the hairline all read off it. A threshold class
+ * would make the header snap at one scroll position; interpolating means it is
+ * never caught mid-jump. That interpolation is deliberately *not* transitioned
+ * — it tracks the scrollbar 1:1, and easing a value that already follows your
+ * finger only makes it lag behind it.
+ *
+ * `data-hidden` is the flag, and it is the opposite case: it flips between two
+ * states rather than sweeping, so it does want a transition. Past the shrink
+ * distance the bar leaves on the way down and comes back the moment you scroll
+ * up — out of the way while you read, one flick away when you want it. It never
+ * hides at the top of a page, and never while a menu or overlay is open, since
+ * a bar that vanishes under an open dropdown takes the dropdown with it.
  */
 
 const SHRINK_OVER = 120;
+
+/** Ignore the jitter of a trackpad settling; only real intent moves the bar. */
+const INTENT = 6;
 
 /**
  * Routes that open on a full-bleed band. On these the header starts
@@ -31,9 +44,10 @@ const SHRINK_OVER = 120;
  */
 const HERO_ROUTES = new Set(["/"]);
 
+/* Components is not here — it is a menu of eleven categories now, sitting
+   beside the use-case menu. See `ComponentMenu`. */
 const NAV = [
   { href: shellRoutes.prebuilts, label: "Prebuilts" },
-  { href: shellRoutes.components, label: "Components" },
   { href: shellRoutes.build, label: "Build yours" },
 ] as const;
 
@@ -54,12 +68,30 @@ function useHeaderProgress() {
     }
 
     let frame = 0;
+    let last = window.scrollY;
 
     const write = () => {
       frame = 0;
-      const progress = Math.min(window.scrollY / SHRINK_OVER, 1);
+      const y = window.scrollY;
+      const progress = Math.min(y / SHRINK_OVER, 1);
 
       node.style.setProperty("--hp", progress.toFixed(4));
+
+      const moved = y - last;
+
+      if (Math.abs(moved) >= INTENT) {
+        /*
+         * Down past the shrink distance hides it; any upward movement brings it
+         * back. `aria-expanded` on the trigger inside is how an open Base UI
+         * menu announces itself, so it doubles as the check for "something is
+         * hanging off this bar" without the header having to know what.
+         */
+        const open = node.querySelector('[aria-expanded="true"]') !== null;
+
+        node.dataset.hidden =
+          moved > 0 && y > SHRINK_OVER && !open ? "true" : "false";
+        last = y;
+      }
     };
 
     const onScroll = () => {
@@ -122,7 +154,8 @@ function SiteHeader({ cartCount = 0, initialUser }: SiteHeaderProps) {
 
   return (
     <header
-      className="sticky top-0 z-40 w-full"
+      className="sticky top-0 z-40 w-full transition-[transform,height,background-color] duration-standard ease-[cubic-bezier(.22,1,.36,1)] data-[hidden=true]:-translate-y-full data-[hidden=true]:duration-exit data-[hidden=true]:ease-[cubic-bezier(.65,0,.35,1)] motion-reduce:transition-none motion-reduce:data-[hidden=true]:translate-y-0"
+      data-hidden="false"
       ref={ref}
       style={
         {
@@ -151,9 +184,9 @@ function SiteHeader({ cartCount = 0, initialUser }: SiteHeaderProps) {
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {NAV.map((item) => (
-            <NavLink href={item.href} key={item.label} label={item.label} />
-          ))}
+          <NavLink href={NAV[0].href} key={NAV[0].label} label={NAV[0].label} />
+          <ComponentMenu />
+          <NavLink href={NAV[1].href} key={NAV[1].label} label={NAV[1].label} />
           <UseCaseMenu />
           <NavLink href={shellRoutes.assistant} label="Assistant" />
         </nav>

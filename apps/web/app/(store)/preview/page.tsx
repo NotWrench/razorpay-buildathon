@@ -204,7 +204,7 @@ const EXISTING_ROUTES: PreviewRoute[] = [
 
 function RouteRow({ entry }: { entry: PreviewRoute }) {
   return (
-    <li className="border-hairline border-b">
+    <li>
       <Link
         className="flex items-center gap-5 py-4 transition-colors duration-micro hover:bg-carbon"
         href={entry.href}
@@ -215,12 +215,8 @@ function RouteRow({ entry }: { entry: PreviewRoute }) {
             entry.built ? "bg-verdant" : "bg-hairline"
           }`}
         />
-        <span className="t-num-xs w-40 shrink-0 text-bone">
-          {entry.href}
-        </span>
-        <span className="t-body-sm flex-1 text-smoke">
-          {entry.description}
-        </span>
+        <span className="t-num-xs w-40 shrink-0 text-bone">{entry.href}</span>
+        <span className="t-body-sm flex-1 text-smoke">{entry.description}</span>
         <Label className="shrink-0">
           {entry.built ? "Built" : `Prompt ${entry.prompt}`}
         </Label>
@@ -238,7 +234,7 @@ export default async function PreviewIndexPage() {
       <Label>Build index</Label>
       <h1 className="t-display-lg mt-4 text-bone leading-none">
         Every route in the build
-        <span className="text-lacquer">.</span>
+        <span className="text-ember">.</span>
       </h1>
       <p className="t-body mt-4 max-w-[66ch] text-smoke">
         One row per screen, in the order the prompts build them. A filled dot
@@ -246,24 +242,20 @@ export default async function PreviewIndexPage() {
         still a prompt away.
       </p>
 
-      <ul className="mt-14 border-hairline border-t">
+      <ul className="mt-14">
         {BUILD_ROUTES.map((entry) => (
           <RouteRow entry={entry} key={`${entry.prompt}-${entry.href}`} />
         ))}
       </ul>
 
-      <h2 className="t-display-sm mt-16 text-bone">
-        Already in the repo
-      </h2>
-      <ul className="mt-6 border-hairline border-t">
+      <h2 className="t-display-sm mt-16 text-bone">Already in the repo</h2>
+      <ul className="mt-6">
         {EXISTING_ROUTES.map((entry) => (
           <RouteRow entry={entry} key={entry.href} />
         ))}
       </ul>
 
-      <h2 className="t-display-sm mt-20 text-bone">
-        The foundation
-      </h2>
+      <h2 className="t-display-sm mt-20 text-bone">The foundation</h2>
       <p className="t-body mt-3 mb-6 max-w-[66ch] text-smoke">
         Every primitive the rest of the build is made from. Nothing below ships
         as a page — it is here to be judged before anything is built on it.

@@ -67,18 +67,14 @@ function ReviewBars({ distribution }: { distribution: number[] }) {
 
         return (
           <div className="flex items-center gap-4" key={stars}>
-            <span className="t-num-xs w-3 text-smoke">
-              {stars}
-            </span>
+            <span className="t-num-xs w-3 text-smoke">{stars}</span>
             <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-hairline">
               <span
                 className="block h-full rounded-full bg-smoke"
                 style={{ width: `${(count / most) * 100}%` }}
               />
             </span>
-            <span className="t-num-xs w-10 text-right text-smoke">
-              {count}
-            </span>
+            <span className="t-num-xs w-10 text-right text-smoke">{count}</span>
           </div>
         );
       })}
@@ -161,10 +157,10 @@ function ProductTabs({ product }: { product: ProductDetail }) {
         {active === "Compatibility" ? (
           <div className="max-w-[70ch]">
             {product.compatibility ? (
-              <ul className="border-hairline border-t">
+              <ul>
                 {product.compatibility.checks.map((check) => (
                   <li
-                    className="flex flex-col gap-2 border-hairline border-b py-5 sm:flex-row sm:items-baseline sm:gap-8"
+                    className="flex flex-col gap-2 py-5 sm:flex-row sm:items-baseline sm:gap-8"
                     key={check.rule}
                   >
                     <Label className="sm:w-40 sm:shrink-0">{check.label}</Label>
@@ -198,14 +194,12 @@ function ProductTabs({ product }: { product: ProductDetail }) {
               </div>
             </div>
 
-            <ul className="border-hairline border-t">
+            <ul>
               {product.reviews.items.map((review) => (
-                <li className="border-hairline border-b py-5" key={review.id}>
+                <li className="py-5" key={review.id}>
                   <div className="flex items-baseline justify-between gap-4">
                     <p className="t-body text-bone">{review.author}</p>
-                    <p className="t-num-xs text-smoke">
-                      {review.rating}/5
-                    </p>
+                    <p className="t-num-xs text-smoke">{review.rating}/5</p>
                   </div>
                   <p className="t-body mt-2 max-w-[66ch] text-smoke">
                     {review.body}

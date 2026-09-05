@@ -49,10 +49,10 @@ export function QuoteCard({ quote }: { quote: QuoteShape }) {
           </tr>
           {quote.appliedCampaign ? (
             <tr>
-              <td className="py-1 pr-2 text-emerald-700 dark:text-emerald-400">
+              <td className="py-1 pr-2 text-verdant">
                 {quote.appliedCampaign.title}
               </td>
-              <td className="py-1 text-right text-emerald-700 tabular-nums dark:text-emerald-400">
+              <td className="py-1 text-right text-verdant tabular-nums">
                 −{formatPaise(quote.discountPaise, quote.currency)}
               </td>
             </tr>

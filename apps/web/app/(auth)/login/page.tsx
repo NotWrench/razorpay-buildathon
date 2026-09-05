@@ -2,6 +2,7 @@ import { isGoogleConfigured } from "@workspace/auth";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthScreen } from "@/components/auth/auth-screen";
+import { landingImages } from "@/lib/landing-images";
 import { route } from "@/lib/routes";
 import { currentUser } from "@/lib/session";
 
@@ -27,5 +28,11 @@ export default async function LoginPage({
     redirect(route(target));
   }
 
-  return <AuthScreen configured={isGoogleConfigured} next={target} />;
+  return (
+    <AuthScreen
+      configured={isGoogleConfigured}
+      heroSrc={landingImages.pageHero.auth.src ?? undefined}
+      next={target}
+    />
+  );
 }

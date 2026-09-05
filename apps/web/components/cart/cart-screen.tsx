@@ -256,9 +256,7 @@ function CartScreen({ cart }: { cart: Cart }) {
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-5 pt-14 sm:px-8 lg:px-10 2xl:px-16">
-      <h1 className="t-display-lg text-bone leading-none">
-        Cart
-      </h1>
+      <h1 className="t-display-lg text-bone leading-none">Cart</h1>
 
       <div className="mt-12 grid gap-14 lg:grid-cols-[1fr_380px]">
         <div>
@@ -276,7 +274,7 @@ function CartScreen({ cart }: { cart: Cart }) {
 
             return (
               <section className="mb-12" key={group.build.id}>
-                <div className="flex items-baseline justify-between gap-6 border-hairline border-b pb-3">
+                <div className="flex items-baseline justify-between gap-6 pb-3">
                   <Label className="text-bone">{group.build.name}</Label>
                   <span className="t-num-xs text-smoke">
                     {formatPaise(subtotal)}
@@ -310,7 +308,7 @@ function CartScreen({ cart }: { cart: Cart }) {
 
           {loose.length > 0 ? (
             <section>
-              <div className="border-hairline border-b pb-3">
+              <div className="pb-3">
                 <Label>Also in your cart</Label>
               </div>
               <ul className="mt-2">
@@ -333,7 +331,7 @@ function CartScreen({ cart }: { cart: Cart }) {
         <div>
           <CartSummary {...totals} />
 
-          <p className="t-body-sm mt-10 flex items-start gap-2 border-hairline border-t pt-8 text-smoke">
+          <p className="t-body-sm mt-10 flex items-start gap-2 pt-8 text-smoke">
             <Sparkles aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             {note}
           </p>

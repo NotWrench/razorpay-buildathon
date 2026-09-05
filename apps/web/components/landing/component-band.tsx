@@ -1,10 +1,10 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
-import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Label } from "@workspace/ui/components/label";
 import { Stagger } from "@workspace/ui/components/motion/stagger";
 import Link from "next/link";
+import { PhotoGround } from "@/components/common/photo-ground";
 import { PillLink } from "@/components/common/pill-link";
-import { ProductRender } from "@/components/common/product-render";
+import { landingImages } from "@/lib/landing-images";
 import { shellRoutes } from "@/lib/routes";
 
 /**
@@ -34,40 +34,38 @@ function ComponentBand({
   return (
     <section className="w-full bg-carbon py-24 lg:py-28">
       <div className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
-      <Label>Shop by component</Label>
-      <h2 className="t-display-md mt-4 max-w-[22ch] text-bone">
-        Or start from the part you already know you want.
-      </h2>
+        <Label>Shop by component</Label>
+        <h2 className="t-display-md mt-4 max-w-[22ch] text-bone">
+          Or start from the part you already know you want.
+        </h2>
 
-      <Stagger className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-6">
-        {tiles.map((tile) => (
-          <Link
-            className="group block"
-            href={shellRoutes.shopCategory(tile.slug)}
-            key={tile.slug}
-          >
-            <ImageGround className="aspect-[4/3] p-5 transition-transform duration-micro group-hover:-translate-y-0.5">
-              <ProductRender
+        <Stagger className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-6">
+          {tiles.map((tile) => (
+            <Link
+              className="group block"
+              href={shellRoutes.shopCategory(tile.slug)}
+              key={tile.slug}
+            >
+              <PhotoGround
                 alt={tile.name}
                 category={tile.slug}
-                className="transition-transform duration-standard group-hover:scale-[1.03]"
+                className="aspect-[4/3] transition-transform duration-micro group-hover:-translate-y-0.5"
+                fallbackClassName="p-5"
+                imageClassName="transition-transform duration-standard group-hover:scale-[1.03]"
+                sizes="(min-width: 1024px) 200px, (min-width: 768px) 30vw, 45vw"
+                src={landingImages.component[tile.slug]?.src ?? undefined}
               />
-            </ImageGround>
-            <p className="t-body mt-3 text-bone">
-              {tile.name}
-            </p>
-            <p className="t-num-xs mt-1 text-smoke">
-              {tile.count}
-            </p>
-          </Link>
-        ))}
-      </Stagger>
+              <p className="t-body mt-3 text-bone">{tile.name}</p>
+              <p className="t-num-xs mt-1 text-smoke">{tile.count}</p>
+            </Link>
+          ))}
+        </Stagger>
 
-      <div className="mt-10">
-        <PillLink href={shellRoutes.components} variant="text">
-          All {totalCategories} categories →
-        </PillLink>
-      </div>
+        <div className="mt-10">
+          <PillLink href={shellRoutes.components} variant="text">
+            All {totalCategories} categories →
+          </PillLink>
+        </div>
       </div>
     </section>
   );

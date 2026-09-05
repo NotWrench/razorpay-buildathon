@@ -40,7 +40,7 @@ function ProsePage({
       <div className="mt-16 max-w-[66ch] space-y-12">
         {sections.map((section) => (
           <Reveal key={section.heading}>
-            <section className="border-hairline border-t pt-8">
+            <section className="rule-section pt-8">
               <h2 className="t-display-sm text-bone">{section.heading}</h2>
               <div className="t-body mt-4 space-y-4 text-smoke">
                 {section.body}

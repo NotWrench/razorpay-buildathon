@@ -7,6 +7,7 @@
  * the split is enforced at runtime rather than by convention.
  */
 
+export { type Address, addresses, type NewAddress } from "./addresses";
 export {
   type AgentFeedback,
   type AgentMemoryLong,

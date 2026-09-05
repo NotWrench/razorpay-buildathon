@@ -143,6 +143,36 @@ export async function listBuilds(params: {
   });
 }
 
+/**
+ * Removes a build the buyer owns.
+ *
+ * Scoped in the `where` rather than fetched-then-checked, so a build id from
+ * another buyer or another store deletes nothing and reports nothing found —
+ * the caller cannot tell the two apart, which is the point.
+ *
+ * `build_items` has `onDelete: "cascade"`, so the parts go with it. Cart lines
+ * do not: `cart_items.build_id` is `set null`, so a build already in the basket
+ * survives as loose lines rather than emptying the basket underneath someone.
+ */
+export async function deleteBuild(params: {
+  buildId: string;
+  buyerIdentifier: string;
+  merchantId: string;
+}): Promise<boolean> {
+  const removed = await db
+    .delete(builds)
+    .where(
+      and(
+        eq(builds.id, params.buildId),
+        eq(builds.merchantId, params.merchantId),
+        eq(builds.buyerIdentifier, params.buyerIdentifier)
+      )
+    )
+    .returning({ id: builds.id });
+
+  return removed.length > 0;
+}
+
 async function writeItems(buildId: string, components: BuildComponent[]) {
   await db.delete(buildItems).where(eq(buildItems.buildId, buildId));
 

@@ -3,6 +3,7 @@
 import {
   BuildError,
   createBuild,
+  deleteBuild,
   getBuildOrThrow,
   updateBuild,
   validateBuildById,
@@ -276,7 +277,10 @@ export async function startBuildFromPartsAction(
   try {
     const { build } = await createBuild({
       ...scope,
-      items: available.map((product) => ({ productId: product.id, quantity: 1 })),
+      items: available.map((product) => ({
+        productId: product.id,
+        quantity: 1,
+      })),
       name: parsed.name,
     });
 
@@ -318,4 +322,37 @@ export async function startBuildAction(
   revalidateBuild(parsed.slug);
 
   return ok({ buildId: build.id });
+}
+
+/**
+ * Removes a saved build.
+ *
+ * The account page listed builds with no way to remove one, so the list only
+ * ever grew. Ownership is checked inside `deleteBuild`'s `where`, so a build id
+ * belonging to somebody else deletes nothing and reads back as not found.
+ */
+export async function deleteBuildAction(
+  input: z.input<typeof buildOnlySchema>
+): Promise<ActionResult> {
+  const check = buildOnlySchema.safeParse(input);
+
+  if (!check.success) {
+    return failed("That build could not be removed.");
+  }
+
+  const scope = await scopeFor(check.data.slug);
+  const removed = await deleteBuild({
+    buildId: check.data.buildId,
+    buyerIdentifier: scope.buyerIdentifier,
+    merchantId: scope.merchantId,
+  });
+
+  if (!removed) {
+    return failed("That build could not be found.");
+  }
+
+  revalidateBuild(check.data.slug);
+  revalidatePath("/account");
+
+  return ok();
 }

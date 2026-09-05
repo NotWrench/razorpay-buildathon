@@ -42,24 +42,18 @@ function PriceBlock({
     <div
       className={cn("flex flex-wrap items-baseline gap-x-3 gap-y-1", className)}
     >
-      <span
-        className={cn("text-bone", PRICE_SIZE[size])}
-      >
+      <span className={cn("text-bone", PRICE_SIZE[size])}>
         {formatPaise(pricePaise)}
       </span>
 
       {compareAtPaise ? (
-        <span
-          className={cn("text-smoke line-through", COMPARE_SIZE[size])}
-        >
+        <span className={cn("text-smoke line-through", COMPARE_SIZE[size])}>
           {formatPaise(compareAtPaise)}
         </span>
       ) : null}
 
       {saving ? (
-        <span
-          className={cn("text-lacquer", COMPARE_SIZE[size])}
-        >
+        <span className={cn("text-ember", COMPARE_SIZE[size])}>
           Save {formatPaise(saving)}
         </span>
       ) : null}

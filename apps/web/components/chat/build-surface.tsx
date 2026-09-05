@@ -139,14 +139,17 @@ function BuildSurface({
                 zIndex: 4 - index,
               }}
             >
-              <ProductRender alt="" category={partFor(entry).category} />
+              <ProductRender
+                alt=""
+                category={partFor(entry).category}
+                sizes="48px"
+                src={partFor(entry).imageUrl || undefined}
+              />
             </ImageGround>
           ))}
         </div>
 
-        <p className="t-num-xs mt-4 text-smoke">
-          {selected.length} parts
-        </p>
+        <p className="t-num-xs mt-4 text-smoke">{selected.length} parts</p>
         <p className="t-num-sm mt-1 text-bone">
           {formatPaise(verdict.totalPaise)}
         </p>
@@ -184,9 +187,7 @@ function BuildSurface({
       >
         <div className="flex items-baseline justify-between gap-6 border-hairline border-b px-6 py-4">
           <Label>Your build</Label>
-          <span className="t-num-xs text-smoke">
-            {basis}
-          </span>
+          <span className="t-num-xs text-smoke">{basis}</span>
         </div>
 
         <div className="px-6">
@@ -229,7 +230,7 @@ function BuildSurface({
                 value={verdict.totalPaise}
               />
               {verdict.upgradePaise > 0 ? (
-                <p className="t-num-xs mt-1 text-lacquer">
+                <p className="t-num-xs mt-1 text-ember">
                   +{formatPaise(verdict.upgradePaise)} upgrades
                 </p>
               ) : null}

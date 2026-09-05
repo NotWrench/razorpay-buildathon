@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
+import { CATEGORY_DEFINITIONS } from "@workspace/db/taxonomy";
 import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { Menu, X } from "lucide-react";
@@ -8,7 +9,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "@/lib/auth-client";
 import { shellRoutes } from "@/lib/routes";
+import type { HeaderAccountUser } from "./header-account";
 
 /**
  * The nav, below md.
@@ -36,8 +39,11 @@ const PRIMARY: { href: Route; label: string }[] = [
   { href: shellRoutes.assistant, label: "Assistant" },
 ];
 
-import { useSession } from "@/lib/auth-client";
-import type { HeaderAccountUser } from "./header-account";
+/* The eleven categories, in build order. "Components" above still goes to the
+   unfiltered listing; this is the shortcut past it. */
+const CATEGORIES = [...CATEGORY_DEFINITIONS].sort(
+  (a, b) => a.sortOrder - b.sortOrder
+);
 
 interface MobileNavProps {
   initialUser?: HeaderAccountUser | null;
@@ -94,12 +100,26 @@ function MobileNav({ initialUser }: MobileNavProps = {}) {
           <nav className="px-6 pb-10">
             <ul className="mt-6">
               {PRIMARY.map((item) => (
-                <li className="border-hairline border-b" key={item.label}>
+                <li key={item.label}>
                   <Link
                     className="t-body-lg flex min-h-[52px] items-center text-bone"
                     href={item.href}
                   >
                     {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <Label className="mt-9 block">Shop by component</Label>
+            <ul className="mt-3 grid grid-cols-2 gap-x-4">
+              {CATEGORIES.map((category) => (
+                <li key={category.slug}>
+                  <Link
+                    className="t-body flex min-h-[44px] items-center text-smoke"
+                    href={shellRoutes.shopCategory(category.slug)}
+                  >
+                    {category.name}
                   </Link>
                 </li>
               ))}

@@ -1,11 +1,14 @@
 import { ImageGround } from "@workspace/ui/components/image-ground";
 import { KenBurns } from "@workspace/ui/components/motion/ken-burns";
 import { Stagger } from "@workspace/ui/components/motion/stagger";
+import { cn } from "@workspace/ui/lib/utils";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ProductRender } from "@/components/common/product-render";
 import { UseCaseFilter } from "@/components/prebuilt/use-case-filter";
 import { PrebuiltRow } from "@/components/product/prebuilt-row";
 import { getPrebuilts } from "@/lib/data";
+import { landingImages } from "@/lib/landing-images";
 
 /**
  * The four machines, one per row, at ORIGIN's density: two and a bit fill a
@@ -50,24 +53,49 @@ export default async function PrebuiltsPage({
 
   return (
     <div>
-      <section className="relative h-[280px] w-full overflow-hidden lg:h-[320px]">
+      {/*
+          A banner is the one slot where cropping is the point: a 3:1 studio
+          shot into a band this wide keeps the middle and loses the top and
+          bottom, which is what a banner does. The height grows with the
+          viewport so that crop, and the upscale that comes with it, both ease
+          off on a wide screen.
+        */}
+      <section className="relative h-[260px] w-full overflow-hidden sm:h-[300px] lg:h-[340px] xl:h-[380px]">
         <KenBurns className="h-full w-full">
-          <ImageGround className="h-full w-full rounded-none p-12">
-            <div className="flex h-full w-full items-center justify-center gap-16 opacity-80">
-              <ProductRender alt="" category="case" />
-              <ProductRender alt="" category="case" />
-              <ProductRender alt="" category="case" />
-            </div>
+          <ImageGround
+            className={cn(
+              "h-full w-full rounded-none",
+              landingImages.pageHero.prebuilts.src ? undefined : "p-6"
+            )}
+          >
+            {/* One photograph, or — until it exists — the three drawings this
+                band has always shown. Three of the same outline in a row is a
+                placeholder; a photograph of a shelf of machines is the band. */}
+            {landingImages.pageHero.prebuilts.src ? (
+              <Image
+                alt=""
+                className="object-cover"
+                fill
+                sizes="100vw"
+                src={landingImages.pageHero.prebuilts.src}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center gap-16 opacity-80">
+                <ProductRender alt="" category="case" />
+                <ProductRender alt="" category="case" />
+                <ProductRender alt="" category="case" />
+              </div>
+            )}
           </ImageGround>
         </KenBurns>
         <div
           aria-hidden
-          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,6,6,0.35)_0%,rgba(6,6,6,0.92)_100%)]"
+          className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,color-mix(in_srgb,var(--void)_30%,transparent)_45%,color-mix(in_srgb,var(--void)_94%,transparent)_100%)]"
         />
       </section>
 
       <div className="mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-10 2xl:px-16">
-        <div className="relative -mt-20">
+        <div className="relative -mt-16">
           <h1 className="t-display-lg text-bone leading-none">
             Prebuilt systems
           </h1>
@@ -85,10 +113,7 @@ export default async function PrebuiltsPage({
             No machine is built for that yet.
           </p>
         ) : (
-          <Stagger
-            className="mt-12 border-hairline border-t [&>*+*]:border-hairline [&>*+*]:border-t"
-            key={use}
-          >
+          <Stagger className="mt-12" key={use}>
             {machines.map((machine, index) => (
               <PrebuiltRow
                 key={machine.slug}

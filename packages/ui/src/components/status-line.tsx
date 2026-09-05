@@ -31,7 +31,7 @@ interface StatusLineProps {
  */
 const STATUS = {
   compatible: { Icon: CircleCheck, tone: "text-verdant" },
-  incompatible: { Icon: CircleAlert, tone: "text-lacquer" },
+  incompatible: { Icon: CircleAlert, tone: "text-ember" },
   insufficient_data: { Icon: CircleHelp, tone: "text-smoke" },
   needs_verification: { Icon: TriangleAlert, tone: "text-amber" },
 } as const;

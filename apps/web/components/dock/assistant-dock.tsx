@@ -381,7 +381,7 @@ function AssistantDock({
                   quickly, and I hand the rest to the full assistant.
                 </p>
 
-                <div className="mt-5 border-hairline border-t">
+                <div className="mt-5">
                   {starters.map((starter) => (
                     <StarterRow
                       key={starter.id}
@@ -496,7 +496,7 @@ function StarterRow({
    */
   return (
     <button
-      className="group -mx-2 flex w-full items-center gap-3 rounded-[12px] border-hairline border-b px-2 py-3.5 text-left transition-colors duration-micro hover:bg-riser"
+      className="group -mx-2 flex w-full items-center gap-3 rounded-[12px] px-2 py-3.5 text-left transition-colors duration-micro hover:bg-riser"
       onClick={handleClick}
       type="button"
     >

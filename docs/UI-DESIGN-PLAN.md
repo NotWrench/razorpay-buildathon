@@ -1,5 +1,20 @@
 # Agentic PC Commerce — UI/UX Design Plan
 
+> [!IMPORTANT]
+> **Superseded by Arctic Mono (2026-09-04).**
+>
+> This document describes **Ember v3** — a warm near-black page, warm off-white
+> text, three typefaces (Archivo, Inter Tight, JetBrains Mono for numbers only),
+> and a 1px hairline under every row. None of that is what the site looks like
+> now. Arctic Mono is: black lifted off pure black, pure white text, neutral
+> greys, **Geist and Geist Mono** (sans for language, mono for values), red as
+> the only accent, and **no row dividers at all**.
+>
+> Read this for the reasoning, the layout structure and the page inventory,
+> which all still hold. Do not read it for colour, type or rules — for those the
+> source of truth is `packages/ui/src/styles/globals.css`, and the summary is in
+> §0 of `docs/UI-UX-MEMORY.md`.
+
 **Version 3.0 · 2026-09-01 · Ember, image-led**
 
 Reference: **ORIGIN PC**, studied properly this time — the homepage, the desktop listing and the NEURON product page. No image-generation prompts here; those live in `PAGE-PROMPTS.md`.

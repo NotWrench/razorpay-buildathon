@@ -1,10 +1,9 @@
 "use client";
 
-import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Pill } from "@workspace/ui/components/pill";
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { ProductRender } from "@/components/common/product-render";
+import { PhotoGround } from "@/components/common/photo-ground";
 import { signIn } from "@/lib/auth-client";
 import { shellRoutes } from "@/lib/routes";
 
@@ -50,11 +49,16 @@ interface AuthScreenProps {
    * idea which of the two ends is misconfigured.
    */
   configured: boolean;
+  /**
+   * The art beside the button, already resolved. This is a client component,
+   * so the route does the filesystem lookup — see `lib/landing-images.ts`.
+   */
+  heroSrc?: string;
   /** Where to land after Google sends the browser back. Same-origin only. */
   next: string;
 }
 
-function AuthScreen({ configured, next }: AuthScreenProps) {
+function AuthScreen({ configured, heroSrc, next }: AuthScreenProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,13 +91,17 @@ function AuthScreen({ configured, next }: AuthScreenProps) {
     <div className="flex min-h-dvh flex-col lg:flex-row">
       {/* Left: one claim, on a render, and nothing else. */}
       <div className="relative isolate hidden lg:block lg:w-[45%]">
-        <ImageGround className="absolute inset-0 rounded-none">
-          <ProductRender
-            alt=""
-            category="case"
-            className="h-[92%] w-auto opacity-40"
-          />
-        </ImageGround>
+        {/* The scrim over this panel already runs 55% to 88% void; a second
+            dimming step on the photograph itself only muddied it. */}
+        <PhotoGround
+          alt=""
+          category="case"
+          className="absolute inset-0 rounded-none"
+          fallbackClassName="p-12"
+          imageClassName="opacity-90"
+          sizes="45vw"
+          src={heroSrc}
+        />
 
         <div
           aria-hidden
@@ -102,9 +110,7 @@ function AuthScreen({ configured, next }: AuthScreenProps) {
 
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link className="flex items-baseline gap-1" href={shellRoutes.home}>
-            <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
-              NEXUS
-            </span>
+            <span className="t-display-sm font-bold text-bone">NEXUS</span>
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 
@@ -125,9 +131,7 @@ function AuthScreen({ configured, next }: AuthScreenProps) {
             className="mb-10 flex items-baseline gap-1 lg:hidden"
             href={shellRoutes.home}
           >
-            <span className="font-bold font-display text-[21px] text-bone tracking-[-0.02em]">
-              NEXUS
-            </span>
+            <span className="t-display-sm font-bold text-bone">NEXUS</span>
             <span aria-hidden className="size-[5px] rounded-full bg-lacquer" />
           </Link>
 

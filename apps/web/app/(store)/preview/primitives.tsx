@@ -37,7 +37,7 @@ function Bay({
   title: string;
 }) {
   return (
-    <section className="border-hairline border-b py-10">
+    <section className="py-10">
       <Label>{title}</Label>
       <div className="mt-6">{children}</div>
     </section>
@@ -46,7 +46,7 @@ function Bay({
 
 export function Primitives({ product }: { product?: ProductSummary }) {
   return (
-    <div className="border-hairline border-t">
+    <div>
       <Bay title="Pill — the only button shape">
         <div className="flex flex-wrap items-center gap-4">
           <Pill>Customize</Pill>
@@ -60,16 +60,14 @@ export function Primitives({ product }: { product?: ProductSummary }) {
         </div>
       </Bay>
 
-      <Bay title="Type — display, sans, and mono for numbers only">
-        <p className="t-display-lg text-bone leading-none">
-          Archivo, set tight
-        </p>
-        <p className="t-model mt-3 text-bone text-xl">
-          Meridian
-        </p>
+      <Bay title="Type — Geist for language, Geist Mono for values">
+        <p className="t-display-lg text-bone leading-none">Geist, set tight</p>
+        <p className="t-model mt-3 text-bone text-xl">Meridian</p>
         <p className="t-body mt-4 max-w-[66ch] text-smoke">
-          Inter Tight carries everything functional — this paragraph, the nav,
-          every button. It never sets a number.
+          Geist carries everything functional — this paragraph, the nav, every
+          button. It never sets a number. The machine name above and the figures
+          below are Geist Mono, the same family, so the two sit together rather
+          than argue.
         </p>
         <p className="t-num-md mt-4 text-bone">
           ₹3,34,900 · 780 W · 16GB GDDR7

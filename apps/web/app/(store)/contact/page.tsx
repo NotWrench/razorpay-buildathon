@@ -17,7 +17,7 @@ export default function ContactPage() {
               Ask it which of two cards suits your monitor, whether a cooler
               clears your memory, or where an order is.{" "}
               <Link
-                className="text-bone underline underline-offset-4 transition-colors duration-micro hover:text-lacquer"
+                className="text-bone underline-offset-4 transition-colors duration-micro hover:text-ember hover:underline"
                 href={shellRoutes.assistant}
               >
                 Open the assistant
@@ -32,7 +32,7 @@ export default function ContactPage() {
             <p>
               Write to{" "}
               <a
-                className="text-bone underline underline-offset-4 transition-colors duration-micro hover:text-lacquer"
+                className="text-bone underline-offset-4 transition-colors duration-micro hover:text-ember hover:underline"
                 href="mailto:help@nexus.systems"
               >
                 help@nexus.systems

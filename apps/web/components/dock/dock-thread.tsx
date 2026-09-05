@@ -51,7 +51,7 @@ function ToolLine({ tool }: { tool: DockTool }) {
       </button>
 
       {open ? (
-        <dl className="mt-2 border-hairline border-t pt-2">
+        <dl className="mt-2 pt-2">
           {Object.entries(tool.args).map(([key, value]) => (
             <div className="flex gap-3 py-0.5" key={key}>
               <Label as="dt" className="w-20 shrink-0">
@@ -74,9 +74,7 @@ function ToolLine({ tool }: { tool: DockTool }) {
 
 function Turn({ streaming, turn }: { streaming: boolean; turn: DockTurn }) {
   if (turn.role === "user") {
-    return (
-      <p className="t-body-sm pl-8 text-right text-smoke">{turn.text}</p>
-    );
+    return <p className="t-body-sm pl-8 text-right text-smoke">{turn.text}</p>;
   }
 
   const done = turn.shown >= turn.text.split(" ").length;

@@ -5,7 +5,9 @@ import type { CategorySlug } from "@workspace/db/taxonomy";
 import { ImageGround } from "@workspace/ui/components/image-ground";
 import { KenBurns } from "@workspace/ui/components/motion/ken-burns";
 import { Pill } from "@workspace/ui/components/pill";
+import { cn } from "@workspace/ui/lib/utils";
 import { ChevronDown, X } from "lucide-react";
+import Image from "next/image";
 import { useCallback } from "react";
 import { ProductRender } from "@/components/common/product-render";
 import type { ProductSort } from "@/lib/data/types";
@@ -28,6 +30,11 @@ interface CategoryBandProps {
   activeFilters: ActiveFilter[];
   category?: CategorySlug;
   filterCount: number;
+  /**
+   * This page's hero, already resolved. Client component, so the shop page
+   * does the filesystem lookup — see `lib/landing-images.ts`.
+   */
+  heroSrc?: string;
   name: string;
   onOpenFilters: () => void;
   onSort: (sort: ProductSort) => void;
@@ -69,6 +76,37 @@ function SortItem({
   );
 }
 
+/**
+ * What the banner shows: this page's photograph if it has been shot, else the
+ * one line drawing for a category page, else the row of three that stands for
+ * "everything".
+ */
+function BandArt({
+  category,
+  heroSrc,
+}: {
+  category?: CategorySlug;
+  heroSrc?: string;
+}) {
+  if (heroSrc) {
+    return (
+      <Image alt="" className="object-cover" fill sizes="100vw" src={heroSrc} />
+    );
+  }
+
+  if (category) {
+    return <ProductRender alt="" category={category} />;
+  }
+
+  return (
+    <div className="flex h-full w-full items-center justify-center gap-10 opacity-80">
+      <ProductRender alt="" category="gpu" />
+      <ProductRender alt="" category="cpu" />
+      <ProductRender alt="" category="storage" />
+    </div>
+  );
+}
+
 function CategoryBand({
   activeFilters,
   category,
@@ -77,36 +115,39 @@ function CategoryBand({
   onOpenFilters,
   onSort,
   sort,
+  heroSrc,
   total,
 }: CategoryBandProps) {
   return (
     <section>
-      <div className="relative h-[240px] w-full overflow-hidden lg:h-[280px]">
+      {/*
+          A banner is the one slot where cropping is the point: a 3:1 studio
+          shot into a band this wide keeps the middle and loses the top and
+          bottom, which is what a banner does. The height grows with the
+          viewport so that crop, and the upscale that comes with it, both ease
+          off on a wide screen.
+        */}
+      <div className="relative h-[220px] w-full overflow-hidden sm:h-[260px] lg:h-[300px] xl:h-[340px]">
         <KenBurns className="h-full w-full">
-          <ImageGround className="h-full w-full rounded-none p-10">
-            {category ? (
-              <ProductRender alt="" category={category} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center gap-10 opacity-80">
-                <ProductRender alt="" category="gpu" />
-                <ProductRender alt="" category="cpu" />
-                <ProductRender alt="" category="storage" />
-              </div>
+          <ImageGround
+            className={cn(
+              "h-full w-full rounded-none",
+              heroSrc ? undefined : "p-6"
             )}
+          >
+            <BandArt category={category} heroSrc={heroSrc} />
           </ImageGround>
         </KenBurns>
         <div
           aria-hidden
-          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(6,6,6,0.2)_0%,rgba(6,6,6,0.9)_100%)]"
+          className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,color-mix(in_srgb,var(--void)_30%,transparent)_45%,color-mix(in_srgb,var(--void)_94%,transparent)_100%)]"
         />
       </div>
 
       <div className="mx-auto w-full max-w-[1280px] px-8 lg:px-16">
         <div className="relative -mt-14 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="t-display-lg text-bone leading-none">
-              {name}
-            </h1>
+            <h1 className="t-display-lg text-bone leading-none">{name}</h1>
             <p className="t-num-xs mt-3 h-5 text-smoke">
               {total === undefined
                 ? null
@@ -118,9 +159,7 @@ function CategoryBand({
             <Pill onClick={onOpenFilters} size="sm" variant="ghost">
               Filter
               {filterCount > 0 ? (
-                <span className="t-num-xs">
-                  {filterCount}
-                </span>
+                <span className="t-num-xs">{filterCount}</span>
               ) : null}
             </Pill>
 

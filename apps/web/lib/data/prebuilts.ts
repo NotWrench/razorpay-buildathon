@@ -252,6 +252,9 @@ function toComponent(row: {
 /** The four headline rows, in the order the card prints them. */
 const HEADLINE_SLOTS = ["Processor", "Graphics", "Memory", "Storage"] as const;
 
+/** How many shots a model page's gallery shows. One row of three. */
+const GALLERY_VIEWS = 3;
+
 interface Resolved {
   detail: PrebuiltDetail;
   recipe: Recipe;
@@ -365,9 +368,13 @@ const resolveAll = cache(async (): Promise<Resolved[]> => {
           value: partFor(slot)?.name ?? "—",
         })),
         heroImageUrl,
+        /* Three. A recipe has eight parts and showing all eight turned the
+           gallery into a parts list the manifest below already gives you,
+           twice as well. Three is a row, and a row reads as a gallery. */
         images: summaries
           .map((entry) => entry.product.imageUrl)
-          .filter((url) => url !== ""),
+          .filter((url) => url !== "")
+          .slice(0, GALLERY_VIEWS),
         manifest: summaries.map((entry) => ({
           product: entry.product,
           slot: entry.slot,
