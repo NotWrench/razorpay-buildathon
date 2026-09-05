@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -121,25 +122,69 @@ export interface ApiKeyMetadata {
   [key: string]: unknown;
 }
 
+/**
+ * The columns are the plugin's, not ours.
+ *
+ * better-auth's drizzle adapter validates every field it is about to write
+ * against this table and refuses the whole call if one is missing — so a
+ * schema that has drifted from the installed `@better-auth/api-key` does not
+ * degrade, it makes `createApiKey` throw. That is what had happened here: the
+ * table still carried `user_id` and none of `configId`, `start`, `prefix` or
+ * the rate-limit block, so issuing a key from `/manager/agents` failed with
+ * "The field configId does not exist" — and issuing a key is the first step of
+ * the one journey this project exists to demonstrate.
+ *
+ * `referenceId` replaces `user_id` and is the plugin's own name for the owner
+ * of a key. `resolveActor` already read `result.key.referenceId`, so the
+ * application code was ahead of the schema rather than the other way round.
+ *
+ * The foreign key to `user` is not restored with the rename. The plugin treats
+ * this column as an opaque reference — its `references` option can point it at
+ * an organization instead — and a constraint the library does not know about
+ * is one it can break by writing a legal value.
+ *
+ * `metadata` stays `jsonb` while the plugin declares it a string. The plugin
+ * hands the adapter a JSON string, Postgres parses it into `jsonb` on the way
+ * in, and everything that reads it — `resolveActor`, `listAgentKeys` — wants
+ * the object it gets back. Storing it as `text` would mean two of those three
+ * had to learn to parse.
+ */
 export const apikey = pgTable(
   "apikey",
   {
+    /** Which api-key configuration issued this. The plugin defaults it. */
+    configId: text("config_id").default("default").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     enabled: boolean("enabled").default(true).notNull(),
     expiresAt: timestamp("expires_at"),
     id: text("id").primaryKey(),
     key: text("key").notNull(),
+    lastRefillAt: timestamp("last_refill_at"),
+    lastRequest: timestamp("last_request"),
     metadata: jsonb("metadata").$type<ApiKeyMetadata>(),
     name: text("name"),
     permissions: text("permissions"),
+    /** First characters of the key, safe to display. */
+    prefix: text("prefix"),
+    rateLimitEnabled: boolean("rate_limit_enabled").default(true).notNull(),
+    rateLimitMax: integer("rate_limit_max"),
+    rateLimitTimeWindow: integer("rate_limit_time_window"),
+    /** Who the key belongs to. A user id here; the plugin allows others. */
+    referenceId: text("reference_id").notNull(),
+    refillAmount: integer("refill_amount"),
+    refillInterval: integer("refill_interval"),
+    /** Requests left before the key stops working. Null means unlimited. */
+    remaining: integer("remaining"),
+    requestCount: integer("request_count").default(0).notNull(),
+    start: text("start"),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
-    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
   },
   (table) => [
-    index("apikey_userId_idx").on(table.userId),
+    index("apikey_referenceId_idx").on(table.referenceId),
+    index("apikey_configId_idx").on(table.configId),
     uniqueIndex("apikey_key_uidx").on(table.key),
   ]
 );

@@ -53,7 +53,7 @@ export interface McpCapability {
 }
 
 /** Which of the agent's tool sets holds the implementation. */
-export type ToolSetName = "shopping" | "builder" | "merchant";
+export type ToolSetName = "shopping" | "builder" | "checkout" | "merchant";
 
 const CUSTOMER: McpScope[] = ["customer", "merchant"];
 const MERCHANT_ONLY: McpScope[] = ["merchant"];
@@ -114,6 +114,116 @@ export const CAPABILITIES: McpCapability[] = [
     name: "build.get",
     scopes: CUSTOMER,
     tool: { name: "getBuild", set: "builder" },
+  },
+  /*
+   * The money path.
+   *
+   * Until these existed an MCP-native buyer could browse the store, validate a
+   * build and compare parts — then had to drop out of MCP entirely and
+   * hand-roll REST calls to buy anything. "Transactable end to end" was true
+   * over HTTP and false over the protocol built to make it true.
+   *
+   * Exposing them changes no bound. Each delegates to the tool the in-app agent
+   * already calls, so the spend cap is checked inside `execute` before any
+   * write, and `createCheckoutOrder` still stamps an agent order
+   * `pending_approval` with no Razorpay order behind it. What the caller gets
+   * here is exactly what `POST /api/payments/orders` already gives the same
+   * identity — which is the invariant this endpoint has always claimed.
+   *
+   * What does move is *where the human presses the button*. The in-app agent
+   * suspends its loop for an approval card; an MCP client has no such loop, and
+   * its own host is the surface that asks its user before calling a tool. That
+   * is the standard shape, and it is why the guarantee that matters was never
+   * the gate — it is the database refusing to attach a payment instrument to an
+   * order no merchant has approved.
+   */
+  {
+    description:
+      "Price a set of items: line items, subtotal, any active campaign discount, " +
+      "and the total in paise. Charges nothing and creates nothing. Call this " +
+      "before orders.create so the buyer sees the price they are agreeing to.",
+    inputSchema: {
+      items: z
+        .array(
+          z.object({
+            isUpsell: z.boolean().default(false),
+            productId: z.uuid(),
+            quantity: z.number().int().min(1).max(10),
+          })
+        )
+        .min(1)
+        .max(20),
+    },
+    name: "checkout.quote",
+    scopes: CUSTOMER,
+    tool: { name: "quoteOrder", set: "shopping" },
+  },
+  {
+    description:
+      "Create an order the buyer has agreed to. Charges nothing. An order from " +
+      "an API-key buyer is created pending_approval with no payment instrument " +
+      "attached — a human merchant must approve it before it can be paid. " +
+      "aiPurchaseReason is mandatory and is shown to that merchant.",
+    inputSchema: {
+      cartId: z
+        .uuid()
+        .optional()
+        .describe("Order a saved cart. Omit to pass items."),
+      items: z
+        .array(
+          z.object({
+            isUpsell: z.boolean().default(false),
+            productId: z.uuid(),
+            quantity: z.number().int().min(1).max(10),
+          })
+        )
+        .min(1)
+        .max(20)
+        .optional(),
+      reason: z
+        .string()
+        .min(20)
+        .max(2000)
+        .describe(
+          "Why this exact cart, in plain language. Stored on the order and " +
+            "read by the merchant who approves or rejects you."
+        ),
+    },
+    name: "orders.create",
+    scopes: CUSTOMER,
+    tool: { name: "createOrder", set: "checkout" },
+  },
+  {
+    description:
+      "Current state of one of your own orders: approval status, payment " +
+      "attempts, any failure with its reason, and the recovery options open to " +
+      "you. Poll this to observe a merchant's approval decision.",
+    inputSchema: { orderId: z.uuid() },
+    name: "orders.status",
+    scopes: CUSTOMER,
+    tool: { name: "getOrderStatus", set: "checkout" },
+  },
+  {
+    description:
+      "Cancel one of your own unpaid orders. Records why. An order that has " +
+      "already been paid needs a refund, not a cancellation, and is refused.",
+    inputSchema: {
+      orderId: z.uuid(),
+      reason: z.string().min(5).max(500),
+    },
+    name: "orders.cancel",
+    scopes: CUSTOMER,
+    tool: { name: "cancelOrder", set: "checkout" },
+  },
+  {
+    description:
+      "Issue a hosted Razorpay payment link for an order the merchant has " +
+      "approved. The link goes to a human; no card details pass through the " +
+      "calling agent. Refused for an order still awaiting approval.",
+    inputSchema: { orderId: z.uuid() },
+    name: "payment.link",
+    scopes: CUSTOMER,
+    tool: { name: "createPaymentLink", set: "checkout" },
   },
   {
     description:

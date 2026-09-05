@@ -466,6 +466,36 @@ export interface RazorpayConnection {
   platformMode: "live" | "test" | null;
 }
 
+/**
+ * The bounds in force, and the most this deployment will ever allow.
+ *
+ * Both halves travel together because neither is useful alone: a merchant
+ * choosing a discount cap needs to see the ceiling they are choosing under,
+ * and a clamp that only announces itself after saving reads as the form losing
+ * their input.
+ */
+export interface StorePolicy {
+  ceilings: {
+    autoApproveCeilingPaise: number;
+    marginFloorPercent: number;
+    maxDiscountPercent: number;
+    maxPriceMovePercent: number;
+    spendCapPaise: number;
+  };
+  effective: {
+    agentOrdersRequireApproval: boolean;
+    autoApproveCeilingPaise: number;
+    marginFloorPercent: number;
+    maxDiscountPercent: number;
+    maxPriceMovePercent: number;
+    /** False when the store has set nothing and is running on defaults. */
+    merchantConfigured: boolean;
+    spendCapPaise: number;
+  };
+  /** The same policy in sentences, as the manifest publishes it. */
+  summary: string[];
+}
+
 export interface StoreSettings {
   currency: string;
   /**
@@ -481,6 +511,7 @@ export interface StoreSettings {
   name: string;
   /** Who to sign in as, named when the viewer is not that person. */
   ownerEmail: string | null;
+  policy: StorePolicy;
   razorpay: RazorpayConnection;
   slug: string;
   team: TeamMember[];

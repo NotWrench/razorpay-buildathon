@@ -28,6 +28,17 @@ export const AuditAction = {
   MARGIN_FLOOR_BREACHED: "MARGIN_FLOOR_BREACHED",
   MEMORY_WRITTEN: "MEMORY_WRITTEN",
   ORDER_CANCELLED: "ORDER_CANCELLED",
+  /**
+   * A store changed its own bounds.
+   *
+   * Worth its own action rather than folding into `STORE_RENAMED`: this is the
+   * one edit on the account screen that changes what an agent is allowed to do
+   * with money, and `agentOrdersRequireApproval` going false is the single most
+   * consequential toggle in the system. Before and after both go in the
+   * metadata, because "the cap is 10%" is not the question anyone asks later —
+   * "when did it stop being 30%" is.
+   */
+  POLICY_CHANGED: "POLICY_CHANGED",
   PRICE_CHANGED: "PRICE_CHANGED",
   PRODUCT_CREATED: "PRODUCT_CREATED",
   PRODUCT_DEACTIVATED: "PRODUCT_DEACTIVATED",

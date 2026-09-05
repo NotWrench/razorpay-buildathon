@@ -1,4 +1,10 @@
-import { db, type Product, products } from "@workspace/db";
+import {
+  db,
+  type Product,
+  productCategories,
+  productSpecs,
+  products,
+} from "@workspace/db";
 import {
   and,
   asc,
@@ -505,6 +511,105 @@ export async function listActiveProducts(
 }
 
 /**
+ * A product plus everything an AI buyer needs to reason about it.
+ *
+ * `listActiveProducts` returns the product row alone, which is all the in-app
+ * agent needs because it can call the compatibility engine directly. An
+ * external buyer cannot, so the catalog it reads has to carry the typed specs
+ * and the slot the part occupies.
+ */
+export interface CatalogRow {
+  category: typeof productCategories.$inferSelect | null;
+  product: Product;
+  specs: typeof productSpecs.$inferSelect | null;
+}
+
+/** The catalog with its compatibility inputs attached. */
+export async function listCatalogRows(
+  merchantId: string,
+  options: { limit?: number; offset?: number } = {}
+): Promise<CatalogRow[]> {
+  return await db
+    .select({
+      category: productCategories,
+      product: products,
+      specs: productSpecs,
+    })
+    .from(products)
+    .leftJoin(productSpecs, eq(productSpecs.productId, products.id))
+    .leftJoin(productCategories, eq(productCategories.id, products.categoryId))
+    .where(
+      and(eq(products.merchantId, merchantId), eq(products.isActive, true))
+    )
+    .orderBy(desc(products.createdAt))
+    .limit(options.limit ?? 100)
+    .offset(options.offset ?? 0);
+}
+
+/**
+ * The typed specifications, as an AI buyer sees them.
+ *
+ * **Every null is deliberate and must survive the wire.** `product_specs`
+ * exists because `products.attributes` — a free-form display blob — cannot be
+ * validated against, and the whole value of the typed table is that a missing
+ * spec reaches the compatibility engine as `insufficient_data` rather than as a
+ * zero. Dropping null keys here to make the document tidier would erase exactly
+ * the distinction the schema was built to preserve: a PSU with no wattage is
+ * unknown, a GPU with `tdp_watts: 0` claims to draw nothing.
+ *
+ * Snake case throughout, to match the rest of the document rather than the
+ * column names of a database no buyer can see.
+ */
+export interface CatalogSpecs {
+  chipset: string | null;
+  form_factor: string | null;
+  height_mm: number | null;
+  length_mm: number | null;
+  m2_slots: number | null;
+  max_cooler_height_mm: number | null;
+  max_gpu_length_mm: number | null;
+  memory_capacity_gb: number | null;
+  memory_slots: number | null;
+  memory_speed_mhz: number | null;
+  memory_type: string | null;
+  pcie_power_connectors: { count: number; pins: number }[] | null;
+  psu_wattage: number | null;
+  recommended_psu_watts: number | null;
+  sata_ports: number | null;
+  socket: string | null;
+  storage_interface: string | null;
+  tdp_watts: number | null;
+  width_mm: number | null;
+}
+
+/** Where a part sits in a build, for an agent assembling one. */
+export interface CatalogBuildSlot {
+  category_slug: string;
+  is_build_component: boolean;
+  max_per_build: number | null;
+  min_per_build: number;
+  slot: string | null;
+}
+
+/**
+ * Whether this listing is good enough for an agent to act on.
+ *
+ * The merchant already sees this number — `getCatalogReadiness` tells them what
+ * fraction of their catalogue an AI buyer cannot properly recommend. Publishing
+ * it closes the loop: a buying agent can tell a thin listing from a complete
+ * one and say so, rather than silently walking past it, which is the outcome
+ * the merchant's own screen is warning them about.
+ */
+export interface CatalogReadinessNote {
+  /** True when something missing stops an agent recommending it at all. */
+  blocked: boolean;
+  /** The fields that are absent, named. Empty when nothing is. */
+  missing: string[];
+  /** 0–100. Nothing missing is 100. */
+  score: number;
+}
+
+/**
  * One catalog entry as an AI buyer sees it.
  *
  * Amounts are exposed as explicit paise integers with the currency alongside,
@@ -513,6 +618,7 @@ export async function listActiveProducts(
 export interface CatalogEntry {
   attributes: Record<string, unknown> | null;
   brand: string | null;
+  build: CatalogBuildSlot | null;
   category: string | null;
   currency: string;
   description: string | null;
@@ -521,17 +627,57 @@ export interface CatalogEntry {
   in_stock: boolean;
   name: string;
   price_paise: number;
+  readiness: CatalogReadinessNote;
   sku: string | null;
+  specs: CatalogSpecs | null;
   stock: number;
 }
 
+function toCatalogSpecs(
+  specs: typeof productSpecs.$inferSelect
+): CatalogSpecs {
+  return {
+    chipset: specs.chipset,
+    form_factor: specs.formFactor,
+    height_mm: specs.heightMm,
+    length_mm: specs.lengthMm,
+    m2_slots: specs.m2Slots,
+    max_cooler_height_mm: specs.maxCoolerHeightMm,
+    max_gpu_length_mm: specs.maxGpuLengthMm,
+    memory_capacity_gb: specs.memoryCapacityGb,
+    memory_slots: specs.memorySlots,
+    memory_speed_mhz: specs.memorySpeedMhz,
+    memory_type: specs.memoryType,
+    pcie_power_connectors: specs.pciePowerConnectors ?? null,
+    psu_wattage: specs.psuWattage,
+    recommended_psu_watts: specs.recommendedPsuWatts,
+    sata_ports: specs.sataPorts,
+    socket: specs.socket,
+    storage_interface: specs.storageInterface,
+    tdp_watts: specs.tdpWatts,
+    width_mm: specs.widthMm,
+  };
+}
+
 export function toCatalogEntry(
-  product: Product,
-  currency: string
+  row: CatalogRow,
+  currency: string,
+  readiness: CatalogReadinessNote = { blocked: false, missing: [], score: 100 }
 ): CatalogEntry {
+  const { category, product, specs } = row;
+
   return {
     attributes: product.attributes ?? null,
     brand: product.brand,
+    build: category
+      ? {
+          category_slug: category.slug,
+          is_build_component: category.isBuildComponent,
+          max_per_build: category.maxPerBuild,
+          min_per_build: category.minPerBuild,
+          slot: category.buildSlot,
+        }
+      : null,
     category: product.category,
     currency,
     description: product.description,
@@ -540,7 +686,9 @@ export function toCatalogEntry(
     in_stock: product.stock > 0,
     name: product.name,
     price_paise: product.price,
+    readiness,
     sku: product.sku,
+    specs: specs ? toCatalogSpecs(specs) : null,
     stock: product.stock,
   };
 }

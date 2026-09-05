@@ -31,3 +31,34 @@ Every entry delegates to the same tool the in-app agent calls. There is no
 second implementation of product search to drift out of step with the first.
 
 Nothing resembling `postgres.executeAnySql` appears here, and nothing should.
+
+## What a buyer may do
+
+| Capability | Scope |
+| --- | --- |
+| `products.search`, `products.get`, `products.compare` | customer, merchant |
+| `build.checkCompatibility`, `build.get` | customer, merchant |
+| `checkout.quote`, `orders.create`, `orders.status`, `orders.cancel`, `payment.link` | customer, merchant |
+| `inventory.summary`, `sales.summary`, `orders.summary` | merchant only |
+
+The money path was absent for a while, and its absence was the reason an
+MCP-native buyer could browse this store and then had to leave the protocol to
+buy anything — "transactable end to end" was true over REST and false over the
+transport built to make it true.
+
+Adding it changed no bound. Each capability delegates to the tool the agent
+already calls, so the spend cap is checked inside `execute` before any write,
+and `createCheckoutOrder` still stamps an order from an API-key buyer
+`pending_approval` with no Razorpay order behind it. A caller gets exactly what
+`POST /api/payments/orders` already gives the same identity.
+
+What moves is *where the human presses the button*. The in-app agent suspends
+its loop for an approval card; an MCP client has no such loop, and its own host
+is the surface that asks its user before calling a tool. That is the standard
+shape, and it is why the guarantee that matters was never the gate — it is the
+database refusing to attach a payment instrument to an order no merchant has
+approved.
+
+Deciding for somebody else's money stays off the protocol entirely. There is no
+`refund`, no `approve`, no price move and no campaign capability, at any scope.
+`scope.test.ts` asserts it.

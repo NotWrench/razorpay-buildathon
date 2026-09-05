@@ -1,6 +1,7 @@
 import {
   type AgentContext,
   builderTools,
+  checkoutTools,
   merchantTools,
   shoppingTools,
 } from "@workspace/ai";
@@ -24,6 +25,7 @@ const TOOL_SETS: Record<
   (ctx: AgentContext) => Record<string, unknown>
 > = {
   builder: builderTools,
+  checkout: checkoutTools,
   merchant: merchantTools,
   shopping: shoppingTools,
 };

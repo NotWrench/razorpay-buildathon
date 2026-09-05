@@ -54,10 +54,38 @@ export async function GET(request: NextRequest): Promise<Response> {
         },
         endpoints: {
           catalog: `${origin}/store/{slug}/catalog.json`,
+          compatibility: `${origin}/api/store/{slug}/compatibility`,
           create_order: `${origin}/api/payments/orders`,
+          /*
+           * The MCP server has existed for as long as this manifest has, and
+           * was not listed in it — so the protocol built to make this merchant
+           * discoverable did not mention the one transport that speaks the
+           * ecosystem's own language. A door nobody is told about is a door
+           * nobody uses.
+           */
+          mcp: `${origin}/api/mcp/{slug}`,
           order_status: `${origin}/api/payments/orders/{orderId}`,
           payment_link: `${origin}/api/payments/links`,
         },
+        /*
+         * Two ways in, the same bounds behind both.
+         *
+         * An MCP caller reaches the same tools the in-app agent calls, with the
+         * same server-resolved identity, so the spend cap and the approval gate
+         * apply identically. Which one to use is a question of what the calling
+         * agent already speaks, not of what it is allowed to do.
+         */
+        transports: [
+          {
+            note: "Plain HTTP+JSON. Every endpoint above.",
+            type: "rest",
+          },
+          {
+            note: "Model Context Protocol over HTTP POST, stateless. Search, compare, check compatibility, quote, order, poll status, cancel, and request a payment link. Scope is decided from your credential, never from the request.",
+            type: "mcp",
+            url: `${origin}/api/mcp/{slug}`,
+          },
+        ],
         policy: {
           approval_note:
             "Every agent order is created as pending_approval with no payment instrument attached. A human merchant must approve it before it can be paid. Poll order_status to observe the decision.",

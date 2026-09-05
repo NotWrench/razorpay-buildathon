@@ -47,9 +47,17 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
+/**
+ * A relation, not a constraint.
+ *
+ * `referenceId` holds a user id in this deployment, so the join is useful and
+ * declared. There is no foreign key behind it, because the plugin treats the
+ * column as an opaque reference it may point elsewhere — see the note on the
+ * table itself.
+ */
 export const apikeyRelations = relations(apikey, ({ one }) => ({
   user: one(user, {
-    fields: [apikey.userId],
+    fields: [apikey.referenceId],
     references: [user.id],
   }),
 }));

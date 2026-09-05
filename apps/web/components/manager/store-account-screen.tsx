@@ -4,13 +4,21 @@ import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useId } from "react";
+import { PolicyForm } from "@/components/manager/policy-form";
 import { RazorpayConnect } from "@/components/manager/razorpay-connect";
 import { useAction } from "@/hooks/use-action";
 import { renameStoreAction } from "@/lib/actions/manager";
 import type { StoreSettings } from "@/lib/data/types";
 
 /**
- * The store's own settings. No cards, no analysis, no numbers worth counting.
+ * The store's own settings. No cards and no analysis — but one section here
+ * decides what an agent may do with this merchant's money.
+ *
+ * Agent bounds sit between payment and team on purpose. They are the answer to
+ * "who is allowed to spend, and how much", which is the same question the
+ * Razorpay section starts; and they are published in the discovery manifest, so
+ * unlike the team list they are read by counterparties this merchant will never
+ * meet.
  *
  * The Razorpay key is masked and stays masked: a screen that prints a live key
  * in full is one screenshot away from being an incident, and there is nothing
@@ -118,6 +126,13 @@ function StoreAccountScreen({ settings }: { settings: StoreSettings }) {
             merchantId={settings.merchantId}
             ownerEmail={settings.ownerEmail}
             razorpay={settings.razorpay}
+          />
+        </Section>
+
+        <Section title="Agent bounds">
+          <PolicyForm
+            merchantId={settings.merchantId}
+            policy={settings.policy}
           />
         </Section>
 

@@ -32,11 +32,16 @@ export {
   type Candidate,
 } from "./build-assembly";
 export {
+  type CatalogBuildSlot,
   type CatalogEntry,
+  type CatalogReadinessNote,
+  type CatalogRow,
   type CatalogScope,
+  type CatalogSpecs,
   describeCatalogScope,
   getProductById,
   listActiveProducts,
+  listCatalogRows,
   type ProductSearchInput,
   type ProductSearchResult,
   type ScoredProduct,
@@ -120,6 +125,11 @@ export {
   describePolicy,
   type EffectivePolicy,
   getEffectivePolicy,
+  platformCeilings,
+  type PolicyChange,
+  type PolicyField,
+  type PolicyUpdate,
+  updateMerchantPolicy,
 } from "./policy";
 export {
   CONTEXT_PAGES,

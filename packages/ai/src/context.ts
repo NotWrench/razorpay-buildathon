@@ -2,6 +2,7 @@ import { agentDb, conversations, db, merchants } from "@workspace/db";
 import { PaymentError } from "@workspace/payments";
 import { and, eq } from "drizzle-orm";
 import { recordAudit } from "./audit";
+import { assertKeyScope } from "./guardrails";
 
 /**
  * Who is talking to an agent.
@@ -11,6 +12,13 @@ import { recordAudit } from "./audit";
  */
 export interface AgentActor {
   identifier: string;
+  /**
+   * The one store an API-key caller may trade with.
+   *
+   * Undefined for people, and for keys issued before scoping existed. Where it
+   * is set it is a hard boundary, enforced in `buildStorefrontContext` below.
+   */
+  merchantId?: string;
   /**
    * This buyer's own cap, when the merchant issued them one.
    *
@@ -132,13 +140,29 @@ async function resolveConversation(params: {
   return created.id;
 }
 
-/** Builds the context for a storefront (buyer-facing) agent turn. */
+/**
+ * Builds the context for a storefront (buyer-facing) agent turn.
+ *
+ * The key-scope check lives here rather than in the routes because there are
+ * three of them now — chat, MCP, and whatever comes next — and only one ever
+ * remembered. `POST /api/payments/orders` called `assertKeyScope` and the chat
+ * and MCP paths did not, which was survivable while MCP was read-only and
+ * stopped being so the moment `orders.create` appeared on it: a key issued for
+ * one shop would have resolved cleanly against another shop's slug and been
+ * able to buy there.
+ *
+ * Every buyer-facing entry point builds its context through this function, so
+ * putting the boundary here is the version that cannot be forgotten. It is the
+ * same argument that moved the spend cap into `assertSpendCapFor`.
+ */
 export async function buildStorefrontContext(params: {
   actor: AgentActor;
   conversationId?: string;
   slug: string;
 }): Promise<AgentContext> {
   const merchant = await getMerchantBySlug(params.slug);
+
+  assertKeyScope(params.actor, merchant.id);
 
   const conversationId = await resolveConversation({
     actor: params.actor,

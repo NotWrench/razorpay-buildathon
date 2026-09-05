@@ -200,7 +200,7 @@ conformance audit against this track.
 
 ```bash
 bun run typecheck     # every package — clean
-bun run test          # 239 unit tests across three packages — clean
+bun run test          # 253 unit tests across three packages — clean
 bun run lint          # ultracite / biome
 ```
 

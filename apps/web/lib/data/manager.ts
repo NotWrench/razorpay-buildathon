@@ -1,8 +1,11 @@
 import {
+  describePolicy,
+  getEffectivePolicy,
   getLowStockProducts,
   getProductPerformance,
   getSalesSummary,
   getStockRisk,
+  platformCeilings,
 } from "@workspace/ai";
 import {
   cartItems,
@@ -737,9 +740,10 @@ function keyMode(keyId: string | null | undefined): "live" | "test" | null {
 export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
   const merchant = await requireManagerStore();
 
-  const [owner, viewer] = await Promise.all([
+  const [owner, viewer, effective] = await Promise.all([
     db.query.user.findFirst({ where: eq(user.id, merchant.userId) }),
     currentUser(),
+    getEffectivePolicy(merchant.id),
   ]);
 
   /* Read rather than required: the platform keys are optional in development,
@@ -754,6 +758,11 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
     merchantId: merchant.id,
     name: merchant.businessName,
     ownerEmail: owner?.email ?? null,
+    policy: {
+      ceilings: platformCeilings(),
+      effective,
+      summary: describePolicy(effective),
+    },
     razorpay: {
       connected,
       keyId: merchant.razorpayKeyId ? maskKey(merchant.razorpayKeyId) : null,
