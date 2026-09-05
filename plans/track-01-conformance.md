@@ -1,5 +1,26 @@
 # Plan — Track 01 conformance: AI Growth & Agentic Commerce
 
+> **Status: implemented, 2026-09-05.** All three phases shipped in `ddf66d2`,
+> `080347b` and `d62b5b4`. Everything in §4 is done; §5's sequencing was
+> followed. Two things were found while verifying and fixed on the way, neither
+> of them in this plan:
+>
+> - **`apikey` had drifted from the installed `@better-auth/api-key`.** The
+>   drizzle adapter validates every field before writing and refuses the whole
+>   call, so `createApiKey` threw and issuing a key from `/manager/agents` was
+>   broken — step one of the AI-buyer path. Migrated in 0014 and 0015.
+> - **`assertKeyScope` was enforced in exactly one route.** Survivable while MCP
+>   was read-only; not once §4.2 put `orders.create` on it. Moved into
+>   `buildStorefrontContext`, which every buyer-facing entry point goes through.
+>
+> One deliberate departure from §4, in **3.3**: no ACP-shaped alias is served.
+> The manifest gained a `protocols` block that names what is supported and what
+> is not, with the equivalent primitive for each — claiming a conformance we
+> have not proved would cost a counterparty a failed integration to discover.
+>
+> The gap analysis below is left exactly as written, as the record of what the
+> tree looked like before.
+
 > Measured against the tree at `34cb33e` (master, clean) on 2026-09-05.
 > Scope: does this project satisfy **Track 01** as written, and what is left.
 >
