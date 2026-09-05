@@ -22,6 +22,7 @@ import { approvalSigningSecret, chatModel } from "../provider";
 import { toolCallRecorder } from "../telemetry";
 import { campaignTools } from "../tools/campaigns";
 import { explainTools } from "../tools/explain";
+import { jsonSafeTools } from "../tools/json-safe";
 import { merchantTools } from "../tools/merchant";
 import { paymentOpsTools } from "../tools/payment-ops";
 import { pricingTools } from "../tools/pricing";
@@ -33,14 +34,17 @@ import { summariseStep } from "./steps";
 import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
 export function merchantToolSet(ctx: AgentContext) {
-  return {
+  // Every output goes back into the prompt on the next step, so it has to be
+  // JSON before it gets there — a stray `Date` fails the whole turn one call
+  // later, after the tool has already done its work. See `tools/json-safe.ts`.
+  return jsonSafeTools({
     ...merchantTools(ctx),
     ...campaignTools(ctx),
     ...explainTools(ctx),
     ...readinessTools(ctx),
     ...pricingTools(ctx),
     ...paymentOpsTools(ctx),
-  };
+  });
 }
 
 export type MerchantTools = ReturnType<typeof merchantToolSet>;

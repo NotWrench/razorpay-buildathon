@@ -3,6 +3,7 @@ import type { ToolApprovalStatus } from "ai";
 import type { AgentContext } from "../context";
 import { formatPaise } from "../money";
 import { quoteCart } from "../quote";
+import { describeActivation } from "../tools/campaigns";
 
 /**
  * The approval gate.
@@ -81,7 +82,7 @@ export function storefrontApproval(ctx: AgentContext) {
 }
 
 /** Approval policy for the merchant agent: order approvals, campaigns, stock. */
-export function merchantApproval(_ctx: AgentContext) {
+export function merchantApproval(ctx: AgentContext) {
   const approveAgentOrder: ApprovalFor<{
     explanation: string;
     orderId: string;
@@ -95,10 +96,15 @@ export function merchantApproval(_ctx: AgentContext) {
     orderId: string;
   }> = () => requireApproval("Reject and cancel this order?");
 
-  const activateCampaign: ApprovalFor<{ campaignId: string }> = () =>
-    requireApproval(
-      "Activate this campaign? It will discount every matching order from now on."
-    );
+  /*
+   * The card carries the campaign's actual terms and any overlap it would
+   * collide with, because the assistant now drafts and asks in one turn — so
+   * this is the merchant's whole decision, not a confirmation of one they
+   * already made in the thread. See `describeActivation`.
+   */
+  const activateCampaign: ApprovalFor<{ campaignId: string }> = async ({
+    campaignId,
+  }) => requireApproval(await describeActivation(ctx.merchantId, campaignId));
 
   /*
    * Stopping is gated too. It is not a money action in the dangerous
@@ -107,11 +113,13 @@ export function merchantApproval(_ctx: AgentContext) {
    * end a promotion the merchant is running is as surprising as one that can
    * quietly start it.
    */
-  const pauseCampaign: ApprovalFor<{ campaignId: string; reason: string }> =
-    () =>
-      requireApproval(
-        "Stop this campaign? Matching orders stop being discounted from now on."
-      );
+  const pauseCampaign: ApprovalFor<{
+    campaignId: string;
+    reason: string;
+  }> = () =>
+    requireApproval(
+      "Stop this campaign? Matching orders stop being discounted from now on."
+    );
 
   /**
    * §12's inventory mutations.

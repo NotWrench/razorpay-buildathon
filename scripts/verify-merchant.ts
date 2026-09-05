@@ -233,10 +233,23 @@ interface TurnOptions {
   storeName: string;
 }
 
+/**
+ * One turn, and everything the merchant would have read in it.
+ *
+ * `result.text` is the *final* step's text, and that stopped being the same
+ * thing as the reply once the agent started drafting and offering in one turn:
+ * a turn now legitimately ends on a gated call that suspends at the approval
+ * card, so the answer — the products, the numbers, a refusal the floor handed
+ * back — is written in the step before it. Reading only the last step reports
+ * an agent that said nothing when the thread is showing a full paragraph.
+ *
+ * So what these assertions run against is every step's text joined, which is
+ * what the thread renders and therefore what "did it tell the merchant" means.
+ */
 async function runTurn(ctx: AgentContext, options: TurnOptions) {
   const tools = merchantToolSet(ctx);
 
-  return await generateText({
+  const result = await generateText({
     instructions: merchantPrompt({
       pageContext:
         describeMerchantView(
@@ -254,6 +267,14 @@ async function runTurn(ctx: AgentContext, options: TurnOptions) {
     toolApproval: merchantApproval(ctx),
     tools,
   });
+
+  return {
+    steps: result.steps,
+    text: result.steps
+      .map((step) => step.text)
+      .filter((text) => text.trim().length > 0)
+      .join("\n\n"),
+  };
 }
 
 async function main() {

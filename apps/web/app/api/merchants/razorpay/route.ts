@@ -1,6 +1,8 @@
 import { db, merchants } from "@workspace/db";
 import {
+  assertTestMode,
   createRazorpayClient,
+  isTestKeyId,
   PaymentError,
   toPaymentError,
 } from "@workspace/payments";
@@ -15,6 +17,10 @@ import { handleRouteError, ok, unauthorized } from "@/lib/api/respond";
  * Razorpay stamps the mode into the key id, so the pair is the whole
  * declaration: there is no separate "test mode" flag to set, and no way for
  * one to drift out of step with the keys it describes.
+ *
+ * Which is also why an `rzp_live_` key is refused below while the build runs
+ * in test mode: nothing downstream could tell the difference afterwards, and
+ * the first thing to notice would be a real charge.
  */
 const KEY_PATTERN = /^rzp_(live|test)_[A-Za-z0-9]+$/;
 
@@ -79,6 +85,8 @@ export async function PUT(request: NextRequest): Promise<Response> {
 
     await assertMerchantOwner(actor, body.merchantId);
 
+    assertTestMode(body.keyId, "That key id");
+
     const refusal = await credentialRefusal(body.keyId, body.keySecret);
 
     if (refusal) {
@@ -97,7 +105,7 @@ export async function PUT(request: NextRequest): Promise<Response> {
     return ok({
       connected: true,
       keyId: body.keyId,
-      mode: body.keyId.startsWith("rzp_test_") ? "test" : "live",
+      mode: isTestKeyId(body.keyId) ? "test" : "live",
     });
   } catch (error) {
     return handleRouteError(error);

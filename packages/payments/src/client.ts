@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import Razorpay from "razorpay";
 import { getRazorpayEnv } from "./env";
 import { PaymentError } from "./errors";
+import { assertTestMode } from "./mode";
 
 export interface RazorpayCredentials {
   /** Public key id — safe to hand to the browser checkout. */
@@ -16,6 +17,8 @@ export interface RazorpayCredentials {
 /** Platform-level credentials from the environment. */
 export function getPlatformCredentials(): RazorpayCredentials {
   const env = getRazorpayEnv();
+
+  assertTestMode(env.keyId, "RAZORPAY_KEY_ID");
 
   return { keyId: env.keyId, keySecret: env.keySecret };
 }
@@ -41,14 +44,23 @@ export function resolveMerchantCredentials(
   merchant: Merchant
 ): RazorpayCredentials {
   if (merchant.razorpayAccessToken) {
+    const keyId = merchant.razorpayKeyId ?? getPlatformCredentials().keyId;
+
+    assertTestMode(keyId, "This store's connected Razorpay account");
+
     return {
-      keyId: merchant.razorpayKeyId ?? getPlatformCredentials().keyId,
+      keyId,
       keySecret: merchant.razorpayKeySecret ?? "",
       oauthToken: merchant.razorpayAccessToken,
     };
   }
 
   if (merchant.razorpayKeyId && merchant.razorpayKeySecret) {
+    assertTestMode(
+      merchant.razorpayKeyId,
+      "This store's connected Razorpay account"
+    );
+
     return {
       keyId: merchant.razorpayKeyId,
       keySecret: merchant.razorpayKeySecret,

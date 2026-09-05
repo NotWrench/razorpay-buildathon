@@ -10,9 +10,9 @@ import {
   clampFlatDiscount,
   recordMarginBreach,
 } from "../guardrails";
+import { formatPaise, percentageOff } from "../money";
 import { getEffectivePolicy } from "../policy";
 import { closeTask, openTask } from "../tasks";
-import { formatPaise, percentageOff } from "../money";
 import { optional } from "./schema";
 
 /**
@@ -42,9 +42,12 @@ export function campaignTools(ctx: AgentContext) {
   return {
     activateCampaign: tool({
       description:
-        "Activate an approved campaign so it starts discounting live orders. " +
-        "This is a money action — only call it when the merchant has said to " +
-        "activate this specific campaign.",
+        "Put a drafted campaign in front of the merchant to activate. This is " +
+        "a money action, so it does not run when you call it — it stops at an " +
+        "approval card the merchant presses, and calling it is how their yes " +
+        "or no gets asked for. Call it in the same turn as the draft it " +
+        "belongs to, and never call it for a campaign the merchant has not " +
+        "been shown. Nothing is live until this returns.",
       execute: async ({ acknowledgeOverlap, campaignId }) => {
         const campaign = await db.query.campaigns.findFirst({
           where: and(
@@ -403,7 +406,8 @@ export function campaignTools(ctx: AgentContext) {
         return {
           campaigns: rows.map((row) => ({
             approvedByMerchant: row.approvedByMerchant,
-            budget: row.budgetPaise === null ? null : formatPaise(row.budgetPaise),
+            budget:
+              row.budgetPaise === null ? null : formatPaise(row.budgetPaise),
             campaignId: row.id,
             discountType: row.discountType,
             discountValue: row.discountValue,
@@ -472,6 +476,104 @@ export function campaignTools(ctx: AgentContext) {
 }
 
 const DAY_MS = 86_400_000;
+
+/**
+ * How much of a draft's stated case fits on the card.
+ *
+ * `draftCampaign` allows 2000 characters and a model will use them. A card
+ * nobody finishes reading is a card people press through, which is the failure
+ * a gate exists to prevent — so the reason is cut here, and the whole of it
+ * stays on the draft card above.
+ */
+const REASON_LIMIT = 400;
+
+function trim(text: string, limit: number): string {
+  return text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
+}
+
+/**
+ * What the approval card says for an activation.
+ *
+ * The card is now the merchant's only stopping point — the assistant drafts
+ * and asks in one turn — so everything they need in order to answer has to be
+ * on it. A campaign's title alone is not that: the offer, how long it runs and
+ * the most it can give away are the terms, and "Activate this campaign?" asks
+ * somebody to approve terms they would have to scroll back to read.
+ *
+ * The overlap warning matters most, because it is the one thing the merchant
+ * cannot see anywhere else. `bestCampaign` applies the single offer worth most
+ * to the buyer, so two live campaigns on the same product do not stack and the
+ * weaker one silently stops being used. `execute` still refuses on an
+ * unacknowledged overlap; this is what keeps that refusal from being the first
+ * time the merchant hears about it.
+ *
+ * Everything here is best-effort. This runs inside the approval policy, so a
+ * throw here takes down the turn the merchant is waiting on — a lookup that
+ * cannot be made falls back to the plain question instead.
+ */
+export async function describeActivation(
+  merchantId: string,
+  campaignId: string
+): Promise<string> {
+  const generic =
+    "Activate this campaign? It will discount every matching order from now on.";
+
+  try {
+    const campaign = await db.query.campaigns.findFirst({
+      where: and(
+        eq(campaigns.id, campaignId),
+        eq(campaigns.merchantId, merchantId)
+      ),
+    });
+
+    if (!campaign) {
+      return generic;
+    }
+
+    const rules = (campaign.triggerRules ?? {}) as {
+      runForDays?: number | null;
+    };
+    const overlapping = await findOverlap(merchantId, campaign);
+
+    return [
+      `Activate "${campaign.title}" — ${describeOffer(campaign)}, ${
+        rules.runForDays
+          ? `running ${rules.runForDays} day(s) from now`
+          : "with no end date"
+      }, ${
+        campaign.budgetPaise
+          ? `giving away at most ${formatPaise(campaign.budgetPaise)}`
+          : "with no budget cap"
+      }?`,
+      "Every matching order is discounted from the moment you approve.",
+      /*
+       * The case for it, taken off the draft rather than out of the thread.
+       *
+       * The assistant plans its prose for after its last tool returns, and
+       * this is the call that never does — it stops here. So on the turn where
+       * a campaign is drafted and offered together, the reply the merchant
+       * would have read does not exist yet, and the argument has to come from
+       * the draft itself. `draftCampaign` already requires that reason to cite
+       * the numbers behind it, which is exactly the sentence that belongs next
+       * to a button that spends money.
+       */
+      campaign.aiGeneratedReason
+        ? `Why: ${trim(campaign.aiGeneratedReason, REASON_LIMIT)}`
+        : null,
+      overlapping.length > 0
+        ? `It overlaps ${overlapping
+            .map((row) => `"${row.title}" (${describeOffer(row)})`)
+            .join(
+              ", "
+            )} on the same products — these do not stack, so only the offer worth most to the buyer applies and the weaker one stops being used.`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  } catch {
+    return generic;
+  }
+}
 
 /** "20% off" or "₹500 off" — the offer in the merchant's terms. */
 function describeOffer(campaign: typeof campaigns.$inferSelect): string {
@@ -606,10 +708,7 @@ async function measureCampaign(merchantId: string, campaignId: string) {
     unitsFor(baselineFrom, startedAt),
   ]);
 
-  const givenAwayPaise = attributed.reduce(
-    (sum, row) => sum + row.discount,
-    0
-  );
+  const givenAwayPaise = attributed.reduce((sum, row) => sum + row.discount, 0);
   const days = Math.round(spanMs / DAY_MS);
 
   return {
