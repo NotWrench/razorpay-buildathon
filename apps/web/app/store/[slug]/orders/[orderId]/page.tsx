@@ -9,8 +9,10 @@ import { AssistantDock } from "@/components/assistant/assistant-dock";
 import { PageHeader } from "@/components/common/page-header";
 import { OrderLines } from "@/components/orders/order-lines";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { OrderTrail } from "@/components/orders/order-trail";
 import { PaymentHistory } from "@/components/orders/payment-history";
 import { ResumePaymentButton } from "@/components/orders/resume-payment-button";
+import { getOrderTrail } from "@/lib/data/activity";
 import { formatDateTime } from "@/lib/format";
 import { getBuyerOrder } from "@/lib/queries/orders";
 import { currentBuyer } from "@/lib/store/buyer";
@@ -25,6 +27,13 @@ export const dynamic = "force-dynamic";
  * merchant has not given, a payment the gateway has not captured, and a
  * failure reason if there is one. §21's rule is that the payment state comes
  * from the payment system, so this never infers it from having been here.
+ *
+ * The audit trail at the foot is the same record `/api/agent/trace/{orderId}`
+ * serves, and it is the buyer's copy rather than the merchant's — the person
+ * whose money it is should not have to ask the shop what happened to their own
+ * order. Failures appear in it beside the successes, including ones this buyer
+ * caused, because a trail that only shows what worked is one nobody should
+ * trust.
  */
 export default async function OrderPage({
   params,
@@ -46,6 +55,10 @@ export default async function OrderPage({
   }
 
   const { lines, order, payments } = detail;
+
+  /* Loaded after `getBuyerOrder` has established this order is theirs.
+     `getOrderTrail` checks nothing itself — see the note on it. */
+  const trail = await getOrderTrail(order.id);
 
   const payable =
     order.approvalStatus === "approved" &&
@@ -115,6 +128,14 @@ export default async function OrderPage({
             </CardContent>
           </Card>
         ) : null}
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Audit trail</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OrderTrail trail={trail} />
+          </CardContent>
+        </Card>
       </main>
 
       <AssistantDock

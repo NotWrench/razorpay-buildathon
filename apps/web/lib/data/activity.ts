@@ -1,9 +1,9 @@
 import { agentDb, auditLogs, db, failures, orders } from "@workspace/db";
-import { desc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { cache } from "react";
 import { managerStoreId } from "@/lib/manager-store";
 import { orderRef } from "./account";
-import type { ActivityEntry } from "./types";
+import type { ActivityEntry, OrderTrail } from "./types";
 
 /**
  * Everything that happened to this store, human and agent in one stream.
@@ -96,26 +96,84 @@ export const getActivity = cache(
       action: humanize(row.action),
       actor: ACTOR_WORD[row.actorType] ?? row.actorType,
       at: WHEN.format(row.createdAt),
+      explanation: row.explanation,
       /** Set when the entry records something that did not work. */
       failed:
         row.action.includes("FAILED") ||
         row.action.includes("BREACHED") ||
         row.action.includes("DENIED"),
-      explanation: row.explanation,
+      failureType: row.orderId
+        ? (failureByOrder.get(row.orderId) ?? null)
+        : null,
       id: row.id,
       orderRef:
-        row.orderId && ownedIds.has(row.orderId)
-          ? orderRef(row.orderId)
-          : null,
+        row.orderId && ownedIds.has(row.orderId) ? orderRef(row.orderId) : null,
       /*
        * The flag that separates "while I was asleep" from "because I asked".
        * It is the first thing a merchant wants to know about an agent action.
        */
       scheduled:
         (row.metadata as { scheduled?: boolean } | null)?.scheduled === true,
-      failureType: row.orderId
-        ? (failureByOrder.get(row.orderId) ?? null)
-        : null,
     }));
   }
 );
+
+/**
+ * Everything recorded against one order, oldest first.
+ *
+ * `GET /api/agent/trace/{orderId}` has served this since the audit trail
+ * existed and nothing on any screen ever called it, so the most complete
+ * explainability record in the system was reachable only by typing a URL. This
+ * is the same read, for a page that has already established the caller may see
+ * the order.
+ *
+ * It is a query rather than a fetch of our own endpoint on purpose. The pages
+ * that use it are server components which have already loaded and authorised
+ * the order; going back out over HTTP would re-do that work and re-do the
+ * authorisation to reach the same rows. The endpoint stays for callers who are
+ * not us.
+ *
+ * **Authorisation is the caller's job here.** Nothing below checks who is
+ * asking — both call sites resolve the order first, one against the buyer and
+ * one against the merchant. A third call site must do the same.
+ */
+export async function getOrderTrail(orderId: string): Promise<OrderTrail> {
+  const [rows, failureRows] = await Promise.all([
+    agentDb
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.orderId, orderId))
+      .orderBy(asc(auditLogs.createdAt)),
+    agentDb
+      .select()
+      .from(failures)
+      .where(eq(failures.orderId, orderId))
+      .orderBy(asc(failures.createdAt)),
+  ]);
+
+  return {
+    entries: rows.map((row) => ({
+      action: humanize(row.action),
+      actor: ACTOR_WORD[row.actorType] ?? row.actorType,
+      at: WHEN.format(row.createdAt),
+      explanation: row.explanation,
+      failed:
+        row.action.includes("FAILED") ||
+        row.action.includes("BREACHED") ||
+        row.action.includes("DENIED"),
+      id: row.id,
+      scheduled:
+        (row.metadata as { scheduled?: boolean } | null)?.scheduled === true,
+    })),
+    failures: failureRows.map((row) => ({
+      at: WHEN.format(row.createdAt),
+      id: row.id,
+      message: row.errorMessage,
+      /* Shown beside the failure rather than in its own list: a refund
+         Razorpay refused and the retry link that followed are one event to
+         anyone reading this, not two. */
+      recovery: row.recoveryAction ? humanize(row.recoveryAction) : null,
+      type: humanize(row.errorType),
+    })),
+  };
+}

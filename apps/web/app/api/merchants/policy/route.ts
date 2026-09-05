@@ -1,7 +1,7 @@
 import {
   AuditAction,
-  type EffectivePolicy,
   describePolicy,
+  type EffectivePolicy,
   getEffectivePolicy,
   recordAudit,
   updateMerchantPolicy,

@@ -23,9 +23,9 @@ import type { StorePolicy } from "@/lib/data/types";
  * finding that out after saving would read as the form losing their input.
  *
  * **The server clamps, and the clamp is shown.** The response carries the
- * *effective* policy, not the submitted one, and the page refreshes to it. Type
- * 50 into a field capped at 30 and 30 comes back — which is the truthful answer
- * to "as high as you'll let me".
+ * effective policy rather than the submitted one, and the page refreshes to it.
+ * Type 50 into a field capped at 30 and 30 comes back — which is the truthful
+ * answer to "as high as you'll let me".
  *
  * **Blank means default, not zero.** Every numeric column is nullable because
  * not configured and configured to nothing are different facts. Clearing a

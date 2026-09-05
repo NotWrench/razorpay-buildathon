@@ -98,6 +98,49 @@ export async function GET(request: NextRequest): Promise<Response> {
           unattended_payment_ceiling_paise: autoApproveCeilingPaise(),
         },
         protocol_version: "2026-05-01",
+        /*
+         * What this endpoint speaks, and what it does not.
+         *
+         * The named agent-commerce protocols are converging on the same
+         * primitives this deployment already implements — a discovery
+         * document, a scoped credential, a quote, a gated order, a status
+         * poll, a settlement webhook — but implementing one is not the same as
+         * resembling it, and a manifest that claims conformance it has not
+         * proved costs a counterparty a failed integration to discover.
+         *
+         * So each is listed with what is actually true, and where the
+         * equivalent lives here. An agent that speaks one of them can decide
+         * in one request whether to adapt or to walk.
+         */
+        protocols: [
+          {
+            name: "agent-commerce",
+            note: "This document's own shape. Native, and the one to build against today.",
+            status: "supported",
+            version: "2026-05-01",
+          },
+          {
+            name: "mcp",
+            note: "Model Context Protocol over HTTP POST, stateless, at the mcp endpoint above. Search, compare, check compatibility, quote, order, poll, cancel, request a payment link.",
+            status: "supported",
+            version: "2025-06-18",
+          },
+          {
+            name: "acp",
+            note: "Not implemented. The equivalent primitives exist: this document is the discovery step, x-api-key the credential, POST create_order the checkout intent, and order_status the completion poll.",
+            status: "unimplemented",
+          },
+          {
+            name: "ap2",
+            note: "Not implemented. The mandate this protocol signs is expressed here as the merchant's approval of a pending_approval order, and the bounds a mandate would carry are published per store below.",
+            status: "unimplemented",
+          },
+          {
+            name: "x402",
+            note: "Not implemented, and unlikely to be: settlement here is Razorpay in test mode, and no endpoint charges per request. Every priced action is an order a human approves.",
+            status: "unimplemented",
+          },
+        ],
         settlement: {
           note: "Razorpay is the source of truth. Payment state is settled by webhook, so poll order_status rather than assuming a link redirect means success.",
           provider: "razorpay",

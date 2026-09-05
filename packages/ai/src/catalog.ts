@@ -633,9 +633,7 @@ export interface CatalogEntry {
   stock: number;
 }
 
-function toCatalogSpecs(
-  specs: typeof productSpecs.$inferSelect
-): CatalogSpecs {
+function toCatalogSpecs(specs: typeof productSpecs.$inferSelect): CatalogSpecs {
   return {
     chipset: specs.chipset,
     form_factor: specs.formFactor,

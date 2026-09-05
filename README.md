@@ -50,8 +50,11 @@ bypass exists only to show that the bound is a decision.
 
 **The audit trail is a screen.** `/manager/activity` is one stream: human
 actions, agent actions and failures interleaved, because the question a merchant
-actually has is "who changed this price" and two feeds make them look twice.
-Per order, `GET /api/agent/trace/{orderId}` returns the whole record.
+actually has is "who changed this price" and two feeds make them look twice. Per
+order, the trail is on the buyer's own order page and inside the merchant's
+order row — every action in sequence, with each failure and the recovery that
+followed sitting beside the successes rather than in a log nobody opens.
+`GET /api/agent/trace/{orderId}` serves the same record to anyone else.
 
 **Failures are handled, not thrown.** Seven of them, each logged to `failures`
 and `audit_logs` and surfaced as something the agent can say out loud:
@@ -204,7 +207,7 @@ bun run test          # 253 unit tests across three packages — clean
 bun run lint          # ultracite / biome
 ```
 
-`bun run lint` currently reports ~545 findings, almost all of them ultracite's
+`bun run lint` currently reports ~542 findings, almost all of them ultracite's
 stricter formatting and sorting rules applied to code written before it was
 added. They are noise rather than defects — `bun run fix` resolves most — and
 they are tracked separately from correctness, which `typecheck` and `test` own.
@@ -223,6 +226,38 @@ API quota and take minutes, but they are where the real assurance is:
 `verify:agent` is known to fail intermittently on scenario 2 — the model
 sometimes searches twice instead of calling `quoteOrder`. It is a harness flake,
 documented in [`plans/merchant-agent-plan.md`](plans/merchant-agent-plan.md).
+
+`typecheck`, `test` and `lint` run in CI on every push and pull request
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)); the first two gate the
+build and lint is advisory until its backlog reaches zero. The `verify:*` suites
+stay manual — they need a live database, a seeded catalog and real model quota.
+
+---
+
+## The agent that runs while nobody is watching
+
+```bash
+bun run nightly                          # every store
+bun run nightly -- --slug nova-electronics
+```
+
+One unattended run of the merchant agent per store: it reads two sales windows,
+finds what actually moved, checks what needs a person, and leaves at most one
+drafted campaign and one reorder request.
+
+**It cannot change anything that matters, and that is structural rather than
+promised.** Every money tool returns `user-approval` from the same policy the
+interactive agent uses, and there is no human in an unattended run to give it —
+so those tools suspend and never execute. What it leaves behind is a
+`pending_approval` campaign that discounts nothing and a `draft` reorder that
+buys nothing. The run prints which tools it was stopped on, and every action it
+takes is audited with `scheduled: true`, so the merchant can tell "while I was
+asleep" from "because I asked".
+
+For a deployed instance, [`apps/web/vercel.json`](apps/web/vercel.json) points a
+nightly cron at `/api/cron/briefing`, which does the same thing behind
+`CRON_SECRET`. That route refuses to run at all when the secret is unset — a
+cron endpoint that is open when misconfigured is worse than one that is broken.
 
 ---
 

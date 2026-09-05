@@ -103,12 +103,12 @@ describe("describePolicy", () => {
    * is deciding whether to engage on exactly this fact.
    */
   test("approval off names the unattended ceiling instead", () => {
-    const line = describePolicy(
+    const [, , , , line] = describePolicy(
       policy({
         agentOrdersRequireApproval: false,
         autoApproveCeilingPaise: 250_000,
       })
-    )[4];
+    );
 
     expect(line).toContain("2,500");
     expect(line).toContain("do not wait");

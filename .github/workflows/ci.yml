@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A second push to the same branch makes the first run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - run: bun install --frozen-lockfile
+
+      # `typecheck` and `test` are the two that gate correctness, so they run
+      # first and they fail the build. Neither needs a database or a model
+      # key: the unit suites are pure, and the packages that reach a database
+      # only need DATABASE_URL to exist at import time.
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unused
+          AGENT_DATABASE_URL: postgres://postgres:postgres@localhost:5432/unused
+
+      # Advisory. There is a standing backlog of ultracite formatting findings
+      # in code written before the linter was added, and failing the build on
+      # them would mean every pull request is red for reasons unrelated to it.
+      # Reported so the number is visible and can be driven down; not a gate
+      # until it reaches zero.
+      - name: Lint
+        run: bun run lint
+        continue-on-error: true
+
+# The four `verify:*` suites are deliberately absent. They need a live
+# Postgres, a seeded catalog and — for three of them — a real model key with
+# real quota, so they are minutes and money per run rather than seconds. They
+# are run by hand before a demo; see the README.

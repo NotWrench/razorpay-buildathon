@@ -17,6 +17,16 @@ import {
 
 const MERCHANT_ONLY = ["inventory.summary", "sales.summary", "orders.summary"];
 
+/** Anything resembling an escape hatch out of the domain. */
+const RAW_ACCESS = /sql|query|exec|eval|raw/i;
+
+/**
+ * Deciding for somebody else's money. `orders.create` is a buyer acting on
+ * their own behalf and is deliberately not in here.
+ */
+const MERCHANT_ONLY_VERBS =
+  /refund|approve|reject|capture|campaign|price\.|discount|policy/i;
+
 /** Every capability a buyer may reach, so an accidental addition is visible. */
 const CUSTOMER_CAPABILITIES = [
   "products.search",
@@ -52,7 +62,9 @@ describe("capability scoping", () => {
     // Listed rather than counted, so adding a capability without deciding its
     // scope fails here with the name of the thing that was added.
     expect(
-      capabilitiesFor("customer").map((capability) => capability.name).sort()
+      capabilitiesFor("customer")
+        .map((capability) => capability.name)
+        .sort()
     ).toEqual([...CUSTOMER_CAPABILITIES].sort());
   });
 
@@ -86,9 +98,7 @@ describe("capability scoping", () => {
 describe("what is deliberately absent", () => {
   test("nothing exposes raw SQL or arbitrary queries", () => {
     expect(
-      CAPABILITIES.some((capability) =>
-        /sql|query|exec|eval|raw/i.test(capability.name)
-      )
+      CAPABILITIES.some((capability) => RAW_ACCESS.test(capability.name))
     ).toBe(false);
   });
 
@@ -114,13 +124,11 @@ describe("what is deliberately absent", () => {
   test("nothing a merchant alone may do is exposed to anyone", () => {
     // Approving an order, refunding one, moving a price, running a campaign:
     // each of these decides for somebody else's money, and none has an MCP
-    // door. `orders.create` is a buyer acting on their own behalf; these are
-    // not.
-    const forbidden =
-      /refund|approve|reject|capture|campaign|price\.|discount|policy/i;
-
+    // door.
     expect(
-      CAPABILITIES.some((capability) => forbidden.test(capability.name))
+      CAPABILITIES.some((capability) =>
+        MERCHANT_ONLY_VERBS.test(capability.name)
+      )
     ).toBe(false);
   });
 

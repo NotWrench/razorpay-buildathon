@@ -381,6 +381,41 @@ export interface ActivityEntry {
   scheduled: boolean;
 }
 
+/**
+ * One order's own audit trail, oldest first.
+ *
+ * The store-wide feed answers "what has been happening here". This answers
+ * "what happened to *this* order", which is the question anyone asks when an
+ * order looks wrong — and it is the one `/api/agent/trace/{orderId}` has always
+ * been able to answer while nothing on any screen asked it.
+ */
+export interface TrailEntry {
+  action: string;
+  actor: string;
+  at: string;
+  explanation: string;
+  /** True when this entry records something that did not work. */
+  failed: boolean;
+  id: string;
+  /** True when this happened on an unattended run rather than on request. */
+  scheduled: boolean;
+}
+
+/** A failure against one order, with whatever was done about it. */
+export interface TrailFailure {
+  at: string;
+  id: string;
+  message: string;
+  /** What the system did next, when it did something. */
+  recovery: string | null;
+  type: string;
+}
+
+export interface OrderTrail {
+  entries: TrailEntry[];
+  failures: TrailFailure[];
+}
+
 /** A campaign as the merchant reviews it: state, spend, and what it did. */
 export interface ManagerCampaign {
   approvedByMerchant: boolean;

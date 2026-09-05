@@ -10,6 +10,7 @@ import { ManagerHeading } from "@/components/manager/manager-heading";
 import { ManagerSearch } from "@/components/manager/manager-search";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable } from "@/components/manager/manager-table";
+import { OrderTrail } from "@/components/manager/order-trail";
 import { useAction } from "@/hooks/use-action";
 import {
   decideAgentOrderAction,
@@ -40,6 +41,13 @@ import type { ManagerOrder, ManagerOrderState } from "@/lib/data/types";
  * buying agent created sits unpaid and uncharged until a human decides, and
  * the reason the agent gave is shown in full — it is the merchant's only
  * evidence for the decision, so it is never truncated.
+ *
+ * Under that sits the order's own audit trail, loaded when the row is opened.
+ * The store-wide feed on `/manager/activity` answers "what has been happening
+ * here"; this answers "what happened to *this* order", which is the question
+ * anyone actually has when one looks wrong. It is fetched on expand rather
+ * than with the table — a merchant with sixty orders should not pay sixty
+ * audit queries to look at one.
  */
 
 const FILTERS: { id: string; label: string }[] = [
@@ -216,6 +224,8 @@ function OrderLines({
           </p>
         )}
       </div>
+
+      <OrderTrail orderId={order.id} />
     </div>
   );
 }

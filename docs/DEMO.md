@@ -147,14 +147,16 @@ it.
 question a merchant has is "who changed this price", and two feeds make them
 look twice. The failure sits next to the successes, which is where it belongs.
 
-Open one order's trace for the per-order record:
+Then expand the order from beat 6 in the table. Its own trail is inside the row:
+every audited action in sequence, and beneath it what did not work with the
+recovery beside it. The buyer sees the same record on their own order page.
 
-```
-http://localhost:3000/api/agent/trace/{orderId}
-```
+**Say:** the failure is not filed somewhere else. A refund Razorpay refused sits
+next to the refund that worked, because that is where anyone looking for it
+would look.
 
-Order, items, payments, every audited action in sequence, every failure with its
-recovery.
+The same record is available to anyone else at
+`http://localhost:3000/api/agent/trace/{orderId}`.
 
 ### 9 — The other agent, growing revenue (60s)
 
@@ -193,10 +195,24 @@ so a counterparty agent knows the rules before it engages.
 Finish on the manifest:
 
 ```bash
-curl -s localhost:3000/.well-known/agent-commerce.json | jq '.stores[0].policy'
+curl -s localhost:3000/.well-known/agent-commerce.json | jq '.stores[0].policy, .protocols'
 ```
 
-**Say:** the bounds are published, not just enforced.
+**Say:** the bounds are published, not just enforced — and the protocols block
+says plainly what this endpoint speaks and what it does not, because a manifest
+that claims conformance it has not proved costs a counterparty a failed
+integration to find out.
+
+### If there is a spare minute
+
+```bash
+bun run nightly -- --slug nova-electronics
+```
+
+The merchant agent with nobody watching. It reads, it reasons, it leaves at most
+one drafted campaign and one reorder — and it prints the tools it was *stopped*
+on, because every money tool suspends for an approval nobody is there to give.
+Then show `/manager/activity`: those entries carry an **unattended** badge.
 
 ---
 
