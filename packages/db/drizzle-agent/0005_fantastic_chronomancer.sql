@@ -1,0 +1,1 @@
+ALTER TABLE "build_requirements" ADD COLUMN "must_include" jsonb;

@@ -139,12 +139,18 @@ export function builderTools(ctx: AgentContext) {
       description:
         "Put together a complete, compatible PC for a budget and a use case, " +
         "in one call. Use this the moment you know roughly what they want to " +
-        "spend and what it is for — do not assemble a machine by searching " +
+        "spend and what it is for, or the moment they name a part they want " +
+        "in it — do not assemble a machine by searching " +
         "for parts one category at a time. Returns every slot with the part " +
         "chosen, the running total, the compatibility verdict and, on some " +
         "rows, one upgrade with the measured reason it costs more. Narrate " +
         "it; do not recompute it. Save it with createBuild once they are happy.",
-      execute: async ({ budgetRupees, targetResolution, useCase }) => {
+      execute: async ({
+        budgetRupees,
+        mustInclude,
+        targetResolution,
+        useCase,
+      }) => {
         const assembled = await assembleBuild({
           /*
            * Converted here rather than by the model, which asked for paise
@@ -158,18 +164,56 @@ export function builderTools(ctx: AgentContext) {
               ? undefined
               : rupeesToPaise(budgetRupees),
           merchantId: ctx.merchantId,
+          mustInclude,
           targetResolution,
           useCase,
         });
 
+        /*
+         * Every figure comes back written out as well as raw.
+         *
+         * The model is told prices are paise and to speak in rupees, and it
+         * divides — mostly correctly, and then it does not: an observed run
+         * printed each of eight line items right and gave the total as
+         * ₹37,94,920 for a ₹3,79,492 machine. A tenth or a tenfold on the one
+         * number the buyer actually reads is the worst arithmetic in the
+         * turn, and it is arithmetic, so it belongs in code. The merchant
+         * tools already work this way for exactly this reason: hand over a
+         * string to quote and there is nothing left to get wrong.
+         */
         return {
           basis: assembled.basis,
+          /** The budget it was chosen against, written for the buyer. */
+          budget: formatPaise(assembled.budgetPaise),
+          budgetPaise: assembled.budgetPaise,
+          /**
+           * Only "stated" is a number the buyer gave you. The other two are
+           * the assembler picking somewhere to aim, and quoting one back as
+           * though they had set it puts words in their mouth.
+           */
+          budgetSource: assembled.budgetSource,
           /* The engine's words, so the model narrates rather than judges. */
           compatibility: assembled.message,
           estimatedWattage: assembled.wattage,
+          /** Null unless the machine costs more than they said. Then say so. */
+          overBudget:
+            assembled.overBudgetPaise > 0
+              ? formatPaise(assembled.overBudgetPaise)
+              : null,
+          /* Above zero means the machine costs more than they said. Say so. */
+          overBudgetPaise: assembled.overBudgetPaise,
+          /* The parts they named, honoured. Confirm these by name. */
+          pinned: assembled.pinned.map((pin) => ({
+            name: pin.candidate.product.name,
+            productId: pin.candidate.product.id,
+            requested: pin.request,
+            slot: pin.slug,
+          })),
           slots: assembled.slots.map((slot) => ({
             category: slot.slug,
             name: slot.candidate.product.name,
+            /** Quote this. `pricePaise` is the number it was made from. */
+            price: formatPaise(slot.candidate.product.price),
             pricePaise: slot.candidate.product.price,
             productId: slot.candidate.product.id,
             required: slot.required,
@@ -177,6 +221,7 @@ export function builderTools(ctx: AgentContext) {
             stock: slot.candidate.product.stock,
             upgrade: slot.upgrade
               ? {
+                  extra: formatPaise(slot.upgrade.deltaPaise),
                   extraPaise: slot.upgrade.deltaPaise,
                   name: slot.upgrade.candidate.product.name,
                   productId: slot.upgrade.candidate.product.id,
@@ -185,7 +230,15 @@ export function builderTools(ctx: AgentContext) {
                 }
               : null,
           })),
+          /** The one figure the buyer reads. Quote it exactly as given. */
+          total: formatPaise(assembled.totalPaise),
           totalPaise: assembled.totalPaise,
+          /*
+           * The parts they named that are not in the machine. Never empty by
+           * accident: a request that resolved is in `pinned` instead. Tell the
+           * buyer about every one of these before describing the build.
+           */
+          unavailable: assembled.unavailable,
         };
       },
       inputSchema: z.object({
@@ -193,6 +246,14 @@ export function builderTools(ctx: AgentContext) {
           "What they can spend, in rupees, exactly as they said it. 80000 " +
             "for ₹80,000 — do not convert to paise. Omit if they have not " +
             "said, and you will get a mid-range machine to react to."
+        ),
+        mustInclude: optional(z.array(z.string().max(80)).max(8)).describe(
+          'Specific parts the buyer named, one per entry: ["RTX 5090"], ' +
+            '["Ryzen 7 9800X3D", "64GB DDR5"]. Pass anything they asked for ' +
+            "by name — the part is put in its slot and the rest of the " +
+            "machine is built around it. A part the store does not stock, or " +
+            "has none of, comes back in `unavailable` with the reason; it is " +
+            "never quietly swapped for something else."
         ),
         targetResolution: optional(z.string().max(40)).describe(
           'As they said it: "1080p", "1440p", "4K".'

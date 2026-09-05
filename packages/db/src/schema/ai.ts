@@ -145,6 +145,17 @@ export const buildRequirements = pgTable(
       .unique(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     id: uuid("id").defaultRandom().primaryKey(),
+    /**
+     * Parts they asked for by name, in their own words: ["RTX 5090"].
+     *
+     * Distinct from `ownedParts`, which is what they have and do not want
+     * sold to them again. This is the opposite — what they want bought — and
+     * it lives in a column because the interview outlives the turn. Named on
+     * the first message and asked about the budget on the second, the part
+     * has to still be there on the third, or the machine comes back without
+     * the one thing they actually asked for.
+     */
+    mustInclude: jsonb("must_include").$type<string[]>(),
     /** Parts they already own and want to keep, so they are not re-sold. */
     ownedParts: jsonb("owned_parts").$type<Record<string, unknown>>(),
     targetRefreshHz: integer("target_refresh_hz"),

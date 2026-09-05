@@ -45,6 +45,7 @@ function requirementState(requirements: BuildRequirements | null) {
               ? null
               : paiseToRupees(requirements.budgetPaise),
           constraints: requirements.constraints,
+          mustInclude: requirements.mustInclude,
           ownedParts: requirements.ownedParts,
           targetRefreshHz: requirements.targetRefreshHz,
           targetResolution: requirements.targetResolution,

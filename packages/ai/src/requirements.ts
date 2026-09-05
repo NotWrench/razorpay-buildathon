@@ -37,6 +37,7 @@ const FIELD_LABELS: { field: keyof BuildRequirements; question: string }[] = [
 export interface RequirementInput {
   budgetPaise?: number | null;
   constraints?: Record<string, unknown> | null;
+  mustInclude?: string[] | null;
   ownedParts?: Record<string, unknown> | null;
   targetRefreshHz?: number | null;
   targetResolution?: string | null;
@@ -124,9 +125,21 @@ export function missingFields(
  *
  * A budget and a use case are the two that change every downstream choice; the
  * rest refine it. Recommending without them is guessing, and §3.1 says not to.
+ *
+ * A part named outright is the exception, and it has to be one here rather
+ * than in the prompt. "Build me a PC with an RTX 5090" pins the most
+ * consequential slot in the machine and implies the budget the rest is chosen
+ * against — the assembler sizes one from the pin — so there is nothing left to
+ * guess. Left out, this returned `ask`, and a model told to obey `nextStep`
+ * obeyed it: the answer to somebody who had already said what they wanted was
+ * a budget slider and no machine. Prose in the prompt does not win an argument
+ * against a field, so the field agrees with the prose instead.
  */
 export function canRecommend(requirements: BuildRequirements | null): boolean {
-  return Boolean(requirements?.budgetPaise && requirements?.useCase);
+  return Boolean(
+    (requirements?.budgetPaise && requirements?.useCase) ||
+      requirements?.mustInclude?.length
+  );
 }
 
 /** A short line for the prompt, so the interview state survives the turn. */
@@ -157,6 +170,10 @@ export function describeRequirements(
 
   if (requirements.workloads?.length) {
     parts.push(`workloads: ${requirements.workloads.join(", ")}`);
+  }
+
+  if (requirements.mustInclude?.length) {
+    parts.push(`must include: ${requirements.mustInclude.join(", ")}`);
   }
 
   return parts.length > 0 ? parts.join("; ") : "Nothing has been captured yet.";

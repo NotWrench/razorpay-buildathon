@@ -283,6 +283,11 @@ export const captureRequirementsInput = z.object({
   constraints: optional(z.record(z.string(), z.unknown())).describe(
     'Hard limits in their own terms, e.g. { "formFactor": "must be small", "noise": "quiet" }.'
   ),
+  mustInclude: optional(z.array(z.string().max(80)).max(8)).describe(
+    'Parts they asked for by name and want in the build: ["RTX 5090"]. Not ' +
+      "the same as ownedParts — this is what they want bought. Pass it the " +
+      "moment they name one, so a later build still has it."
+  ),
   ownedParts: optional(z.record(z.string(), z.unknown())).describe(
     'Parts they already have and want to keep, e.g. { "monitor": "1440p 165Hz" }.'
   ),
