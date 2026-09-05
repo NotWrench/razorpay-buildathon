@@ -9,7 +9,7 @@ import { Primitives } from "./primitives";
 /**
  * The review hub.
  *
- * Every prompt in docs/BUILD-PROMPTS.md adds a route; this page says which of
+ * Every prompt in docs/history/BUILD-PROMPTS.md adds a route; this page says which of
  * them exist yet. It is a working page, not a designed one — a hairline list
  * and nothing else.
  */

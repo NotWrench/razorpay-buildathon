@@ -217,7 +217,7 @@ packages/ai/       agents, tools, prompts, telemetry
 
 ## 12. Build log
 
-> One entry per prompt in `docs/BUILD-PROMPTS.md`. What landed, what it cost, and anything a later prompt has to know.
+> One entry per prompt in `docs/history/BUILD-PROMPTS.md`. What landed, what it cost, and anything a later prompt has to know.
 
 ### 00 — Foundation · 2026-09-02 · **done**
 
