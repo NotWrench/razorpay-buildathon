@@ -22,6 +22,7 @@ import { toolCallRecorder } from "../telemetry";
 import { builderTools } from "../tools/builder";
 import { checkoutTools } from "../tools/checkout";
 import { explainTools } from "../tools/explain";
+import { jsonSafeTools } from "../tools/json-safe";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
 import { webSearchTools } from "../tools/web-search";
@@ -34,14 +35,17 @@ import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
 /** Every tool the buyer-facing agent can reach. */
 export function storefrontToolSet(ctx: AgentContext) {
-  return {
+  // JSON-safe for the same reason as the merchant's set: a tool output that is
+  // not JSON kills the turn on the following model call, long after the tool
+  // ran. See `tools/json-safe.ts`.
+  return jsonSafeTools({
     ...shoppingTools(ctx),
     ...builderTools(ctx),
     ...requirementTools(ctx),
     ...checkoutTools(ctx),
     ...explainTools(ctx),
     ...webSearchTools(ctx),
-  };
+  });
 }
 
 export type StorefrontTools = ReturnType<typeof storefrontToolSet>;
