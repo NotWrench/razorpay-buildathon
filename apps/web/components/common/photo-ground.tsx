@@ -1,8 +1,8 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
 import { ImageGround } from "@workspace/ui/components/image-ground";
 import { cn } from "@workspace/ui/lib/utils";
-import Image from "next/image";
 import type { ReactNode } from "react";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ProductRender } from "@/components/common/product-render";
 
 /**
@@ -79,10 +79,28 @@ function PhotoGround({
          * `ImageGround` is `relative overflow-hidden` with a radius, so the
          * photograph takes the box's shape and its corners directly.
          */
-        <Image
+        /*
+         * A photograph that 404s falls back to the same line render the
+         * absent-src branch draws. `fallbackClassName` is the padding the
+         * drawing wants, and it moves onto the fallback itself rather than
+         * onto this ground — the failure is only known on the client, and a
+         * class on the parent could not follow it there.
+         */
+        <ImageWithFallback
           alt={alt}
           className={cn("object-cover", imageClassName)}
+          fallback={
+            <div
+              className={cn(
+                "flex h-full w-full items-center justify-center",
+                fallbackClassName
+              )}
+            >
+              <ProductRender alt={alt} category={category} />
+            </div>
+          }
           fill
+          key={src}
           sizes={sizes}
           src={src}
         />

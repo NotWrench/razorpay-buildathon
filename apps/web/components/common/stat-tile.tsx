@@ -23,9 +23,7 @@ export function StatTile({
 }) {
   return (
     <div className={cn("rounded-md border border-border p-4", className)}>
-      <p className="t-label text-muted-foreground">
-        {label}
-      </p>
+      <p className="t-label text-muted-foreground">{label}</p>
       <p
         className={cn(
           "mt-1.5 font-semibold text-xl tabular-nums",

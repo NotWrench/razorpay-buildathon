@@ -288,12 +288,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 5,
   },
   {
-    attributes: { architecture: "Zen 5 (3D V-Cache)", cores: "8C / 16T", socket: "AM5" },
+    attributes: {
+      architecture: "Zen 5 (3D V-Cache)",
+      cores: "8C / 16T",
+      socket: "AM5",
+    },
     brand: "AMD",
     categorySlug: "cpu",
     description:
       "Eight-core Zen 5 gaming powerhouse with 96MB of L3 3D V-Cache and second-generation thermal packaging. Dominates high-framerate competitive gaming.",
-    imageUrl: "https://m.media-amazon.com/images/I/51w+z4k24rL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 2,
       lowStockThreshold: 4,
@@ -317,7 +320,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Sixteen-core flagship Zen 5 processor for high-throughput code compilation, 3D modeling, and workstation workloads on the AM5 platform.",
-    imageUrl: "https://m.media-amazon.com/images/I/51rYg-FfMGL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 3,
@@ -341,7 +343,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cpu",
     description:
       "Eight-core Zen 5 desktop processor with an ultra-efficient 65W TDP. Delivers top-tier single-thread speed and high-efficiency gaming performance.",
-    imageUrl: "https://m.media-amazon.com/images/I/51rYg-FfMGL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 8,
       lowStockThreshold: 5,
@@ -360,12 +361,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 15,
   },
   {
-    attributes: { architecture: "Arrow Lake-S", cores: "24C (8P + 16E)", socket: "LGA1851" },
+    attributes: {
+      architecture: "Arrow Lake-S",
+      cores: "24C (8P + 16E)",
+      socket: "LGA1851",
+    },
     brand: "Intel",
     categorySlug: "cpu",
     description:
       "Twenty-four core flagship Arrow Lake desktop processor on socket LGA1851. Features dedicated NPU for AI workloads and outstanding energy efficiency.",
-    imageUrl: "https://m.media-amazon.com/images/I/61M6Xk+xVJL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 3,
@@ -384,12 +388,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 7,
   },
   {
-    attributes: { architecture: "Arrow Lake-S", cores: "20C (8P + 12E)", socket: "LGA1851" },
+    attributes: {
+      architecture: "Arrow Lake-S",
+      cores: "20C (8P + 12E)",
+      socket: "LGA1851",
+    },
     brand: "Intel",
     categorySlug: "cpu",
     description:
       "Twenty-core performance processor on LGA1851 with 20 threads, dedicated NPU AI acceleration, and strong single-core gaming speed.",
-    imageUrl: "https://m.media-amazon.com/images/I/61M6Xk+xVJL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 10,
       lowStockThreshold: 4,
@@ -656,7 +663,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "Premium AM5 motherboard for Ryzen 9000 and 7000 series with dual USB4 40Gbps, four M.2 slots (one PCIe 5.0), 5GbE LAN, and Wi-Fi 7.",
-    imageUrl: "https://m.media-amazon.com/images/I/81xQj6yq1dL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 3,
@@ -686,7 +692,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "Robust LGA1851 motherboard designed for Intel Core Ultra 200 series processors with PCIe 5.0 x16, Thunderbolt 4, and four M.2 slots.",
-    imageUrl: "https://m.media-amazon.com/images/I/81L-U4VqV8L._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 7,
       lowStockThreshold: 3,
@@ -716,7 +721,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "motherboard",
     description:
       "High-end AM5 motherboard featuring PCIe 5.0 graphics and SSD support, dual USB4 Type-C ports, and Wi-Fi 7 with EZ-Latch installation.",
-    imageUrl: "https://m.media-amazon.com/images/I/81z5t5N4TFL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 4,
@@ -899,7 +903,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "Enthusiast-grade DDR5-7200 kit with forged aluminum heatspreaders and customizable top-bar illumination, engineered for extreme memory bandwidth.",
-    imageUrl: "https://m.media-amazon.com/images/I/61k1Tls9qUL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 3,
@@ -924,7 +927,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "ram",
     description:
       "High-density 64GB DDR5 kit optimized for AMD AM5 processors with ultra-low CL30 timings for video editing, 3D workloads, and heavy multitasking.",
-    imageUrl: "https://m.media-amazon.com/images/I/61R5a-vN5ZL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 4,
@@ -1152,12 +1154,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 5,
   },
   {
-    attributes: { architecture: "Blackwell", outputs: "3x DP 2.1b, 1x HDMI 2.1a", vram: "32GB GDDR7" },
+    attributes: {
+      architecture: "Blackwell",
+      outputs: "3x DP 2.1b, 1x HDMI 2.1a",
+      vram: "32GB GDDR7",
+    },
     brand: "NVIDIA",
     categorySlug: "gpu",
     description:
       "The pinnacle of consumer GPUs. Powered by the Blackwell architecture with 32GB GDDR7, DLSS 4 Multi-Frame Generation, and uncompromised 4K/8K performance.",
-    imageUrl: "https://m.media-amazon.com/images/I/71Z81jXU9uL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 3,
       lowStockThreshold: 2,
@@ -1178,12 +1183,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 3,
   },
   {
-    attributes: { architecture: "Blackwell", outputs: "3x DP 2.1b, 1x HDMI 2.1a", vram: "16GB GDDR7" },
+    attributes: {
+      architecture: "Blackwell",
+      outputs: "3x DP 2.1b, 1x HDMI 2.1a",
+      vram: "16GB GDDR7",
+    },
     brand: "NVIDIA",
     categorySlug: "gpu",
     description:
       "Next-generation Blackwell graphics card delivering exceptional 4K gaming and generative AI performance with 16GB GDDR7 on a 256-bit bus.",
-    imageUrl: "https://m.media-amazon.com/images/I/71Z81jXU9uL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 5,
       lowStockThreshold: 2,
@@ -1204,12 +1212,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 5,
   },
   {
-    attributes: { architecture: "Blackwell", outputs: "3x DP 2.1b, 1x HDMI 2.1a", vram: "16GB GDDR7" },
+    attributes: {
+      architecture: "Blackwell",
+      outputs: "3x DP 2.1b, 1x HDMI 2.1a",
+      vram: "16GB GDDR7",
+    },
     brand: "Zotac",
     categorySlug: "gpu",
     description:
       "High-performance Blackwell GPU featuring 16GB of ultra-fast GDDR7 memory, triple IceStorm cooling, and DLSS 4 support for 1440p and 4K gaming.",
-    imageUrl: "https://m.media-amazon.com/images/I/71Z81jXU9uL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 3,
@@ -1230,12 +1241,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 8,
   },
   {
-    attributes: { architecture: "Blackwell", outputs: "3x DP 2.1b, 1x HDMI 2.1a", vram: "12GB GDDR7" },
+    attributes: {
+      architecture: "Blackwell",
+      outputs: "3x DP 2.1b, 1x HDMI 2.1a",
+      vram: "12GB GDDR7",
+    },
     brand: "ASUS",
     categorySlug: "gpu",
     description:
       "Compact dual-fan Blackwell GPU with 12GB GDDR7 memory. The sweet-spot enthusiast card for ultra-settings 1440p gaming with full ray tracing.",
-    imageUrl: "https://m.media-amazon.com/images/I/71Z81jXU9uL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 7,
       lowStockThreshold: 4,
@@ -1396,12 +1410,16 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 19,
   },
   {
-    attributes: { capacity: "2TB", interface: "PCIe 5.0 x4", read: "14500 MB/s", write: "12700 MB/s" },
+    attributes: {
+      capacity: "2TB",
+      interface: "PCIe 5.0 x4",
+      read: "14500 MB/s",
+      write: "12700 MB/s",
+    },
     brand: "Crucial",
     categorySlug: "storage",
     description:
       "Blistering PCIe Gen 5 NVMe SSD delivering up to 14,500 MB/s reads with integrated premium heatsink. Built for extreme content creation and DirectStorage gaming.",
-    imageUrl: "https://m.media-amazon.com/images/I/61jZkZ+p2SL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 3,
@@ -1419,7 +1437,12 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 9,
   },
   {
-    attributes: { capacity: "2TB", interface: "PCIe 4.0 x4", read: "7250 MB/s", write: "6300 MB/s" },
+    attributes: {
+      capacity: "2TB",
+      interface: "PCIe 4.0 x4",
+      read: "7250 MB/s",
+      write: "6300 MB/s",
+    },
     brand: "Samsung",
     categorySlug: "storage",
     description:
@@ -1618,7 +1641,11 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 4,
   },
   {
-    attributes: { efficiency: "80+ Gold / Cybenetics Gold", modular: "fully", standard: "ATX 3.1" },
+    attributes: {
+      efficiency: "80+ Gold / Cybenetics Gold",
+      modular: "fully",
+      standard: "ATX 3.1",
+    },
     brand: "Corsair",
     categorySlug: "psu",
     description:
@@ -1646,12 +1673,15 @@ export const PC_CATALOG: SeedProduct[] = [
     stock: 11,
   },
   {
-    attributes: { efficiency: "80+ Gold", modular: "fully", standard: "ATX 3.0" },
+    attributes: {
+      efficiency: "80+ Gold",
+      modular: "fully",
+      standard: "ATX 3.0",
+    },
     brand: "Seasonic",
     categorySlug: "psu",
     description:
       "1200W flagship power supply engineered for high-wattage GPUs like the RTX 5090, offering native 12V-2x6 power delivery and silent hybrid fan control.",
-    imageUrl: "https://m.media-amazon.com/images/I/71z78qP2fBL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 8,
       lowStockThreshold: 2,
@@ -1901,7 +1931,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "case",
     description:
       "Spacious Scandinavian design case featuring natural wood front accents, exceptional airflow, and clearance for 413mm GPUs and 420mm radiators.",
-    imageUrl: "https://m.media-amazon.com/images/I/71Yj14g-rLL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 7,
       lowStockThreshold: 3,
@@ -2100,7 +2129,8 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "cooler",
     description:
       "Award-winning 360mm liquid cooler featuring a thick 38mm radiator, integrated active VRM fan, and native LGA1851/AM5 contact frame.",
-    imageUrl: "https://www.primeabgb.com/wp-content/uploads/2025/08/Arctic-Liquid-Freezer-III-360-Cpu-Liquid-Cooler-ACFRE00136A.jpg",
+    imageUrl:
+      "https://www.primeabgb.com/wp-content/uploads/2025/08/Arctic-Liquid-Freezer-III-360-Cpu-Liquid-Cooler-ACFRE00136A.jpg",
     inventory: {
       lastRestockedDaysAgo: 6,
       lowStockThreshold: 3,
@@ -2286,7 +2316,6 @@ export const PC_CATALOG: SeedProduct[] = [
     categorySlug: "monitor",
     description:
       "26.5-inch 1440p WOLED gaming monitor with an incredible 480Hz refresh rate and 0.03ms response time. The ultimate esports display for high-end GPUs.",
-    imageUrl: "https://m.media-amazon.com/images/I/81xQj6yq1dL._SL800_.jpg",
     inventory: {
       lastRestockedDaysAgo: 4,
       lowStockThreshold: 2,

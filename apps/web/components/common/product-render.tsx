@@ -1,6 +1,6 @@
 import type { CategorySlug } from "@workspace/db/taxonomy";
 import { cn } from "@workspace/ui/lib/utils";
-import Image from "next/image";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
 
 /**
  * Every product image in the build.
@@ -377,6 +377,31 @@ const CROP: Record<CategorySlug, string> = {
   storage: "30 57 181 46",
 };
 
+/** The category drawing, on its own, at whatever size its box gives it. */
+function LineRender({
+  alt,
+  category,
+  className,
+}: {
+  alt: string;
+  category: CategorySlug;
+  className?: string;
+}) {
+  return (
+    <svg
+      className={cn("h-full w-full", className)}
+      fill="none"
+      role="img"
+      strokeWidth={1.25}
+      viewBox={CROP[category]}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>{alt}</title>
+      {ARTWORK[category]}
+    </svg>
+  );
+}
+
 function ProductRender({
   alt,
   category,
@@ -401,10 +426,17 @@ function ProductRender({
      */
     return (
       <div className={cn("relative h-full w-full shrink-0", className)}>
-        <Image
+        {/*
+         * A catalogue URL that has rotted falls back to the drawing rather
+         * than to a broken image. The fallback is built here, on the server,
+         * so the artwork never reaches the client bundle.
+         */}
+        <ImageWithFallback
           alt={alt}
           className="object-contain"
+          fallback={<LineRender alt={alt} category={category} />}
           fill
+          key={src}
           sizes={sizes ?? DEFAULT_SIZES}
           src={src}
         />
@@ -412,19 +444,7 @@ function ProductRender({
     );
   }
 
-  return (
-    <svg
-      className={cn("h-full w-full", className)}
-      fill="none"
-      role="img"
-      strokeWidth={1.25}
-      viewBox={CROP[category]}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <title>{alt}</title>
-      {ARTWORK[category]}
-    </svg>
-  );
+  return <LineRender alt={alt} category={category} className={className} />;
 }
 
 export { ProductRender };
