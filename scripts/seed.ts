@@ -17,6 +17,14 @@
  * movers and cross-sell suggestions are computed from real `order_items` rows,
  * so without a plausible history the admin agent has nothing true to say.
  *
+ * The seed is destructive by design. Every run deletes the existing demo store
+ * and everything the agents wrote against it, then rewrites the whole thing
+ * from `scripts/data`. There is no incremental mode and no `--reset` flag to
+ * remember: a store that is half last week's catalog and half this one's is a
+ * store no one can reason about, and the numbers the admin agent quotes stop
+ * matching the data underneath. The owner login survives, because it is the
+ * one row a Google account may already be linked to.
+ *
  *   bun run seed
  */
 
@@ -24,7 +32,11 @@ import { auth } from "@workspace/auth";
 import {
   account,
   agentDb,
+  agentFeedback,
+  agentMemoryLong,
+  auditLogs,
   CATEGORY_DEFINITIONS,
+  conversations,
   db,
   failures,
   inventory,
@@ -37,7 +49,7 @@ import {
   products,
   user,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { seedCostPaise } from "./data/costs";
 import {
   PC_CANCELLATIONS,
@@ -126,141 +138,50 @@ async function ensureOwner(): Promise<string> {
   return created.id;
 }
 
+/**
+ * Clears everything a previous seed left behind.
+ *
+ * The seed rewrites the demo store from scratch every run: there is no
+ * incremental path, because a catalog that is half old and half new is a store
+ * nobody described. Deleting the merchant is enough on the business side —
+ * categories, products, specs, inventory, carts, builds, orders, items,
+ * payments, policy, price history and campaigns all hang off it with
+ * `on delete cascade`.
+ *
+ * The agent database does not cascade, because it is a different database. Its
+ * rows point at merchants and orders that are about to stop existing, so they
+ * go too — an audit trail of actions taken against deleted orders is worse
+ * than no trail. Order matters: `agent_feedback` references
+ * `ai_recommendations` without a cascade, so it is cleared before the
+ * conversations that own them.
+ */
+async function wipeExistingStore(userId: string): Promise<void> {
+  const doomed = await db
+    .delete(merchants)
+    .where(
+      or(eq(merchants.storeSlug, STORE_SLUG), eq(merchants.userId, userId))
+    )
+    .returning();
+
+  if (doomed.length > 0) {
+    console.log(`  ${doomed.length} existing store(s) removed`);
+  }
+
+  await agentDb.delete(agentFeedback);
+  await agentDb.delete(conversations);
+  await agentDb.delete(agentMemoryLong);
+  await agentDb.delete(auditLogs);
+  await agentDb.delete(failures);
+
+  console.log("  agent memory, audit trail and failure log cleared");
+}
+
 async function main() {
   console.log("Seeding demo store...");
 
   const userId = await ensureOwner();
 
-  const existingMerchant = await db.query.merchants.findFirst({
-    where: eq(merchants.storeSlug, STORE_SLUG),
-  });
-
-  if (existingMerchant) {
-    if (process.argv.includes("--reset")) {
-      console.log(`Resetting store "${STORE_SLUG}" (${existingMerchant.id})...`);
-      await db.delete(merchants).where(eq(merchants.id, existingMerchant.id));
-    } else {
-      console.log(
-        `Store "${STORE_SLUG}" already exists (${existingMerchant.id}). Checking for catalog updates...`
-      );
-
-      const existingCategories = await db.query.productCategories.findMany({
-        where: eq(productCategories.merchantId, existingMerchant.id),
-      });
-      const categoryIdBySlug = new Map(
-        existingCategories.map((row) => [row.slug, row.id])
-      );
-
-      const existingProducts = await db.query.products.findMany({
-        where: eq(products.merchantId, existingMerchant.id),
-      });
-      const existingSkus = new Set(
-        existingProducts.map((p) => p.sku).filter(Boolean)
-      );
-
-      const missingItems = PC_CATALOG.filter(
-        (item) => !existingSkus.has(item.sku)
-      );
-
-      if (missingItems.length === 0) {
-        console.log("All catalog products are already up to date.");
-        process.exit(0);
-      }
-
-      console.log(`Syncing ${missingItems.length} new product(s) to store...`);
-      const listedAt = daysAgo(CATALOG_LISTED_DAYS_AGO);
-
-      const inserted = await db
-        .insert(products)
-        .values(
-          missingItems.map((item) => {
-            const categoryId = categoryIdBySlug.get(item.categorySlug);
-
-            if (!categoryId) {
-              throw new Error(
-                `${item.sku} names category "${item.categorySlug}", which is not in the taxonomy`
-              );
-            }
-
-            return {
-              attributes: item.attributes,
-              brand: item.brand,
-              category: item.categorySlug,
-              categoryId,
-              costPrice: seedCostPaise(
-                item.sku,
-                item.categorySlug,
-                item.priceRupees
-              ),
-              createdAt: listedAt,
-              description: item.description,
-              imageUrl: item.imageUrl,
-              merchantId: existingMerchant.id,
-              name: item.name,
-              price: item.priceRupees * 100,
-              sku: item.sku,
-              stock: item.stock,
-            };
-          })
-        )
-        .returning();
-
-      const bySku = new Map(inserted.map((row) => [row.sku ?? "", row]));
-      console.log(`  ${inserted.length} new products inserted`);
-
-      const specRows = missingItems.flatMap((item) => {
-        const product = bySku.get(item.sku);
-
-        if (!(product && item.specs)) {
-          return [];
-        }
-
-        return [
-          {
-            categorySlug: item.categorySlug,
-            merchantId: existingMerchant.id,
-            productId: product.id,
-            ...item.specs,
-          },
-        ];
-      });
-
-      if (specRows.length > 0) {
-        await db.insert(productSpecs).values(specRows);
-        console.log(`  ${specRows.length} spec sheets inserted`);
-      }
-
-      const inventoryRows = missingItems.flatMap((item) => {
-        const product = bySku.get(item.sku);
-
-        if (!(product && item.inventory)) {
-          return [];
-        }
-
-        const { lastRestockedDaysAgo, ...rest } = item.inventory;
-
-        return [
-          {
-            lastRestockedAt:
-              lastRestockedDaysAgo === undefined
-                ? null
-                : daysAgo(lastRestockedDaysAgo),
-            merchantId: existingMerchant.id,
-            productId: product.id,
-            ...rest,
-          },
-        ];
-      });
-
-      if (inventoryRows.length > 0) {
-        await db.insert(inventory).values(inventoryRows);
-        console.log(`  ${inventoryRows.length} inventory records inserted`);
-      }
-
-      console.log("Catalog update complete.");
-      process.exit(0);
-    }
-  }
+  await wipeExistingStore(userId);
 
   const [merchant] = await db
     .insert(merchants)
