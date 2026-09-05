@@ -10,6 +10,12 @@ import { toast } from "sonner";
  * handler posts to `/api/payments/verify` — the server checks the signature
  * and settles the order. Nothing here decides that a payment succeeded: the
  * hook reports what the verify route said, which is the §21 rule.
+ *
+ * The window is test mode, and the last place to say so. Razorpay reads the
+ * mode off the key id, so an `rzp_test_` key is the whole declaration — but a
+ * key that reached the browser has already passed three server-side checks,
+ * and if one of them ever lets a live key through, the next thing that happens
+ * is a real charge. Refusing here costs nothing and ends that.
  */
 
 declare global {
@@ -73,6 +79,12 @@ export function useRazorpay() {
 
   const open = useCallback(
     async ({ handoff, onSettled, orderId, storeName }: OpenOptions) => {
+      if (!handoff.keyId.startsWith("rzp_test_")) {
+        toast.error("This store is not in test mode. Payment was not started.");
+
+        return;
+      }
+
       const ready = await loadScript();
 
       if (!(ready && window.Razorpay)) {

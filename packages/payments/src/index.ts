@@ -16,6 +16,13 @@ export {
 export { getAppUrl, getRazorpayEnv, type RazorpayEnv } from "./env";
 export { PaymentError, type PaymentErrorCode, toPaymentError } from "./errors";
 export {
+  assertTestMode,
+  isTestKeyId,
+  keyMode,
+  liveModeAllowed,
+  type RazorpayMode,
+} from "./mode";
+export {
   approveOrder,
   type BuyerType,
   type CartLine,

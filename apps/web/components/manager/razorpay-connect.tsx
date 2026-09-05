@@ -36,7 +36,10 @@ const BACKDROP =
 const FIELD =
   "mt-2 h-[52px] w-full rounded-full border border-hairline bg-void px-5 font-mono text-[15px] text-bone outline-none transition-colors duration-[180ms] focus:border-bone";
 
-const KEY_PATTERN = /^rzp_(live|test)_[A-Za-z0-9]+$/;
+/* Test keys only. The server refuses live credentials outright while the
+   build runs in test mode, so accepting one here would only be a slower way
+   of saying no. */
+const KEY_PATTERN = /^rzp_test_[A-Za-z0-9]+$/;
 
 const MIN_SECRET = 8;
 
@@ -124,7 +127,11 @@ function ConnectDialog({
     /* Checked here as well as on the server, so an obvious typo costs a glance
        rather than a round trip through Razorpay. */
     if (!KEY_PATTERN.test(trimmedKey)) {
-      setError("A key id looks like rzp_test_xxxxxxxxxxxx.");
+      setError(
+        trimmedKey.startsWith("rzp_live_")
+          ? "This build runs in test mode. Paste the rzp_test_ pair instead."
+          : "A key id looks like rzp_test_xxxxxxxxxxxx."
+      );
 
       return;
     }
@@ -158,9 +165,7 @@ function ConnectDialog({
 
     change(false);
     toast.success(
-      trimmedKey.startsWith("rzp_test_")
-        ? "Connected. This store takes test payments through your account."
-        : "Connected. This store takes live payments through your account."
+      "Connected. This store takes test payments through your account."
     );
     router.refresh();
   }, [change, keyId, keySecret, merchantId, router]);
@@ -187,9 +192,10 @@ function ConnectDialog({
           </Dialog.Title>
           <Dialog.Description className="mt-3 text-[15px] text-smoke leading-relaxed">
             Paste an API key pair from your Razorpay dashboard, under Settings
-            &rarr; API Keys. A <code className="font-mono">rzp_test_</code> key
-            takes test payments and moves no real money; a{" "}
-            <code className="font-mono">rzp_live_</code> key does.
+            &rarr; API Keys. This build takes{" "}
+            <code className="font-mono">rzp_test_</code> keys only: the checkout
+            window opens in test mode and no real money moves. A{" "}
+            <code className="font-mono">rzp_live_</code> key is refused.
           </Dialog.Description>
 
           <form className="mt-6 grid gap-5" noValidate onSubmit={onSubmit}>
