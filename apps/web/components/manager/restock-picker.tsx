@@ -18,9 +18,12 @@ import type { ManagerProduct } from "@/lib/data/types";
  * wrong only option — an operator who knows a part is about to move has no way
  * to say so. This is that way.
  *
+ * Adding raises the same reorder request the footer raises, so the part turns
+ * up in the drafts block above rather than as a row only this browser tab
+ * believes in.
+ *
  * Same sheet as the product editor: 480px from the right edge, carbon,
- * rounded on the left corners only. It stays open after an add, because
- * putting three things on one order should not be three round trips.
+ * rounded on the left corners only.
  */
 
 function QuantityInput({
@@ -50,9 +53,11 @@ function QuantityInput({
 }
 
 function PickerRow({
+  busy,
   entry,
   onAdd,
 }: {
+  busy: boolean;
   entry: ManagerProduct;
   onAdd: (entry: ManagerProduct, quantity: number) => void;
 }) {
@@ -89,7 +94,7 @@ function PickerRow({
         value={quantity}
       />
 
-      <Pill onClick={add} size="sm" variant="ghost">
+      <Pill disabled={busy} onClick={add} size="sm" variant="ghost">
         Add
       </Pill>
     </div>
@@ -97,12 +102,15 @@ function PickerRow({
 }
 
 function RestockPicker({
+  busy,
   catalogue,
   onAdd,
   onOpenChange,
   open,
 }: {
-  /** Already filtered to what is not on the order yet. */
+  /** True while a request is being raised. */
+  busy: boolean;
+  /** Already filtered to what is not on the list yet. */
   catalogue: ManagerProduct[];
   onAdd: (entry: ManagerProduct, quantity: number) => void;
   onOpenChange: (open: boolean) => void;
@@ -154,7 +162,7 @@ function RestockPicker({
             {shown.length === 0 ? (
               <p className="t-body-sm py-10 text-smoke">
                 {catalogue.length === 0
-                  ? "Everything in the catalogue is already on this order."
+                  ? "Everything in the catalogue is already on this list."
                   : "Nothing in the catalogue matches that."}
               </p>
             ) : (
@@ -163,6 +171,7 @@ function RestockPicker({
                 <div className="mt-2">
                   {shown.map((entry) => (
                     <PickerRow
+                      busy={busy}
                       entry={entry}
                       key={entry.product.id}
                       onAdd={onAdd}

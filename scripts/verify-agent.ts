@@ -21,6 +21,7 @@ import {
   merchantPrompt,
   merchantToolSet,
   missingCredentialHint,
+  repairHarmonyToolName,
   storefrontApproval,
   storefrontPrompt,
   storefrontToolSet,
@@ -93,6 +94,62 @@ function toolsUsed(steps: { toolCalls?: readonly { toolName: string }[] }[]) {
   return steps.flatMap((step) => (step.toolCalls ?? []).map((c) => c.toolName));
 }
 
+/**
+ * Comparison text, with the model's typography flattened.
+ *
+ * Models emit non-breaking hyphens and spaces inside names they are copying
+ * verbatim, so a literal `includes` reports "it invented a product" for an
+ * answer that quoted the catalogue exactly. That is a worse failure than the
+ * one the check exists to catch: it trains you to ignore a red line.
+ */
+function flatten(text: string): string {
+  return text
+    .replace(/[‐-―−]/g, "-")
+    .replace(/[    ]/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function mentions(haystack: string, needle: string): boolean {
+  return flatten(haystack).includes(flatten(needle));
+}
+
+/**
+ * Every product name anywhere in a tool's output.
+ *
+ * Walked rather than indexed by key, because these tools return their rows
+ * under several different names and the assertion cares only that the model
+ * was handed the product it went on to cite.
+ */
+function namesIn(outputs: unknown[]): string[] {
+  const names = new Set<string>();
+
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        walk(item);
+      }
+
+      return;
+    }
+
+    if (!node || typeof node !== "object") {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "name" && typeof value === "string") {
+        names.add(value);
+      } else {
+        walk(value);
+      }
+    }
+  };
+
+  walk(outputs);
+
+  return [...names];
+}
+
 function toolOutputs(
   steps: { toolResults?: readonly { output: unknown; toolName: string }[] }[],
   name: string
@@ -160,6 +217,7 @@ async function main() {
       },
     ],
     model: chatModel(),
+    repairToolCall: repairHarmonyToolName<typeof shopTools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
@@ -175,10 +233,25 @@ async function main() {
     "records recommendations with reasons",
     searchTools.includes("recommendProducts")
   );
+  /*
+   * Grounded in what this run was handed, not in a list of names written when
+   * the seed looked different — the same reasoning scenario 4 already spells
+   * out. The catalogue has since grown, and the hardcoded list started failing
+   * runs where the agent recommended a perfectly good card that postdated it.
+   * What matters is that the product came out of the data rather than out of
+   * the model.
+   */
+  const offered = namesIn([
+    ...toolOutputs(search.steps, "searchProducts"),
+    ...toolOutputs(search.steps, "recommendProducts"),
+  ]);
+
+  const named = offered.filter((name) => mentions(search.text, name));
+
   check(
     "mentions a real catalogue product",
-    /4060|RX 7600|Zotac|Sapphire|Arc A750/i.test(search.text),
-    "grounded in retrieved products"
+    named.length > 0,
+    named[0] ?? `nothing from the ${offered.length} it was handed`
   );
   check(
     "does not claim to have ordered anything",
@@ -217,6 +290,7 @@ async function main() {
     instructions: shopInstructions,
     messages: history,
     model: chatModel(),
+    repairToolCall: repairHarmonyToolName<typeof shopTools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
@@ -278,6 +352,7 @@ async function main() {
       { content: "Yes, order it. Go ahead.", role: "user" },
     ],
     model: chatModel(),
+    repairToolCall: repairHarmonyToolName<typeof shopTools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
@@ -374,20 +449,48 @@ async function main() {
     ),
     insightTools.join(", ")
   );
+  /*
+   * Grounded in what the tools returned on this run, not in a list of names
+   * written when the seed looked different. A hardcoded list asserts that the
+   * model picked the slow mover *we* had in mind, which is not the property
+   * worth having and fails on a better answer: one model cited the RTX 4060
+   * Ti — nine in stock, none sold, ₹387,000 of dead capital, and the largest
+   * slow mover in the catalogue — and was marked wrong for it.
+   *
+   * What actually matters is that the product came out of the data rather
+   * than out of the model, so the check is that a name it was handed appears
+   * in what it said.
+   */
+  const reported = namesIn([
+    ...toolOutputs(insight.steps, "getDiscountCandidates"),
+    ...toolOutputs(insight.steps, "findSlowMovers"),
+    ...toolOutputs(insight.steps, "getTopPerformers"),
+  ]);
+
+  const cited = reported.filter((name) => mentions(insight.text, name));
+
   check(
     "names a genuinely slow product",
-    /antec|csk 450|hyper 212|uni fan|nf-a12|crucial pro/i.test(insight.text),
-    "cites a real slow mover"
+    cited.length > 0,
+    cited[0] ?? `nothing from the ${reported.length} products it was handed`
   );
   check(
     "did not activate a campaign unattended",
     toolOutputs(insight.steps, "activateCampaign").length === 0
   );
 
-  const drafted = toolOutputs(insight.steps, "draftCampaign") as {
-    drafted?: boolean;
-    projection?: { projectedIncrementalRevenue: string };
-  }[];
+  /*
+   * The *successful* draft, not the first call. Since the margin floor landed,
+   * a first attempt can be refused for selling below cost — which is the
+   * behaviour that guardrail exists to produce — and keying on `[0]` failed
+   * the run on exactly the outcome we want.
+   */
+  const drafted = (
+    toolOutputs(insight.steps, "draftCampaign") as {
+      drafted?: boolean;
+      projection?: { projectedIncrementalRevenue: string };
+    }[]
+  ).filter((row) => row.drafted === true);
 
   if (drafted.length > 0) {
     console.log(
@@ -424,6 +527,7 @@ async function main() {
       },
     ],
     model: chatModel(),
+    repairToolCall: repairHarmonyToolName<typeof shopTools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
@@ -471,6 +575,7 @@ async function main() {
       },
     ],
     model: chatModel(),
+    repairToolCall: repairHarmonyToolName<typeof shopTools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,
@@ -531,6 +636,7 @@ async function main() {
       },
     ],
     model: chatModel(),
+    repairToolCall: repairHarmonyToolName<typeof shopTools>(),
     stopWhen: isStepCount(MAX_STEPS),
     toolApproval: storefrontApproval(ctx),
     tools: shopTools,

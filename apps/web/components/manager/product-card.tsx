@@ -4,7 +4,7 @@ import { ImageGround } from "@workspace/ui/components/image-ground";
 import { Label } from "@workspace/ui/components/label";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
-import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, EyeOff, Pencil, Plus } from "lucide-react";
 import { useCallback } from "react";
 import { ProductRender } from "@/components/common/product-render";
 import { RowAction } from "@/components/manager/manager-table";
@@ -29,6 +29,7 @@ const CARD_SIZES =
   "(min-width: 1536px) 300px, (min-width: 1024px) 30vw, (min-width: 640px) 45vw, 90vw";
 
 function ProductCard({
+  busy,
   entry,
   onDuplicate,
   onEdit,
@@ -38,6 +39,8 @@ function ProductCard({
   selected,
   selecting,
 }: {
+  /** True while any catalogue write is in flight. */
+  busy: boolean;
   entry: ManagerProduct;
   onDuplicate: (entry: ManagerProduct) => void;
   onEdit: (entry: ManagerProduct) => void;
@@ -112,7 +115,8 @@ function ProductCard({
         className={cn(
           "mt-3 flex items-center justify-end gap-1 border-hairline border-t pt-2.5",
           "transition-opacity duration-micro",
-          "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+          "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100",
+          busy && "pointer-events-none opacity-40"
         )}
       >
         <RowAction label={`Edit ${name}`} onClick={edit}>
@@ -124,8 +128,14 @@ function ProductCard({
         <RowAction label={`Order more ${name}`} onClick={order}>
           <Plus aria-hidden className="size-4" />
         </RowAction>
-        <RowAction label={`Remove ${name}`} onClick={remove} tone="lacquer">
-          <Trash2 aria-hidden className="size-3.5" />
+        {/* Not a bin. Nothing here deletes — the row survives, off sale,
+            because order_items still points at it. */}
+        <RowAction
+          label={`Take ${name} off sale`}
+          onClick={remove}
+          tone="lacquer"
+        >
+          <EyeOff aria-hidden className="size-3.5" />
         </RowAction>
       </div>
     </li>

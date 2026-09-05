@@ -1,8 +1,12 @@
 export * from "./agents";
 export {
+  type AgentBuyerActivity,
   type AttachRate,
+  getAgentBuyerActivity,
+  type MissedAttach,
   getAttachRates,
   getFrequentlyBoughtWith,
+  getMissedAttachOpportunities,
   getPaymentHealth,
   getPendingAgentOrders,
   getProductPerformance,
@@ -20,6 +24,13 @@ export {
   recordAudit,
   recordFailure,
 } from "./audit";
+export {
+  assembleBuild,
+  type AssembledBuild,
+  type AssembledSlot,
+  type BuildUpgrade,
+  type Candidate,
+} from "./build-assembly";
 export {
   type CatalogEntry,
   type CatalogScope,
@@ -64,11 +75,22 @@ export {
 } from "./embeddings";
 export {
   assertCartShape,
+  assertKeyScope,
+  assertPcSearchAllowed,
+  assertSpendCapFor,
   assertWithinSpendCap,
+  checkMarginFloor,
+  checkPcSearchQuery,
   clampDiscountPercent,
   clampFlatDiscount,
   committedSpendPaise,
   LIMITS,
+  type MarginBreach,
+  PC_SEARCH_LIMITS,
+  type PcSearchValidation,
+  recordMarginBreach,
+  type SpendCapSubject,
+  recordSearchGuardrailBreach,
 } from "./guardrails";
 export {
   type CancellationSummary,
@@ -95,8 +117,15 @@ export {
   rupeesToPaise,
 } from "./money";
 export {
+  describePolicy,
+  type EffectivePolicy,
+  getEffectivePolicy,
+} from "./policy";
+export {
   CONTEXT_PAGES,
   type ContextPage,
+  describeMerchantView,
+  type MerchantView,
   type PageContextInput,
   type ResolvedPageContext,
   resolvePageContext,
@@ -129,13 +158,30 @@ export {
   toColumnVector,
 } from "./provider";
 export {
+  describeMargin,
+  getMarginSummary,
+  getProductMargin,
+  type MarginSummary,
+  type ProductMargin,
+} from "./margin";
+export {
   type AppliedCampaign,
   getActiveCampaigns,
+  getPromotedPartners,
+  type PromotedPartner,
   type Quote,
   type QuoteCartInput,
   type QuoteLine,
   quoteCart,
+  quoteForMerchant,
 } from "./quote";
+export {
+  type CatalogReadiness,
+  describeReadiness,
+  getCatalogReadiness,
+  type ProductReadiness,
+  type ReadinessGap,
+} from "./readiness";
 export {
   type DiscontinueCandidate,
   type DiscountCandidate,

@@ -11,6 +11,7 @@ import {
   inventory,
   orderItems,
   orders,
+  payments,
   productSpecs,
   products,
   reorderRequests,
@@ -19,9 +20,10 @@ import {
 import { formatPaise } from "@workspace/ui/lib/money";
 import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { cache } from "react";
+import { managerStoreId, requireManagerStore } from "@/lib/manager-store";
+import { currentUser } from "@/lib/session";
 import { orderRef } from "./account";
 import { toSummary } from "./product";
-import { requireDefaultStore, storeId } from "./store";
 import type {
   Finding,
   ManagerOrder,
@@ -91,6 +93,7 @@ function rangeFor(spec: RangeSpec): ManagerRange {
   const from = windowStart(spec.days);
 
   return {
+    days: spec.days,
     id: spec.id,
     label: `${SPAN.format(from)} – ${DAY.format(new Date())}`,
     previous: spec.previous,
@@ -237,7 +240,7 @@ const PERCENT = 100;
 export async function getManagerSummary(
   rangeId?: string
 ): Promise<ManagerSummary> {
-  const merchantId = await storeId();
+  const merchantId = await managerStoreId();
   const spec = specFor(rangeId);
   const now = new Date();
   const from = windowStart(spec.days);
@@ -491,7 +494,7 @@ async function buildFindings(
 const DEFAULT_LOW_AT = 5;
 
 export const getManagerProducts = cache(async (): Promise<ManagerProduct[]> => {
-  const merchantId = await storeId();
+  const merchantId = await managerStoreId();
 
   const rows = await db
     .select({
@@ -525,21 +528,35 @@ export const getManagerProducts = cache(async (): Promise<ManagerProduct[]> => {
  */
 function orderState(order: {
   approvalStatus: string;
+  buyerType: string;
   orderStatus: string;
+  refunded: boolean;
 }): ManagerOrderState {
+  if (order.refunded) {
+    return "refunded";
+  }
+
   if (order.orderStatus === "cancelled" || order.orderStatus === "failed") {
     return "cancelled";
   }
 
-  if (order.approvalStatus === "pending_approval") {
-    return "new";
+  /*
+   * The queue this system exists for. A human's unpaid order is just new; an
+   * agent's unapproved one is a decision waiting on the merchant, and folding
+   * the two together hid the only state on this screen that needs them.
+   */
+  if (
+    order.approvalStatus === "pending_approval" &&
+    order.buyerType === "ai_agent"
+  ) {
+    return "awaiting";
   }
 
   return order.orderStatus === "paid" ? "due" : "new";
 }
 
 export const getManagerOrders = cache(async (): Promise<ManagerOrder[]> => {
-  const merchantId = await storeId();
+  const merchantId = await managerStoreId();
 
   const rows = await db
     .select()
@@ -552,21 +569,44 @@ export const getManagerOrders = cache(async (): Promise<ManagerOrder[]> => {
     return [];
   }
 
-  const lines = await db
-    .select({
-      name: products.name,
-      orderId: orderItems.orderId,
-      quantity: orderItems.quantity,
-      unitPrice: orderItems.unitPrice,
-    })
-    .from(orderItems)
-    .leftJoin(products, eq(products.id, orderItems.productId))
-    .where(
-      inArray(
-        orderItems.orderId,
-        rows.map((order) => order.id)
-      )
-    );
+  const orderIds = rows.map((order) => order.id);
+
+  /*
+   * What can be refunded, and what has been.
+   *
+   * Both come off the payment rather than the order: an order marked paid with
+   * no captured payment behind it is not refundable, and offering the button
+   * anyway means the merchant discovers that from a Razorpay error. See M6 —
+   * the refund that Razorpay refuses is the failure this system is meant to
+   * handle well, not one to walk into by rendering a control that cannot work.
+   */
+  const [lines, paymentRows] = await Promise.all([
+    db
+      .select({
+        name: products.name,
+        orderId: orderItems.orderId,
+        quantity: orderItems.quantity,
+        unitPrice: orderItems.unitPrice,
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(products.id, orderItems.productId))
+      .where(inArray(orderItems.orderId, orderIds)),
+    db
+      .select({ orderId: payments.orderId, status: payments.status })
+      .from(payments)
+      .where(inArray(payments.orderId, orderIds)),
+  ]);
+
+  const captured = new Set(
+    paymentRows
+      .filter((row) => row.status === "captured")
+      .map((row) => row.orderId)
+  );
+  const refunded = new Set(
+    paymentRows
+      .filter((row) => row.status === "refunded")
+      .map((row) => row.orderId)
+  );
 
   const grouped = new Map<string, typeof lines>();
 
@@ -581,6 +621,8 @@ export const getManagerOrders = cache(async (): Promise<ManagerOrder[]> => {
     const own = grouped.get(order.id) ?? [];
 
     return {
+      agentReason: order.aiPurchaseReason,
+      buyerType: order.buyerType,
       customer: order.buyerIdentifier,
       id: orderRef(order.id),
       itemCount: own.reduce((sum, line) => sum + line.quantity, 0),
@@ -589,8 +631,10 @@ export const getManagerOrders = cache(async (): Promise<ManagerOrder[]> => {
         pricePaise: line.unitPrice,
         quantity: line.quantity,
       })),
+      orderId: order.id,
       placedOn: DAY.format(order.createdAt),
-      state: orderState(order),
+      refundable: captured.has(order.id),
+      state: orderState({ ...order, refunded: refunded.has(order.id) }),
       totalPaise: order.totalAmount,
     };
   });
@@ -600,7 +644,7 @@ const DEFAULT_REORDER = 10;
 
 export const getRestock = cache(
   async (): Promise<{ drafts: RestockDraft[]; rows: RestockRow[] }> => {
-    const merchantId = await storeId();
+    const merchantId = await managerStoreId();
 
     const [low, draftRows] = await Promise.all([
       getLowStockProducts(merchantId),
@@ -666,26 +710,56 @@ export const getRestock = cache(
   }
 );
 
-/** The last four of a key, and nothing else. The secret never leaves the row. */
-function maskKey(keyId: string | null): string {
-  if (!keyId) {
-    return "Not connected";
-  }
-
+/** The first eight and the last four of a key. The secret never leaves the row. */
+function maskKey(keyId: string): string {
   return `${keyId.slice(0, 8)}${"•".repeat(8)}${keyId.slice(-4)}`;
 }
 
-export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
-  const merchant = await requireDefaultStore();
+/**
+ * Test or live, from the key id itself.
+ *
+ * Razorpay stamps the mode into the prefix, so there is nothing to store and
+ * nothing to get out of sync — and an operator looking at this screen can tell
+ * at a glance whether the store is taking real money.
+ */
+function keyMode(keyId: string | null | undefined): "live" | "test" | null {
+  if (!keyId) {
+    return null;
+  }
 
-  const owner = await db.query.user.findFirst({
-    where: eq(user.id, merchant.userId),
-  });
+  if (keyId.startsWith("rzp_test_")) {
+    return "test";
+  }
+
+  return keyId.startsWith("rzp_live_") ? "live" : null;
+}
+
+export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
+  const merchant = await requireManagerStore();
+
+  const [owner, viewer] = await Promise.all([
+    db.query.user.findFirst({ where: eq(user.id, merchant.userId) }),
+    currentUser(),
+  ]);
+
+  /* Read rather than required: the platform keys are optional in development,
+     and a settings screen should not be the thing that 500s over a missing
+     env var. */
+  const platformKeyId = process.env.RAZORPAY_KEY_ID ?? null;
+  const connected = Boolean(merchant.razorpayKeyId);
 
   return {
     currency: merchant.currency,
+    isOwner: viewer?.id === merchant.userId,
+    merchantId: merchant.id,
     name: merchant.businessName,
-    razorpayKeyId: maskKey(merchant.razorpayKeyId),
+    ownerEmail: owner?.email ?? null,
+    razorpay: {
+      connected,
+      keyId: merchant.razorpayKeyId ? maskKey(merchant.razorpayKeyId) : null,
+      mode: keyMode(merchant.razorpayKeyId),
+      platformMode: keyMode(platformKeyId),
+    },
     slug: merchant.storeSlug,
     /* One merchant, one user. There is no team table, so the team is the one
        person the store actually belongs to rather than three invented ones. */

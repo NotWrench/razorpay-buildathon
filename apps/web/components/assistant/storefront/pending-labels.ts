@@ -3,6 +3,8 @@ export function storefrontPendingLabel(type: string): string {
   switch (type) {
     case "tool-searchProducts":
       return "Searching the catalog…";
+    case "tool-searchWeb":
+      return "Searching the web for PC trends…";
     case "tool-compareProducts":
       return "Reading both spec sheets…";
     case "tool-checkBuildCompatibility":

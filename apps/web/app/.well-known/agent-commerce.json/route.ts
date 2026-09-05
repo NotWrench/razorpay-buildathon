@@ -1,4 +1,8 @@
-import { autoApproveCeilingPaise, spendCapPaise } from "@workspace/ai";
+import {
+  autoApproveCeilingPaise,
+  getEffectivePolicy,
+  spendCapPaise,
+} from "@workspace/ai";
 import { db, merchants } from "@workspace/db";
 import type { NextRequest } from "next/server";
 import { handleRouteError } from "@/lib/api/respond";
@@ -31,7 +35,14 @@ export async function GET(request: NextRequest): Promise<Response> {
       {
         authentication: {
           header: "x-api-key",
-          note: "Issue a key from the merchant dashboard. A key identifies you as an ai_agent buyer for the whole of your session.",
+          /*
+           * This used to point at a dashboard that did not exist. It does now,
+           * and the two things it says about a key are both enforced rather
+           * than described: a key carries the one store it may trade with, and
+           * the cap that store chose for it. See `/manager/agents`.
+           */
+          issued_at: `${origin}/manager/agents`,
+          note: "A merchant issues you a key from /manager/agents. It identifies you as an ai_agent buyer of that one store, and carries the spending limit that merchant set for you — which may be lower than the platform cap below. Ordering against another store with it is refused.",
           scheme: "api-key",
         },
         capabilities: {
@@ -63,10 +74,31 @@ export async function GET(request: NextRequest): Promise<Response> {
           note: "Razorpay is the source of truth. Payment state is settled by webhook, so poll order_status rather than assuming a link redirect means success.",
           provider: "razorpay",
         },
-        stores: stores.map((store) => ({
-          ...store,
-          catalog: `${origin}/store/${store.slug}/catalog.json`,
-        })),
+        /*
+         * Each store's own bounds, not just the platform's.
+         *
+         * The `policy` block above is what this deployment allows at most. A
+         * merchant may be stricter, and a counterparty planning against the
+         * platform number would plan wrong — so the effective limits travel
+         * with the store they belong to.
+         */
+        stores: await Promise.all(
+          stores.map(async (store) => {
+            const policy = await getEffectivePolicy(store.id);
+
+            return {
+              ...store,
+              catalog: `${origin}/store/${store.slug}/catalog.json`,
+              policy: {
+                agent_orders_require_approval:
+                  policy.agentOrdersRequireApproval,
+                max_discount_percent: policy.maxDiscountPercent,
+                per_conversation_cap_paise: policy.spendCapPaise,
+                note: "A key issued by this store may carry a lower cap of its own. These are the store's limits, not yours.",
+              },
+            };
+          })
+        ),
       },
       {
         headers: {

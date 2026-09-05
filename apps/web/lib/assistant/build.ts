@@ -10,7 +10,8 @@ import type { CompatibilityState, ProductSummary } from "@/lib/data/types";
  * The half of the recommendation that runs in the browser.
  *
  * Choosing the parts is a server job — it reads the catalogue and the spec
- * columns, and it lives in `lib/data/recommend.ts`. What is left here is the
+ * columns, and it lives in `packages/ai/src/build-assembly.ts`, which the
+ * agent reaches through its `assembleBuild` tool. What is left here is the
  * re-check that has to run on every tick and every swap, over rows the client
  * already holds.
  *
@@ -27,11 +28,7 @@ import type { CompatibilityState, ProductSummary } from "@/lib/data/types";
  * authoritative and is wrong.
  */
 
-export type {
-  BuildSlotRow,
-  BuildUpgrade,
-  RecommendedBuild,
-} from "@/lib/data/recommend";
+export type { BuildSlotRow, BuildUpgrade } from "@/lib/data/recommend";
 
 /** The engine says `requires_verification`; the contract says `needs_...`. */
 const STATE: Record<CompatibilityStatus, CompatibilityState> = {

@@ -93,10 +93,31 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 );
 
+/**
+ * What a merchant decided about one buying agent.
+ *
+ * Kept on better-auth's own row rather than in a table beside it, because a
+ * second table would need its own lifecycle against a key that better-auth
+ * already creates, revokes and expires — and the two would drift the first
+ * time a key was deleted through the library instead of through us.
+ *
+ * `merchantId` is the part that matters. Without it a key issued by one shop
+ * authenticates against every shop on the platform, and the manifest's promise
+ * that a key "identifies you as an ai_agent buyer" would be true and useless.
+ * `spendCapPaise` makes the published bound per-counterparty instead of
+ * per-deployment: a merchant can trust one agent with ₹2 lakh and another with
+ * ₹5,000, which is what having a relationship with a customer means.
+ */
 export interface ApiKeyMetadata {
   dailyBudget?: number;
+  /** Who the merchant thinks this is. Shown on the agents screen. */
+  label?: string;
   maxTxBudget?: number;
+  /** The store this key may trade with. Absent on keys issued before scoping. */
+  merchantId?: string;
   monthlyBudget?: number;
+  /** This agent's own cap, overriding the platform default when present. */
+  spendCapPaise?: number;
   [key: string]: unknown;
 }
 

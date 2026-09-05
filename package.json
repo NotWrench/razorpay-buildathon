@@ -34,6 +34,7 @@
   },
   "scripts": {
     "ai-buyer": "bun run scripts/ai-buyer.ts",
+    "backfill:costs": "bun run scripts/backfill-costs.ts",
     "build": "turbo build",
     "calibrate:search": "bun run scripts/calibrate-search.ts",
     "check": "ultracite check",
@@ -49,11 +50,14 @@
     "fix": "ultracite fix",
     "format": "ultracite fix",
     "lint": "ultracite check",
+    "models:probe": "bun run scripts/probe-models.ts",
     "seed": "bun run scripts/seed.ts",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "verify": "bun run scripts/verify.ts",
-    "verify:agent": "bun run scripts/verify-agent.ts"
+    "verify:agent": "bun run scripts/verify-agent.ts",
+    "verify:manager": "bun run scripts/verify-manager.ts",
+    "verify:merchant": "bun run scripts/verify-merchant.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",

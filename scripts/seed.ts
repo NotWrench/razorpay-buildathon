@@ -17,6 +17,14 @@
  * movers and cross-sell suggestions are computed from real `order_items` rows,
  * so without a plausible history the admin agent has nothing true to say.
  *
+ * The seed is destructive by design. Every run deletes the existing demo store
+ * and everything the agents wrote against it, then rewrites the whole thing
+ * from `scripts/data`. There is no incremental mode and no `--reset` flag to
+ * remember: a store that is half last week's catalog and half this one's is a
+ * store no one can reason about, and the numbers the admin agent quotes stop
+ * matching the data underneath. The owner login survives, because it is the
+ * one row a Google account may already be linked to.
+ *
  *   bun run seed
  */
 
@@ -24,7 +32,11 @@ import { auth } from "@workspace/auth";
 import {
   account,
   agentDb,
+  agentFeedback,
+  agentMemoryLong,
+  auditLogs,
   CATEGORY_DEFINITIONS,
+  conversations,
   db,
   failures,
   inventory,
@@ -37,7 +49,8 @@ import {
   products,
   user,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
+import { seedCostPaise } from "./data/costs";
 import {
   PC_CANCELLATIONS,
   PC_CATALOG,
@@ -56,7 +69,19 @@ import {
 const CATALOG_LISTED_DAYS_AGO = 120;
 
 const STORE_SLUG = "nova-electronics";
-const OWNER_EMAIL = "merchant@example.com";
+
+/**
+ * Who the demo store belongs to.
+ *
+ * Sign-in is Google-only, and Google will only ever hand back an address it
+ * actually issues — so a store seeded to `merchant@example.com` is a store
+ * nobody can sign in and own. Point `SEED_OWNER_EMAIL` at your own Google
+ * address and the account linking in `packages/auth` attaches your first
+ * Google sign-in to this same user, which is what makes the manager's
+ * "Connect Razorpay" button work against a store you own.
+ */
+const OWNER_EMAIL =
+  process.env.SEED_OWNER_EMAIL?.trim() || "merchant@example.com";
 const OWNER_PASSWORD = "demo-password-123";
 
 function daysAgo(days: number): Date {
@@ -113,21 +138,50 @@ async function ensureOwner(): Promise<string> {
   return created.id;
 }
 
+/**
+ * Clears everything a previous seed left behind.
+ *
+ * The seed rewrites the demo store from scratch every run: there is no
+ * incremental path, because a catalog that is half old and half new is a store
+ * nobody described. Deleting the merchant is enough on the business side —
+ * categories, products, specs, inventory, carts, builds, orders, items,
+ * payments, policy, price history and campaigns all hang off it with
+ * `on delete cascade`.
+ *
+ * The agent database does not cascade, because it is a different database. Its
+ * rows point at merchants and orders that are about to stop existing, so they
+ * go too — an audit trail of actions taken against deleted orders is worse
+ * than no trail. Order matters: `agent_feedback` references
+ * `ai_recommendations` without a cascade, so it is cleared before the
+ * conversations that own them.
+ */
+async function wipeExistingStore(userId: string): Promise<void> {
+  const doomed = await db
+    .delete(merchants)
+    .where(
+      or(eq(merchants.storeSlug, STORE_SLUG), eq(merchants.userId, userId))
+    )
+    .returning();
+
+  if (doomed.length > 0) {
+    console.log(`  ${doomed.length} existing store(s) removed`);
+  }
+
+  await agentDb.delete(agentFeedback);
+  await agentDb.delete(conversations);
+  await agentDb.delete(agentMemoryLong);
+  await agentDb.delete(auditLogs);
+  await agentDb.delete(failures);
+
+  console.log("  agent memory, audit trail and failure log cleared");
+}
+
 async function main() {
   console.log("Seeding demo store...");
 
   const userId = await ensureOwner();
 
-  const existingMerchant = await db.query.merchants.findFirst({
-    where: eq(merchants.storeSlug, STORE_SLUG),
-  });
-
-  if (existingMerchant) {
-    console.log(
-      `Store "${STORE_SLUG}" already exists (${existingMerchant.id}). Delete it first to reseed.`
-    );
-    process.exit(0);
-  }
+  await wipeExistingStore(userId);
 
   const [merchant] = await db
     .insert(merchants)
@@ -186,6 +240,11 @@ async function main() {
           // the denormalised copy the search and display paths read.
           category: item.categorySlug,
           categoryId,
+          costPrice: seedCostPaise(
+            item.sku,
+            item.categorySlug,
+            item.priceRupees
+          ),
           createdAt: listedAt,
           description: item.description,
           imageUrl: item.imageUrl,

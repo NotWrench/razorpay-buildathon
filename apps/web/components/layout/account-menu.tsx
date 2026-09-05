@@ -32,7 +32,7 @@ export function AccountMenu({
 
   if (!email) {
     return (
-      <ButtonLink href="/sign-in" size="sm" variant="outline">
+      <ButtonLink href="/login" size="sm" variant="outline">
         Sign in
       </ButtonLink>
     );

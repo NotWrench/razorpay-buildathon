@@ -4,7 +4,9 @@ import { AccountFiguresRow } from "@/components/account/account-figures";
 import { AddressList } from "@/components/account/address-list";
 import { OrderTable } from "@/components/account/order-table";
 import { SavedBuilds } from "@/components/account/saved-builds";
+import { PillLink } from "@/components/common/pill-link";
 import { getAccount } from "@/lib/data";
+import { shellRoutes } from "@/lib/routes";
 
 /**
  * The profile.
@@ -18,17 +20,26 @@ export const metadata: Metadata = { title: "Account" };
 
 export default async function AccountPage() {
   const account = await getAccount();
+  const isGuest = account.email === "Guest session";
 
   return (
     <div className="grid gap-24">
       <section>
-        <h1 className="t-display-md text-bone leading-none">
-          {account.name}
-        </h1>
+        <h1 className="t-display-md text-bone leading-none">{account.name}</h1>
         <p className="t-body mt-3 text-smoke">{account.email}</p>
         <p className="t-num-xs mt-1 text-smoke">
           Member since {account.memberSince}
         </p>
+        {isGuest ? (
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <PillLink href={shellRoutes.login} size="sm" variant="ghost">
+              Sign in
+            </PillLink>
+            <p className="t-body-sm text-smoke">
+              Sign in to keep your orders and builds across devices.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       <section>

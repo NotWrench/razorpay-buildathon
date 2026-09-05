@@ -5,16 +5,22 @@ import { Label } from "@workspace/ui/components/label";
 import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
-import { Trash2 } from "lucide-react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ProductRender } from "@/components/common/product-render";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import type { ManagerColumn } from "@/components/manager/manager-table";
-import { ManagerTable, RowAction } from "@/components/manager/manager-table";
+import { ManagerTable } from "@/components/manager/manager-table";
 import { RestockPicker } from "@/components/manager/restock-picker";
 import { SelectCell } from "@/components/manager/select-cell";
+import { useAction } from "@/hooks/use-action";
+import {
+  approveRestockAction,
+  createPurchaseOrderAction,
+  rejectRestockAction,
+  saveThresholdsAction,
+} from "@/lib/actions/manager";
 import type {
   ManagerProduct,
   RestockDraft,
@@ -28,19 +34,18 @@ import type {
  * whatever the assistant drafted about it. What was missing is the other
  * direction — an operator who knows a part is about to move could not put it
  * on the order, because the only way onto this list was to already be running
- * out. `Add product` is that way in, and rows added by hand can be taken off
- * again.
+ * out. `Add product` is that way in, and it raises the same request the
+ * footer does, so a hand-picked part arrives in the drafts block above rather
+ * than in a row only this browser tab believes in.
  *
  * The editable cells are real inputs, not spans that turn into inputs on
  * click: a number an operator is expected to change should be focusable with
- * Tab and typed into without a ceremony first.
+ * Tab and typed into without a ceremony first. They commit on blur, because a
+ * write per keystroke is a write per keystroke.
  *
  * Drafts the assistant made on /manager arrive at the top with the reason it
  * made them. Approve and Reject are both ghost — approving somebody else's
  * suggestion is a decision, and a filled pill would be the page taking a side.
- *
- * Nothing here writes: approving, rejecting and creating the order all move
- * local state and say so in the toast.
  */
 
 const rowKey = (row: RestockRow) => row.id;
@@ -48,42 +53,66 @@ const rowKey = (row: RestockRow) => row.id;
 function NumberCell({
   id,
   label,
-  onChange,
+  onCommit,
   value,
 }: {
   id: string;
   label: string;
-  onChange: (id: string, value: number) => void;
+  onCommit: (id: string, value: number) => void;
   value: number;
 }) {
+  const [draft, setDraft] = useState(String(value));
+
   const change = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) =>
-      onChange(id, Math.max(0, Number(event.target.value) || 0)),
-    [id, onChange]
+    (event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value),
+    []
   );
+
+  const commit = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const next = Math.max(0, Number(event.target.value) || 0);
+
+      setDraft(String(next));
+
+      if (next !== value) {
+        onCommit(id, next);
+      }
+    },
+    [id, onCommit, value]
+  );
+
+  const onKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
+  }, []);
 
   return (
     <input
       aria-label={label}
       className="t-num-sm h-9 w-24 rounded-full border border-hairline bg-transparent px-3 text-right text-bone outline-none transition-colors duration-micro focus:border-bone"
       inputMode="numeric"
+      onBlur={commit}
       onChange={change}
-      value={value}
+      onKeyDown={onKeyDown}
+      value={draft}
     />
   );
 }
 
 function DraftCard({
+  busy,
   draft,
   onApprove,
   onReject,
 }: {
+  busy: boolean;
   draft: RestockDraft;
-  onApprove: (draft: RestockDraft) => void;
-  onReject: (draft: RestockDraft) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
 }) {
-  const approve = useCallback(() => onApprove(draft), [draft, onApprove]);
-  const reject = useCallback(() => onReject(draft), [draft, onReject]);
+  const approve = useCallback(() => onApprove(draft.id), [draft.id, onApprove]);
+  const reject = useCallback(() => onReject(draft.id), [draft.id, onReject]);
 
   return (
     <div className="flex flex-col rounded-[20px] border border-hairline bg-panel p-5">
@@ -109,10 +138,10 @@ function DraftCard({
       <p className="t-body-sm mt-4 text-smoke">{draft.provenance}</p>
 
       <div className="mt-5 flex gap-3">
-        <Pill onClick={approve} size="sm" variant="ghost">
+        <Pill disabled={busy} onClick={approve} size="sm" variant="ghost">
           Approve
         </Pill>
-        <Pill onClick={reject} size="sm" variant="ghost">
+        <Pill disabled={busy} onClick={reject} size="sm" variant="ghost">
           Reject
         </Pill>
       </div>
@@ -120,42 +149,37 @@ function DraftCard({
   );
 }
 
-/** Only rows an operator put here by hand can be taken off again. */
-function DropAction({
-  onDrop,
-  row,
-}: {
-  onDrop: (row: RestockRow) => void;
-  row: RestockRow;
-}) {
-  const drop = useCallback(() => onDrop(row), [onDrop, row]);
-
-  return (
-    <RowAction
-      label={`Take ${row.product.name} off the order`}
-      onClick={drop}
-      tone="lacquer"
-    >
-      <Trash2 aria-hidden className="size-3.5" />
-    </RowAction>
-  );
-}
-
 function RestockScreen({
   catalogue,
-  drafts: initialDrafts,
-  rows: initialRows,
+  drafts,
+  rows,
 }: {
-  /** The whole catalogue, so a part can be added by hand. */
+  /** The whole catalogue, so a part can be put on the order by hand. */
   catalogue: ManagerProduct[];
   drafts: RestockDraft[];
   rows: RestockRow[];
 }) {
-  const [rows, setRows] = useState(initialRows);
-  const [drafts, setDrafts] = useState(initialDrafts);
   const [selected, setSelected] = useState<string[]>([]);
-  const [manual, setManual] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
+
+  const approve = useAction(approveRestockAction, {
+    successMessage: "Approved. Recorded against the request.",
+  });
+  const reject = useAction(rejectRestockAction, {
+    successMessage: "Rejected, with the decision recorded.",
+  });
+  const thresholds = useAction(saveThresholdsAction, {
+    successMessage: "Thresholds saved.",
+  });
+  const purchase = useAction(createPurchaseOrderAction, {
+    onSuccess: ({ created }) => {
+      setSelected([]);
+      setPicking(false);
+      toast.success(
+        `${created} request(s) raised and waiting on you. Nothing has been ordered.`
+      );
+    },
+  });
 
   const openPicker = useCallback(() => setPicking(true), []);
 
@@ -167,56 +191,52 @@ function RestockScreen({
     );
   }, []);
 
-  const onThreshold = useCallback((id: string, value: number) => {
-    setRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, threshold: value } : row))
-    );
-  }, []);
+  const clearSelection = useCallback(() => setSelected([]), []);
 
-  const onSuggested = useCallback((id: string, value: number) => {
-    setRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, suggested: value } : row))
-    );
-  }, []);
+  const byId = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
 
-  /* The picker only offers what is not already on the order. */
+  const onThreshold = useCallback(
+    (id: string, value: number) => {
+      const row = byId.get(id);
+
+      if (row) {
+        thresholds.run({
+          productId: id,
+          reorderQuantity: row.suggested,
+          threshold: value,
+        });
+      }
+    },
+    [byId, thresholds]
+  );
+
+  const onSuggested = useCallback(
+    (id: string, value: number) => {
+      const row = byId.get(id);
+
+      if (row) {
+        thresholds.run({
+          productId: id,
+          reorderQuantity: value,
+          threshold: row.threshold,
+        });
+      }
+    },
+    [byId, thresholds]
+  );
+
+  /* The picker only offers what is not already on the list. */
   const available = useMemo(() => {
     const listed = new Set(rows.map((row) => row.product.id));
 
     return catalogue.filter((entry) => !listed.has(entry.product.id));
   }, [catalogue, rows]);
 
-  const onAdd = useCallback((entry: ManagerProduct, quantity: number) => {
-    const row: RestockRow = {
-      id: `manual-${entry.product.id}`,
-      inStock: entry.stock,
-      product: entry.product,
-      suggested: quantity,
-      threshold: entry.lowAt,
-    };
-
-    setRows((current) => [row, ...current]);
-    setManual((current) => [...current, row.id]);
-    /* Added by hand means wanted on the order, so it arrives ticked. */
-    setSelected((current) => [...current, row.id]);
-    toast(`${entry.product.name} added to the order.`);
-  }, []);
-
-  const onDrop = useCallback((row: RestockRow) => {
-    setRows((current) => current.filter((entry) => entry.id !== row.id));
-    setManual((current) => current.filter((entry) => entry !== row.id));
-    setSelected((current) => current.filter((entry) => entry !== row.id));
-  }, []);
-
-  const onApprove = useCallback((draft: RestockDraft) => {
-    setDrafts((current) => current.filter((entry) => entry.id !== draft.id));
-    toast(`Approved. ${draft.quantity} units of ${draft.product.name} queued.`);
-  }, []);
-
-  const onReject = useCallback((draft: RestockDraft) => {
-    setDrafts((current) => current.filter((entry) => entry.id !== draft.id));
-    toast("Rejected. The assistant will not raise it again this window.");
-  }, []);
+  const onAdd = useCallback(
+    (entry: ManagerProduct, quantity: number) =>
+      purchase.run([{ productId: entry.product.id, quantity }]),
+    [purchase]
+  );
 
   const chosen = useMemo(
     () => rows.filter((row) => selected.includes(row.id)),
@@ -237,13 +257,16 @@ function RestockScreen({
     [chosen]
   );
 
-  const clearSelection = useCallback(() => setSelected([]), []);
-
-  const onCreate = useCallback(() => {
-    toast(
-      `Purchase order drafted for ${chosen.length} lines — ${formatPaise(estimate)}. Nothing has been sent.`
-    );
-  }, [chosen.length, estimate]);
+  const onCreate = useCallback(
+    () =>
+      purchase.run(
+        chosen.map((row) => ({
+          productId: row.product.id,
+          quantity: row.suggested,
+        }))
+      ),
+    [chosen, purchase]
+  );
 
   const columns = useMemo<ManagerColumn<RestockRow>[]>(
     () => [
@@ -273,12 +296,7 @@ function RestockScreen({
                 src={row.product.imageUrl || undefined}
               />
             </ImageGround>
-            <div className="min-w-0">
-              <p className="t-body truncate text-bone">{row.product.name}</p>
-              {manual.includes(row.id) ? (
-                <Label className="mt-0.5 block">Added by hand</Label>
-              ) : null}
-            </div>
+            <p className="t-body truncate text-bone">{row.product.name}</p>
           </div>
         ),
         sort: (a, b) => a.product.name.localeCompare(b.product.name),
@@ -289,8 +307,8 @@ function RestockScreen({
         id: "inStock",
         label: "In stock",
         render: (row) => (
-          /* Amber means "this is the problem". A part somebody added by hand
-             while it is still comfortably stocked is not one. */
+          /* Amber means "this is the problem". A part sitting comfortably
+             above its own threshold is not one. */
           <span
             className={cn(
               "t-num-sm",
@@ -311,7 +329,7 @@ function RestockScreen({
           <NumberCell
             id={row.id}
             label={`Threshold for ${row.product.name}`}
-            onChange={onThreshold}
+            onCommit={onThreshold}
             value={row.threshold}
           />
         ),
@@ -325,7 +343,7 @@ function RestockScreen({
           <NumberCell
             id={row.id}
             label={`Order quantity for ${row.product.name}`}
-            onChange={onSuggested}
+            onCommit={onSuggested}
             value={row.suggested}
           />
         ),
@@ -351,18 +369,14 @@ function RestockScreen({
         width: "10rem",
       },
     ],
-    [manual, onSuggested, onThreshold, onToggle, selected]
+    [onSuggested, onThreshold, onToggle, selected]
   );
 
-  const actions = useCallback(
-    (row: RestockRow) =>
-      manual.includes(row.id) ? <DropAction onDrop={onDrop} row={row} /> : null,
-    [manual, onDrop]
-  );
+  const busy = approve.pending || reject.pending;
 
   return (
     <div className="px-5 pt-14 pb-32 sm:px-8 lg:px-8 2xl:px-12">
-      <ManagerHeading count={`${rows.length} on this order`} title="Restock">
+      <ManagerHeading count={`${rows.length} below threshold`} title="Restock">
         <Pill onClick={openPicker} size="sm" variant="ghost">
           Add product
         </Pill>
@@ -374,10 +388,11 @@ function RestockScreen({
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {drafts.map((draft) => (
               <DraftCard
+                busy={busy}
                 draft={draft}
                 key={draft.id}
-                onApprove={onApprove}
-                onReject={onReject}
+                onApprove={approve.run}
+                onReject={reject.run}
               />
             ))}
           </div>
@@ -385,7 +400,6 @@ function RestockScreen({
       ) : null}
 
       <ManagerTable
-        actions={actions}
         columns={columns}
         empty={
           <div className="flex flex-col items-start gap-5">
@@ -413,13 +427,18 @@ function RestockScreen({
               Clear
             </Pill>
           ) : null}
-          <Pill disabled={chosen.length === 0} onClick={onCreate} size="sm">
+          <Pill
+            disabled={chosen.length === 0 || purchase.pending}
+            onClick={onCreate}
+            size="sm"
+          >
             Create purchase order
           </Pill>
         </div>
       </div>
 
       <RestockPicker
+        busy={purchase.pending}
         catalogue={available}
         onAdd={onAdd}
         onOpenChange={setPicking}

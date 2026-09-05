@@ -26,6 +26,15 @@ export interface CreateCheckoutOrderInput {
   aiPurchaseReason?: string;
   buyerIdentifier: string;
   buyerType: BuyerType;
+  /**
+   * The campaign the discount came from, when one applied.
+   *
+   * Written from what the quote actually used, so "did that campaign work?"
+   * reads the orders the campaign really touched rather than guessing from
+   * dates. Null for an undiscounted order and for a discount that came from
+   * somewhere else.
+   */
+  campaignId?: string | null;
   /** Discount in the smallest currency unit (paise). */
   discountAmount?: number;
   items: CartLine[];
@@ -229,6 +238,7 @@ export async function createCheckoutOrder(
         approvalStatus: initialApprovalStatus(input.buyerType),
         buyerIdentifier: input.buyerIdentifier,
         buyerType: input.buyerType,
+        campaignId: discountAmount > 0 ? (input.campaignId ?? null) : null,
         currency: gateway.merchant.currency,
         discountAmount,
         merchantId: input.merchantId,

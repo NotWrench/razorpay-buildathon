@@ -24,10 +24,11 @@ import { checkoutTools } from "../tools/checkout";
 import { explainTools } from "../tools/explain";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
+import { webSearchTools } from "../tools/web-search";
 import { storefrontApproval } from "./approval";
-import { repairHarmonyToolName } from "./repair";
 import { activeToolsFor, type ChatMode, modeInstructions } from "./modes";
 import { storefrontPrompt } from "./prompts";
+import { cleanMessageHistory, repairHarmonyToolName } from "./repair";
 import { summariseStep } from "./steps";
 import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
@@ -39,6 +40,7 @@ export function storefrontToolSet(ctx: AgentContext) {
     ...requirementTools(ctx),
     ...checkoutTools(ctx),
     ...explainTools(ctx),
+    ...webSearchTools(ctx),
   };
 }
 
@@ -103,7 +105,7 @@ export async function streamStorefrontTurn(params: {
       pageContext: pageContext?.description,
       storeName: merchant.businessName,
     }),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(cleanMessageHistory(messages)),
     model: chatModel(),
     onAbort: async ({ steps }) => {
       // `onFinish` does not run on an abort, so without this a turn stopped by
@@ -155,6 +157,20 @@ export async function streamStorefrontTurn(params: {
 
           return describeTurnFailure(error);
         },
+        /*
+         * The model's thinking, forwarded to the buyer. It defaults to off,
+         * which is a sound default for a library and the wrong one here: this
+         * agent reasons for far longer than it speaks — measured at 214
+         * reasoning deltas against 27 of content — and a turn that shows only
+         * the 27 reads as an answer arrived at without thought. What the
+         * buyer is owed is not the tokens themselves but the evidence that
+         * the machine weighed their budget against a real catalog.
+         *
+         * Nothing private travels here. The reasoning is about products and
+         * prices the buyer can already see, and the tool results it reasons
+         * over were fetched under the buyer's own scope.
+         */
+        sendReasoning: true,
         stream: result.stream,
       })
     ),

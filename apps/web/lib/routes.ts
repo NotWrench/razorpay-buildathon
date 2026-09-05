@@ -33,15 +33,6 @@ export const storeRoutes = (slug: string) => ({
     route(`/store/${slug}/products?q=${encodeURIComponent(query)}`),
 });
 
-export const dashboardRoutes = {
-  assistant: route("/dashboard/assistant"),
-  insights: route("/dashboard/insights"),
-  inventory: route("/dashboard/inventory"),
-  orders: route("/dashboard/orders"),
-  overview: route("/dashboard"),
-  products: route("/dashboard/products"),
-};
-
 /**
  * The manager side.
  *
@@ -51,8 +42,11 @@ export const dashboardRoutes = {
  */
 export const managerRoutes = {
   account: route("/manager/account"),
+  activity: route("/manager/activity"),
+  agents: route("/manager/agents"),
   assistant: route("/manager"),
   assistantWith: (rangeId: string) => route(`/manager?range=${rangeId}`),
+  campaigns: route("/manager/campaigns"),
   orders: route("/manager/orders"),
   products: route("/manager/products"),
   restock: route("/manager/restock"),

@@ -1,4 +1,5 @@
 import {
+  campaigns,
   db,
   type Order,
   orderItems,
@@ -138,6 +139,31 @@ export async function markPaymentAuthorized(
  * Terminal success state: marks the payment captured, the order paid and draws
  * down stock. Safe to call repeatedly — later calls are no-ops.
  */
+/**
+ * Books a discount against the campaign that gave it, once money is confirmed.
+ *
+ * On capture rather than on order creation, because an order that is created
+ * and never paid has given nothing away — counting those would exhaust a
+ * campaign's budget on carts nobody completed, and stop the campaign for the
+ * customers who would have bought.
+ *
+ * Written as a relative update rather than a read-then-write, so two orders
+ * captured at the same moment both count.
+ */
+export async function chargeCampaignBudget(
+  campaignId: string,
+  discountPaise: number
+): Promise<void> {
+  if (discountPaise <= 0) {
+    return;
+  }
+
+  await db
+    .update(campaigns)
+    .set({ spentPaise: sql`${campaigns.spentPaise} + ${discountPaise}` })
+    .where(eq(campaigns.id, campaignId));
+}
+
 export async function markPaymentCaptured(
   context: PaymentContext,
   input: {
@@ -178,6 +204,16 @@ export async function markPaymentCaptured(
       payment: payment ?? context.payment,
     };
   });
+
+  // The discount is spent the moment the money is. A campaign with a budget
+  // stops discounting when this takes it over the line — see
+  // `getActiveCampaigns`, which is where that is enforced.
+  if (context.order.campaignId && context.order.discountAmount > 0) {
+    await chargeCampaignBudget(
+      context.order.campaignId,
+      context.order.discountAmount
+    );
+  }
 
   await recordAudit({
     action: "PAYMENT_CAPTURED",

@@ -5,16 +5,20 @@ import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import { cn } from "@workspace/ui/lib/utils";
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { TypedConfirmDialog } from "@/components/manager/manager-dialogs";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import { ManagerSearch } from "@/components/manager/manager-search";
 import type { ManagerColumn } from "@/components/manager/manager-table";
 import { ManagerTable } from "@/components/manager/manager-table";
+import { useAction } from "@/hooks/use-action";
+import {
+  decideAgentOrderAction,
+  refundOrderAction,
+} from "@/lib/actions/manager";
 import type { ManagerOrder, ManagerOrderState } from "@/lib/data/types";
 
 /**
- * Orders, and the two things you do to them.
+ * Orders, and the things you actually do to them.
  *
  * Still a table, because an order is six values and a column is the right
  * shape for that. What changed is that the five filters were five loose pills
@@ -23,30 +27,41 @@ import type { ManagerOrder, ManagerOrderState } from "@/lib/data/types";
  *
  * Status wears a chip so the column has an edge to scan down, but the colour
  * rule is unchanged: only the states that are not the normal course of
- * business get any — Cancelled in ember, Refunded in amber. A column where
- * every row is coloured is a column nobody reads.
+ * business get any — Cancelled in lacquer, Refunded and Awaiting in amber. A
+ * column where every row is coloured is a column nobody reads.
+ *
+ * "Mark fulfilled" used to sit here and did nothing, because there is no
+ * shipment anywhere in this schema for it to write to. It is gone rather than
+ * backed by an invented column: a control that claims a state the database
+ * cannot hold teaches the operator that the buttons on this screen are
+ * decorative, which is expensive when one of them refunds money.
+ *
+ * What replaces it is the queue this whole system is built around. An order a
+ * buying agent created sits unpaid and uncharged until a human decides, and
+ * the reason the agent gave is shown in full — it is the merchant's only
+ * evidence for the decision, so it is never truncated.
  */
 
 const FILTERS: { id: string; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "awaiting", label: "Awaiting you" },
   { id: "new", label: "New" },
-  { id: "due", label: "Due" },
-  { id: "fulfilled", label: "Fulfilled" },
+  { id: "due", label: "Paid" },
   { id: "cancelled", label: "Cancelled" },
 ];
 
 const STATE_WORD: Record<ManagerOrderState, string> = {
+  awaiting: "Awaiting you",
   cancelled: "Cancelled",
-  due: "Due",
-  fulfilled: "Fulfilled",
+  due: "Paid",
   new: "New",
   refunded: "Refunded",
 };
 
 const STATE_TONE: Record<ManagerOrderState, string> = {
-  cancelled: "border-ember/40 text-ember",
+  awaiting: "border-amber/40 text-amber",
+  cancelled: "border-lacquer/40 text-lacquer",
   due: "border-hairline text-smoke",
-  fulfilled: "border-hairline text-smoke",
   new: "border-smoke/40 text-bone",
   refunded: "border-amber/40 text-amber",
 };
@@ -57,7 +72,7 @@ function StatusChip({ state }: { state: ManagerOrderState }) {
   return (
     <span
       className={cn(
-        "t-body-sm inline-flex h-7 items-center rounded-full border px-3",
+        "t-body-sm inline-flex h-7 items-center whitespace-nowrap rounded-full border px-3",
         STATE_TONE[state]
       )}
     >
@@ -103,23 +118,30 @@ function FilterSegment({
 }
 
 /**
- * What is in the order, and the two things you can do about it.
+ * What is in the order, and the things you can do about it.
  *
  * The lines carry no image — an order line is a name, a quantity and a price,
  * and there is no product record behind it to render — so this stays
  * typographic and gets its structure from a totals rule instead.
  */
 function OrderLines({
-  onFulfil,
+  busy,
+  onApprove,
+  onReject,
   onRefund,
   order,
 }: {
-  onFulfil: (order: ManagerOrder) => void;
+  busy: boolean;
+  onApprove: (order: ManagerOrder) => void;
+  onReject: (order: ManagerOrder) => void;
   onRefund: (order: ManagerOrder) => void;
   order: ManagerOrder;
 }) {
-  const fulfil = useCallback(() => onFulfil(order), [onFulfil, order]);
+  const approve = useCallback(() => onApprove(order), [onApprove, order]);
+  const reject = useCallback(() => onReject(order), [onReject, order]);
   const refund = useCallback(() => onRefund(order), [onRefund, order]);
+
+  const awaiting = order.state === "awaiting";
 
   return (
     <div className="max-w-[560px]">
@@ -153,13 +175,46 @@ function OrderLines({
         </span>
       </div>
 
-      <div className="mt-5 flex gap-3">
-        <Pill onClick={fulfil} size="sm" variant="ghost">
-          Mark fulfilled
-        </Pill>
-        <Pill onClick={refund} size="sm" variant="ghost">
-          Refund
-        </Pill>
+      {order.buyerType === "ai_agent" ? (
+        <div className="mt-5 border-hairline border-l-2 pl-4">
+          <Label>Why the agent bought</Label>
+          <p className="t-body-sm mt-1.5 text-smoke">
+            {order.agentReason ??
+              "No reason given — treat this one with suspicion."}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {awaiting ? (
+          <>
+            <Pill disabled={busy} onClick={approve} size="sm" variant="ghost">
+              Approve
+            </Pill>
+            <Pill disabled={busy} onClick={reject} size="sm" variant="ghost">
+              Reject
+            </Pill>
+          </>
+        ) : null}
+
+        {order.refundable ? (
+          <Pill disabled={busy} onClick={refund} size="sm" variant="ghost">
+            Refund
+          </Pill>
+        ) : null}
+
+        {/*
+          An order with nothing to do to it says so, rather than showing
+          controls that would be refused. `refundable` comes off a captured
+          payment, not off the order's own status.
+        */}
+        {awaiting || order.refundable ? null : (
+          <p className="t-body-sm text-smoke">
+            {order.state === "refunded"
+              ? "Already refunded."
+              : "Nothing to do — no captured payment on this order."}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -170,29 +225,37 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
   const [query, setQuery] = useState("");
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [refunding, setRefunding] = useState<ManagerOrder | null>(null);
-  const [rows, setRows] = useState(orders);
+
+  const refund = useAction(refundOrderAction, {
+    onSuccess: () => setRefunding(null),
+    successMessage: "Refunded. Razorpay confirmed it.",
+  });
+
+  const decide = useAction(decideAgentOrderAction);
 
   const counts = useMemo(() => {
-    const tally: Record<string, number> = { all: rows.length };
+    const tally = new Map<string, number>([["all", orders.length]]);
 
-    for (const entry of rows) {
-      tally[entry.state] = (tally[entry.state] ?? 0) + 1;
+    for (const entry of orders) {
+      tally.set(entry.state, (tally.get(entry.state) ?? 0) + 1);
     }
 
     return tally;
-  }, [rows]);
+  }, [orders]);
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
 
-    return rows.filter(
+    return orders.filter(
       (order) =>
         (filter === "all" || order.state === filter) &&
         (needle.length === 0 ||
           order.id.toLowerCase().includes(needle) ||
           order.customer.toLowerCase().includes(needle))
     );
-  }, [filter, query, rows]);
+  }, [filter, orders, query]);
+
+  const awaitingCount = counts.get("awaiting") ?? 0;
 
   const onToggle = useCallback(
     (key: string) => setOpenKey((current) => (current === key ? null : key)),
@@ -204,30 +267,31 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
     setQuery("");
   }, []);
 
-  const onFulfil = useCallback((order: ManagerOrder) => {
-    setRows((current) =>
-      current.map((entry) =>
-        entry.id === order.id ? { ...entry, state: "fulfilled" } : entry
-      )
-    );
-    toast(`${order.id} marked fulfilled.`);
-  }, []);
+  const onApprove = useCallback(
+    (order: ManagerOrder) =>
+      decide.run({
+        decision: "approve",
+        explanation: "Approved by the merchant from the orders screen.",
+        orderId: order.orderId,
+      }),
+    [decide]
+  );
+
+  const onReject = useCallback(
+    (order: ManagerOrder) =>
+      decide.run({
+        decision: "reject",
+        explanation: "Rejected by the merchant from the orders screen.",
+        orderId: order.orderId,
+      }),
+    [decide]
+  );
 
   const onRefundConfirm = useCallback(() => {
-    if (!refunding) {
-      return;
+    if (refunding) {
+      refund.run(refunding.orderId);
     }
-
-    const target = refunding;
-
-    setRows((current) =>
-      current.map((entry) =>
-        entry.id === target.id ? { ...entry, state: "refunded" } : entry
-      )
-    );
-    setRefunding(null);
-    toast(`${target.id} refunded — ${formatPaise(target.totalPaise)}.`);
-  }, [refunding]);
+  }, [refund, refunding]);
 
   const onRefundOpen = useCallback(
     (open: boolean) => setRefunding(open ? refunding : null),
@@ -249,7 +313,14 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "customer",
         label: "Customer",
         render: (order) => (
-          <span className="t-body text-bone">{order.customer}</span>
+          <span className="t-body text-bone">
+            {order.customer}
+            {order.buyerType === "ai_agent" ? (
+              <span className="t-label ml-2 rounded-full border border-hairline px-2 py-0.5 text-smoke">
+                agent
+              </span>
+            ) : null}
+          </span>
         ),
         sort: (a, b) => a.customer.localeCompare(b.customer),
         width: "auto",
@@ -289,26 +360,34 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
         id: "status",
         label: "Status",
         render: (order) => <StatusChip state={order.state} />,
-        width: "9rem",
+        width: "10rem",
       },
     ],
     []
   );
 
+  const busy = refund.pending || decide.pending;
+
   const expanded = useCallback(
     (order: ManagerOrder) => (
-      <OrderLines onFulfil={onFulfil} onRefund={setRefunding} order={order} />
+      <OrderLines
+        busy={busy}
+        onApprove={onApprove}
+        onRefund={setRefunding}
+        onReject={onReject}
+        order={order}
+      />
     ),
-    [onFulfil]
+    [busy, onApprove, onReject]
   );
 
   return (
     <div className="px-5 pt-14 pb-24 sm:px-8 lg:px-8 2xl:px-12">
       <ManagerHeading
         count={
-          shown.length === rows.length
-            ? `${rows.length} orders`
-            : `${shown.length} of ${rows.length}`
+          awaitingCount > 0
+            ? `${awaitingCount} awaiting you · ${shown.length} shown`
+            : `${shown.length} orders`
         }
         title="Orders"
       >
@@ -328,7 +407,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
           {FILTERS.map((entry) => (
             <FilterSegment
               active={filter === entry.id}
-              count={counts[entry.id] ?? 0}
+              count={counts.get(entry.id) ?? 0}
               id={entry.id}
               key={entry.id}
               label={entry.label}
@@ -359,7 +438,7 @@ function OrdersScreen({ orders }: { orders: ManagerOrder[] }) {
       />
 
       <TypedConfirmDialog
-        body={`${refunding?.id ?? "This order"} will be refunded in full — ${refunding ? formatPaise(refunding.totalPaise) : ""} back to the customer. This cannot be undone.`}
+        body={`${refunding?.id ?? "This order"} will be refunded in full — ${refunding ? formatPaise(refunding.totalPaise) : ""} back to the customer, through Razorpay. This cannot be undone.`}
         confirmLabel="Refund"
         onConfirm={onRefundConfirm}
         onOpenChange={onRefundOpen}

@@ -2,12 +2,11 @@
 
 import { Pill } from "@workspace/ui/components/pill";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { useWordStream } from "@/components/chat/use-word-stream";
+import { ConnectRazorpayNotice } from "@/components/manager/connect-razorpay-notice";
 import { FindingsList } from "@/components/manager/findings-list";
 import { ManagerComposer } from "@/components/manager/manager-composer";
-import type { ManagerTurn } from "@/components/manager/manager-thread";
 import { ManagerThread } from "@/components/manager/manager-thread";
+import { OvernightBlock } from "@/components/manager/overnight-block";
 import { RangeMenu } from "@/components/manager/range-menu";
 import {
   Earnings,
@@ -16,7 +15,7 @@ import {
   SeenNotBought,
   SellingWell,
 } from "@/components/manager/summary-blocks";
-import { managerReplyAction } from "@/lib/actions/manager";
+import { useMerchantAssistant } from "@/hooks/use-merchant-assistant";
 import type { ManagerRange, ManagerSummary } from "@/lib/data/types";
 
 /**
@@ -31,23 +30,22 @@ import type { ManagerRange, ManagerSummary } from "@/lib/data/types";
  *
  * The summary is still rendered on arrival and still sits above the thread:
  * the numbers stay on screen while you interrogate them.
- */
-
-/**
- * Four openings, one per branch the reply matcher actually has.
  *
- * These are prompts, not answers — nothing here is a figure. Each one is
- * worded to land on a real branch (`sales`, `stock`, `what should`, and the
- * execute guard) so that pressing one never dead-ends in the fallback.
+ * The follow-up is the real merchant agent, streaming from
+ * `/api/agent/merchant`: it pulls the store's own numbers through its tools,
+ * and every action that moves money suspends mid-turn for a card the merchant
+ * has to press. The briefing and the thread therefore agree by construction —
+ * the window selected above is sent with the turn, so the agent measures over
+ * the same period the operator is reading.
  */
-const STARTERS = [
-  "What sold best this window?",
-  "What is running low on stock?",
-  "What should I do first?",
-  "Reorder the parts below threshold",
-];
 
-function Starter({
+const SUGGESTIONS = [
+  "What should I discount this week?",
+  "Anything waiting on my approval?",
+  "What am I about to run out of?",
+] as const;
+
+function Suggestion({
   onPick,
   text,
 }: {
@@ -64,19 +62,33 @@ function Starter({
 }
 
 function ManagerScreen({
+  merchantId,
   operator,
   ranges,
+  razorpayConnected,
   summary,
 }: {
+  /** Which store the assistant's tools are pointed at. Re-checked server-side. */
+  merchantId: string;
   /** Whoever the store belongs to. The greeting is the whole page header. */
   operator: string;
   ranges: ManagerRange[];
+  /** Whether the store bills through its own Razorpay account yet. */
+  razorpayConnected: boolean;
   summary: ManagerSummary;
 }) {
   const [draft, setDraft] = useState("");
-  const [turns, setTurns] = useState<ManagerTurn[]>([]);
-  const stream = useWordStream();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const {
+    addToolApprovalResponse,
+    busy,
+    error,
+    messages,
+    regenerate,
+    sendMessage,
+    stop,
+  } = useMerchantAssistant({ merchantId, rangeDays: summary.range.days });
 
   /*
    * The thread grows below a briefing that does not move, so a new turn lands
@@ -84,12 +96,12 @@ function ManagerScreen({
    * answer they just asked for.
    *
    * The scroll is set on the container rather than by asking a marker element
-   * to bring itself into view: the marker is zero-height and the turn is one
-   * frame away from being laid out when the effect runs, so a frame is waited
-   * for and the container is told where to go.
+   * to bring itself into view: the turn is one frame away from being laid out
+   * when the effect runs, so a frame is waited for and the container is told
+   * where to go.
    */
   useEffect(() => {
-    if (turns.length === 0) {
+    if (messages.length === 0) {
       return;
     }
 
@@ -105,45 +117,23 @@ function ManagerScreen({
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [turns.length]);
+  }, [messages.length]);
 
   const ask = useCallback(
-    async (question: string) => {
-      const reply = await managerReplyAction(question, summary.range.id);
+    (text: string) => {
+      const question = text.trim();
 
-      setTurns((current) => [
-        ...current,
-        {
-          id: `turn-${current.length}`,
-          question,
-          reply: reply.text,
-          result: reply.result,
-        },
-      ]);
-      stream.start(reply.text.split(" ").length);
+      if (question.length === 0 || busy) {
+        return;
+      }
+
+      setDraft("");
+      sendMessage({ text: question });
     },
-    [stream, summary.range.id]
+    [busy, sendMessage]
   );
 
-  const run = useCallback(
-    (question: string) => {
-      ask(question).catch(() =>
-        toast.error("The store's numbers could not be read just now.")
-      );
-    },
-    [ask]
-  );
-
-  const send = useCallback(() => {
-    const question = draft.trim();
-
-    if (question.length === 0) {
-      return;
-    }
-
-    setDraft("");
-    run(question);
-  }, [draft, run]);
+  const send = useCallback(() => ask(draft), [ask, draft]);
 
   return (
     <div className="flex h-[calc(100dvh-var(--manager-rail))] flex-col lg:h-dvh">
@@ -162,8 +152,18 @@ function ManagerScreen({
         ref={scrollRef}
       >
         <div className="mx-auto w-full max-w-[1180px] pb-10">
+          {razorpayConnected ? null : (
+            <div className="pb-4">
+              <ConnectRazorpayNotice />
+            </div>
+          )}
+
+          {/* Above the briefing on purpose: it is the only thing on this page
+              that happened since the merchant last looked. */}
+          <OvernightBlock merchantId={merchantId} />
+
           {/* Three figures across the top: what came in, and what is waiting. */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <Earnings summary={summary} />
             <Orders summary={summary} />
           </div>
@@ -179,12 +179,14 @@ function ManagerScreen({
             <FindingsList findings={summary.findings} />
           </div>
 
-          {turns.length > 0 ? (
+          {messages.length > 0 ? (
             <div className="rule-section mt-10 pt-10">
               <ManagerThread
-                shown={stream.shown}
-                streaming={stream.streaming}
-                turns={turns}
+                busy={busy}
+                error={error}
+                messages={messages}
+                onApproval={addToolApprovalResponse}
+                onRetry={regenerate}
               />
             </div>
           ) : null}
@@ -193,21 +195,21 @@ function ManagerScreen({
 
       <div className="shrink-0 border-hairline border-t bg-void px-5 py-4 sm:px-8">
         <div className="mx-auto w-full max-w-[1180px]">
-          {turns.length === 0 ? (
+          {messages.length === 0 ? (
             /* One line that scrolls, not two that wrap: the composer is
                pinned and every row above it is a row taken off the briefing. */
             <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-4">
-              {STARTERS.map((text) => (
-                <Starter key={text} onPick={run} text={text} />
+              {SUGGESTIONS.map((suggestion) => (
+                <Suggestion key={suggestion} onPick={ask} text={suggestion} />
               ))}
             </div>
           ) : null}
 
           <ManagerComposer
             onSend={send}
-            onStop={stream.stop}
+            onStop={stop}
             onValueChange={setDraft}
-            streaming={stream.streaming}
+            streaming={busy}
             value={draft}
           />
         </div>

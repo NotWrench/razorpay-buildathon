@@ -1,135 +1,53 @@
 "use client";
 
-import { Label } from "@workspace/ui/components/label";
-import { cn } from "@workspace/ui/lib/utils";
-import { StreamedText } from "@/components/chat/streamed-text";
-import { FindingsList } from "@/components/manager/findings-list";
-import type { ManagerResult, ManagerTable } from "@/lib/data/manager-chat";
+import type { MerchantMessage } from "@workspace/ai";
+import { merchantPendingLabel } from "@/components/assistant/merchant/pending-labels";
+import { MerchantToolOutput } from "@/components/assistant/merchant/tool-output";
+import { MessageThread } from "@/components/assistant/message-thread";
 
 /**
- * The manager's thread — the storefront's, without the product cards.
+ * The manager's thread — the merchant agent, in the manager's room.
  *
- * An operator asking about stock does not want three renders on a riser; they
- * want the table they would have had to build themselves. So a result here is
- * either a table or the same finding rows the summary uses, and never a
- * shopping surface.
+ * Everything about how a tool call behaves on screen (streaming, the approval
+ * gate, a denial, a turn that ended silently) is the shared state machine in
+ * `MessageThread`; this only decides how it *looks* here. Which is: no
+ * bubbles, no fills, and the same cards the tool outputs already draw — the
+ * semantic tokens they use resolve to this room's palette, so a card is
+ * panel-on-void without knowing it.
+ *
+ * The regex that used to answer here is gone. It could reply about sales,
+ * stock and priorities and nothing else, and it refused every action with a
+ * sentence about drafting that no longer described what the system does. The
+ * agent behind this can pull twenty-two tools and stops for approval on the
+ * five that move money.
  */
-
-export interface ManagerTurn {
-  id: string;
-  question: string;
-  reply: string;
-  result: ManagerResult;
-}
-
-function ResultTable({ table }: { table: ManagerTable }) {
-  return (
-    <div className="mt-5">
-      <Label>{table.title}</Label>
-
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr>
-              {table.columns.map((heading, index) => (
-                <th
-                  className={cn(
-                    "py-2.5 font-normal",
-                    index === 0 ? "text-left" : "text-right"
-                  )}
-                  key={heading}
-                  scope="col"
-                >
-                  <Label>{heading}</Label>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {table.rows.map((row) => (
-              <tr
-                className="transition-colors duration-micro hover:bg-panel"
-                key={row.join("|")}
-              >
-                {row.map((cell, index) => (
-                  <td
-                    className={cn(
-                      /* 16px rhythm: this side of the product is denser than
-                         the storefront on purpose. */
-                      "t-body py-2.5 text-bone",
-                      table.numeric.includes(index)
-                        ? "text-right font-mono tabular-nums"
-                        : "text-left"
-                    )}
-                    key={`${row[0]}-${column(table, index)}`}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function column(table: ManagerTable, index: number): string {
-  return table.columns[index] ?? String(index);
-}
-
-function ManagerThread({
-  shown,
-  streaming,
-  turns,
+export function ManagerThread({
+  busy,
+  error,
+  messages,
+  onApproval,
+  onRetry,
 }: {
-  shown: number;
-  streaming: boolean;
-  turns: ManagerTurn[];
+  busy: boolean;
+  error?: Error;
+  messages: MerchantMessage[];
+  onApproval: (response: { approved: boolean; id: string }) => void;
+  onRetry?: () => void;
 }) {
   return (
-    <div className="grid gap-10">
-      {turns.map((turn, index) => {
-        const last = index === turns.length - 1;
-
-        return (
-          <div className="chat-turn" key={turn.id}>
-            {/* The question is a block, not a line of grey text above one.
-                Two turns of plain paragraphs read as four paragraphs. */}
-            <div className="flex justify-end">
-              <p className="t-body-sm max-w-[80%] rounded-[18px] rounded-br-[6px] bg-riser px-4 py-2.5 text-bone">
-                {turn.question}
-              </p>
-            </div>
-
-            <div className="mt-5">
-              <StreamedText
-                className="t-body"
-                id={turn.id}
-                shown={last ? shown : turn.reply.split(" ").length}
-                streaming={last && streaming}
-                text={turn.reply}
-              />
-
-              {turn.result.kind === "table" ? (
-                <ResultTable table={turn.result.table} />
-              ) : null}
-
-              {turn.result.kind === "findings" ? (
-                <div className="mt-5">
-                  <FindingsList
-                    findings={turn.result.findings}
-                    title="Findings"
-                  />
-                </div>
-              ) : null}
-            </div>
-          </div>
-        );
-      })}
+    <div className="grid gap-6">
+      <MessageThread
+        busy={busy}
+        deniedNote="You declined that, so nothing changed."
+        empty={null}
+        error={error}
+        messages={messages}
+        onApproval={onApproval}
+        onRetry={onRetry}
+        pendingLabel={merchantPendingLabel}
+        renderOutput={(part) => <MerchantToolOutput part={part} />}
+        textVariant="plain"
+      />
     </div>
   );
 }
-
-export { ManagerThread };

@@ -6,10 +6,8 @@ import type {
   PageContextInput,
   StorefrontMessage,
 } from "@workspace/ai";
-import {
-  DefaultChatTransport,
-  lastAssistantMessageIsCompleteWithApprovalResponses,
-} from "ai";
+import { lastAssistantTurnIsAnswered } from "@workspace/ai/client";
+import { DefaultChatTransport } from "ai";
 import { useRef, useState } from "react";
 import { useTurnInterruption } from "./use-turn-interruption";
 
@@ -57,7 +55,12 @@ export function useStorefrontAssistant({
   const chat = useChat<StorefrontMessage>({
     messages: initialMessages,
     onFinish: noteFinish,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+    /*
+     * The turn suspends for two different reasons here — an approval, and an
+     * `askBuyer` question waiting on a tap — and neither SDK predicate covers
+     * both. See `lib/assistant/resume.ts`.
+     */
+    sendAutomaticallyWhen: lastAssistantTurnIsAnswered,
     transport: new DefaultChatTransport({
       api: "/api/agent/chat",
       // The conversation id comes back on a response header, so one shopping

@@ -4,6 +4,7 @@ import {
   getManagerSummary,
   getStoreSettings,
   MANAGER_RANGES,
+  storeId,
 } from "@/lib/data";
 
 /**
@@ -23,15 +24,18 @@ export default async function ManagerPage({
   searchParams: Promise<{ range?: string }>;
 }) {
   const { range } = await searchParams;
-  const [summary, settings] = await Promise.all([
+  const [summary, settings, merchantId] = await Promise.all([
     getManagerSummary(range),
     getStoreSettings(),
+    storeId(),
   ]);
 
   return (
     <ManagerScreen
+      merchantId={merchantId}
       operator={settings.team[0]?.name ?? settings.name}
       ranges={MANAGER_RANGES}
+      razorpayConnected={settings.razorpay.connected}
       summary={summary}
     />
   );

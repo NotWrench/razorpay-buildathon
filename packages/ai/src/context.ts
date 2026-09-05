@@ -11,6 +11,15 @@ import { recordAudit } from "./audit";
  */
 export interface AgentActor {
   identifier: string;
+  /**
+   * This buyer's own cap, when the merchant issued them one.
+   *
+   * Set for an API-key agent whose key carries a `spendCapPaise`. Absent
+   * everywhere else, which falls back to the platform default — so a merchant
+   * can trust one counterparty with ₹2 lakh and another with ₹5,000 rather
+   * than every agent sharing one number set in the environment.
+   */
+  spendCapPaise?: number;
   type: "human" | "ai_agent";
   userId: string | null;
 }
@@ -142,7 +151,9 @@ export async function buildStorefrontContext(params: {
     autoApproveCeilingPaise: autoApproveCeilingPaise(),
     conversationId,
     merchantId: merchant.id,
-    spendCapPaise: spendCapPaise(),
+    // The buyer's own cap wins where they have one; the environment is the
+    // fallback, not the authority.
+    spendCapPaise: params.actor.spendCapPaise ?? spendCapPaise(),
     storeSlug: merchant.storeSlug,
   };
 }

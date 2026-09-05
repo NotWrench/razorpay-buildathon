@@ -29,19 +29,31 @@ export type ChatMode = (typeof CHAT_MODES)[number];
 
 type ToolName = keyof StorefrontTools;
 
-/** Available in every mode: retrieval, memory and the ability to explain. */
+/**
+ * Available in every mode: retrieval, memory, the ability to explain — and
+ * the ability to ask.
+ *
+ * `askBuyer` is here rather than in the two interviewing modes because every
+ * mode has a question worth asking sometimes: which of two orders they mean,
+ * which of three cards they were comparing. Withholding it from `compare`
+ * would not stop the agent asking, only stop it asking in a form the buyer can
+ * tap. It changes nothing and buys nothing, which is the test.
+ */
 const ALWAYS: ToolName[] = [
   "getProduct",
   "searchProducts",
+  "searchWeb",
   "recallPreferences",
   "rememberPreference",
   "explainDecision",
+  "askBuyer",
 ];
 
 const MODE_TOOLS: Record<ChatMode, ToolName[]> = {
   about: ["compareProducts", "suggestUpsell"],
 
   build: [
+    "assembleBuild",
     "checkBuildCompatibility",
     "createBuild",
     "updateBuild",
@@ -66,6 +78,7 @@ const MODE_TOOLS: Record<ChatMode, ToolName[]> = {
   orders: ["getOrderStatus", "createPaymentLink", "cancelOrder", "getCart"],
 
   recommend: [
+    "assembleBuild",
     "getRequirements",
     "captureRequirements",
     "recommendProducts",

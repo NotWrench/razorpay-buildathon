@@ -11,6 +11,7 @@ import {
 } from "ai";
 import { eq } from "drizzle-orm";
 import type { AgentContext } from "../context";
+import { describeMerchantView, type MerchantView } from "../page-context";
 import {
   persistAssistantMessage,
   persistReasoningStep,
@@ -22,9 +23,12 @@ import { toolCallRecorder } from "../telemetry";
 import { campaignTools } from "../tools/campaigns";
 import { explainTools } from "../tools/explain";
 import { merchantTools } from "../tools/merchant";
+import { paymentOpsTools } from "../tools/payment-ops";
+import { pricingTools } from "../tools/pricing";
+import { readinessTools } from "../tools/readiness";
 import { merchantApproval } from "./approval";
-import { repairHarmonyToolName } from "./repair";
 import { merchantPrompt } from "./prompts";
+import { cleanMessageHistory, repairHarmonyToolName } from "./repair";
 import { summariseStep } from "./steps";
 import { describeTurnFailure, reportAbortAsError, turnSignal } from "./turn";
 
@@ -33,6 +37,9 @@ export function merchantToolSet(ctx: AgentContext) {
     ...merchantTools(ctx),
     ...campaignTools(ctx),
     ...explainTools(ctx),
+    ...readinessTools(ctx),
+    ...pricingTools(ctx),
+    ...paymentOpsTools(ctx),
   };
 }
 
@@ -48,6 +55,8 @@ export async function streamMerchantTurn(params: {
   abortSignal?: AbortSignal;
   ctx: AgentContext;
   messages: MerchantMessage[];
+  /** Which window the merchant has open on the briefing screen. */
+  view?: MerchantView;
 }): Promise<Response> {
   const { ctx, messages } = params;
 
@@ -74,9 +83,10 @@ export async function streamMerchantTurn(params: {
     abortSignal: turnSignal(params.abortSignal),
     experimental_toolApprovalSecret: approvalSigningSecret(),
     instructions: merchantPrompt({
+      pageContext: describeMerchantView(params.view) ?? undefined,
       storeName: merchant?.businessName ?? "your store",
     }),
-    messages: await convertToModelMessages(messages),
+    messages: await convertToModelMessages(cleanMessageHistory(messages)),
     model: chatModel(),
     onAbort: async ({ steps }) => {
       // `onFinish` does not run on an abort, so without this a turn stopped by
@@ -116,6 +126,13 @@ export async function streamMerchantTurn(params: {
 
           return describeTurnFailure(error);
         },
+        /*
+         * Shown for the same reason as on the storefront, and with more force:
+         * a merchant is being told to discount stock or reorder against a
+         * forecast, and the working behind that number is what makes it
+         * arguable rather than something to take on faith.
+         */
+        sendReasoning: true,
         stream: result.stream,
       })
     ),

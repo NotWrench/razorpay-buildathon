@@ -14,7 +14,9 @@ import { type ToolSet, tool } from "ai";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
+  getAgentBuyerActivity,
   getAttachRates,
+  getMissedAttachOpportunities,
   getPaymentHealth,
   getPendingAgentOrders,
   getProductPerformance,
@@ -30,12 +32,15 @@ import {
   getOrderSummary,
   getStockRisk,
 } from "../inventory";
+import { getMarginSummary } from "../margin";
+import { describePolicy, getEffectivePolicy } from "../policy";
 import { formatPaise } from "../money";
 import {
   getDiscontinueCandidates,
   getDiscountCandidates,
   getReorderCandidates,
 } from "../recommendations";
+import { optional } from "./schema";
 
 /**
  * Merchant-facing tools: read the business, then act on it.
@@ -229,6 +234,34 @@ export function merchantTools(ctx: AgentContext) {
       inputSchema: z.object({}),
     }),
 
+    getAgentBuyerActivity: tool({
+      description:
+        "What each external buying agent has bought here: orders placed, how " +
+        "many the merchant approved, how many they rejected, and the value " +
+        "committed. Use this when asked which agents are worth keeping, or " +
+        "whether to raise or cut somebody's spending limit. An approval rate " +
+        "is over decided orders only — orders still sitting in the queue are " +
+        "not counted against the agent.",
+      execute: async ({ windowDays }) => {
+        const rows = await getAgentBuyerActivity(ctx.merchantId, windowDays);
+
+        return {
+          agents: rows.map((row) => ({
+            ...row,
+            committed: formatPaise(row.committedPaise),
+          })),
+          note:
+            rows.length === 0
+              ? "No external agent has ordered here in this window. That is a fact about demand, not about the keys — say so plainly rather than implying something is broken."
+              : undefined,
+          windowDays,
+        };
+      },
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(90),
+      }),
+    }),
+
     getAttachRate: tool({
       description:
         "Measured co-purchase rates: how often product B appears in orders " +
@@ -248,8 +281,64 @@ export function merchantTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        anchorProductId: z.uuid().optional(),
+        anchorProductId: optional(z.uuid()),
         limit: z.number().int().min(1).max(20).default(10),
+      }),
+    }),
+
+    getMissedAttachOpportunities: tool({
+      description:
+        "Orders that carried a product and left its usual companion behind, " +
+        "and what those orders would have been worth with it. This is the " +
+        "cross-sell number worth acting on — getAttachRate says how often " +
+        "they go together, this says how often they did not. Use it to pick " +
+        "what to bundle.",
+      execute: async ({ limit }) => {
+        const rows = await getMissedAttachOpportunities(ctx.merchantId, {
+          limit,
+        });
+
+        return {
+          note: "This is the size of the opportunity, not money that was lost. Nobody was going to add the companion to every one of those orders — say so rather than presenting it as a shortfall.",
+          opportunities: rows.map((row) => ({
+            ...row,
+            missedRevenue: formatPaise(row.missedRevenuePaise),
+          })),
+        };
+      },
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(20).default(8),
+      }),
+    }),
+
+    getFailedPayments: tool({
+      description:
+        "Payments that did not go through, grouped by the reason the gateway " +
+        "gave, with the value behind each. Use this before speculating about " +
+        "why conversion is down — a payment failure and a buyer changing " +
+        "their mind look identical in the order table and are entirely " +
+        "different problems.",
+      execute: async ({ windowDays }) => {
+        const health = await getPaymentHealth(ctx.merchantId);
+        const summary = await getCancellationSummary(
+          ctx.merchantId,
+          windowDays
+        );
+
+        return {
+          paymentHealth: health,
+          reasons: summary.reasons,
+          valueLost: formatPaise(summary.valueLostPaise),
+          windowDays,
+          ...(summary.reasons.length === 0 && summary.cancelledOrders > 0
+            ? {
+                note: `${summary.cancelledOrders} order(s) did not complete and nothing was recorded about why. That is a gap in the failure trail, not a clean sheet — say so.`,
+              }
+            : {}),
+        };
+      },
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
       }),
     }),
 
@@ -258,8 +347,11 @@ export function merchantTools(ctx: AgentContext) {
         "Why orders did not complete: cancellations and failures grouped by " +
         "reason, with the value lost. Use this before speculating about why " +
         "conversion is down.",
-      execute: async ({ windowDays }) =>
-        await getCancellationSummary(ctx.merchantId, windowDays),
+      execute: async ({ windowDays }) => {
+        const summary = await getCancellationSummary(ctx.merchantId, windowDays);
+
+        return { ...summary, valueLost: formatPaise(summary.valueLostPaise) };
+      },
       inputSchema: z.object({
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
@@ -271,8 +363,21 @@ export function merchantTools(ctx: AgentContext) {
         "This is a recommendation to review with the merchant, never an " +
         "instruction — there is no tool that removes a product, by design. " +
         "Present the numbers and let them decide.",
-      execute: async ({ limit, windowDays }) =>
-        await getDiscontinueCandidates(ctx.merchantId, windowDays, limit),
+      execute: async ({ limit, windowDays }) => {
+        const result = await getDiscontinueCandidates(
+          ctx.merchantId,
+          windowDays,
+          limit
+        );
+
+        return {
+          ...result,
+          candidates: result.candidates.map((row) => ({
+            ...row,
+            revenue: formatPaise(row.revenuePaise),
+          })),
+        };
+      },
       inputSchema: z.object({
         limit: z.number().int().min(1).max(25).default(10),
         windowDays: z.number().int().min(30).max(365).default(90),
@@ -284,10 +389,69 @@ export function merchantTools(ctx: AgentContext) {
         "Stock that is not moving: weak sales against real quantity on hand, " +
         "with the capital tied up in each. Use this to ground a campaign in " +
         "evidence rather than picking products that feel slow.",
-      execute: async ({ limit, windowDays }) =>
-        await getDiscountCandidates(ctx.merchantId, windowDays, limit),
+      execute: async ({ limit, windowDays }) => {
+        const result = await getDiscountCandidates(
+          ctx.merchantId,
+          windowDays,
+          limit
+        );
+
+        return {
+          ...result,
+          candidates: result.candidates.map((row) => ({
+            ...row,
+            tiedUpCapital: formatPaise(row.stockValuePaise),
+          })),
+        };
+      },
       inputSchema: z.object({
         limit: z.number().int().min(1).max(25).default(15),
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    }),
+
+    getPolicy: tool({
+      description:
+        "The bounds that actually apply to this store: discount cap, price " +
+        "move cap, margin floor, spend cap, and whether agent orders wait for " +
+        "a human. Read this rather than answering 'what are you allowed to " +
+        "do' from these instructions — the merchant may have set stricter " +
+        "limits than the platform default, and the record is the truth.",
+      execute: async () => {
+        const policy = await getEffectivePolicy(ctx.merchantId);
+
+        return {
+          ...policy,
+          rules: describePolicy(policy),
+          source: policy.merchantConfigured
+            ? "This store has set its own limits. They can only ever be stricter than the platform's."
+            : "This store has not set its own limits, so the platform defaults apply. The merchant can tighten any of them on the account screen.",
+          spendCap: formatPaise(policy.spendCapPaise),
+        };
+      },
+      inputSchema: z.object({}),
+    }),
+
+    getMarginSummary: tool({
+      description:
+        "What the store actually kept: revenue, cost of goods and gross " +
+        "margin over a window. Use this rather than getSalesSummary whenever " +
+        "the question is whether something made money — revenue is a number " +
+        "a discount can always improve. Quote the assumptions field: some " +
+        "products have no cost recorded and their revenue is excluded, and " +
+        "the merchant needs to know how much.",
+      execute: async ({ windowDays }) => {
+        const summary = await getMarginSummary(ctx.merchantId, windowDays);
+
+        return {
+          ...summary,
+          costOfGoods: formatPaise(summary.costOfGoodsPaise),
+          grossMargin: formatPaise(summary.grossMarginPaise),
+          revenue: formatPaise(summary.revenuePaise),
+          uncostedRevenue: formatPaise(summary.uncostedRevenuePaise),
+        };
+      },
+      inputSchema: z.object({
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
     }),
@@ -300,12 +464,31 @@ export function merchantTools(ctx: AgentContext) {
       execute: async () => {
         const summary = await getInventorySummary(ctx.merchantId);
 
+        /*
+         * A ready-made sentence, not just a record of numbers.
+         *
+         * Handed a flat bag of counts, the model reliably answers "how is my
+         * stock" by reading the bag back out — "unconfiguredProducts = 0" —
+         * which is the database talking, not an assistant. The structured
+         * fields stay for the card that renders them; `headline` is what the
+         * model is told to say, in the words it should say it in.
+         */
+        const covered =
+          summary.unconfiguredProducts === 0
+            ? "every product has a low-stock threshold set"
+            : `${summary.unconfiguredProducts} product(s) have no low-stock threshold set, so they cannot show up in a low-stock report at all`;
+
         return {
           ...summary,
+          headline:
+            `${summary.distinctProducts} products, ${summary.unitsOnHand} units on hand, ` +
+            `${formatPaise(summary.stockValuePaise)} at retail. ` +
+            `${summary.outOfStock} out of stock, ${summary.belowThreshold} below their threshold, and ${covered}.`,
           note:
             summary.unconfiguredProducts > 0
-              ? `${summary.unconfiguredProducts} product(s) have no low-stock threshold set, so they cannot appear in a low-stock report. Say so rather than implying the store is fully covered.`
+              ? "Say the threshold gap out loud rather than implying the store is fully covered."
               : undefined,
+          stockValue: formatPaise(summary.stockValuePaise),
         };
       },
       inputSchema: z.object({}),
@@ -330,8 +513,17 @@ export function merchantTools(ctx: AgentContext) {
       description:
         "Orders by status over a window — counts and value — plus how many " +
         "are waiting on the merchant's approval.",
-      execute: async ({ windowDays }) =>
-        await getOrderSummary(ctx.merchantId, windowDays),
+      execute: async ({ windowDays }) => {
+        const summary = await getOrderSummary(ctx.merchantId, windowDays);
+
+        return {
+          ...summary,
+          byStatus: summary.byStatus.map((row) => ({
+            ...row,
+            value: formatPaise(row.valuePaise),
+          })),
+        };
+      },
       inputSchema: z.object({
         windowDays: z.number().int().min(1).max(365).default(30),
       }),
@@ -542,11 +734,11 @@ export function merchantTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        lowStockThreshold: z.number().int().min(0).max(100_000).optional(),
+        lowStockThreshold: optional(z.number().int().min(0).max(100_000)),
         productId: z.uuid(),
-        reorderPoint: z.number().int().min(0).max(100_000).optional(),
-        reorderQuantity: z.number().int().min(1).max(100_000).optional(),
-        supplierLeadTimeDays: z.number().int().min(0).max(365).optional(),
+        reorderPoint: optional(z.number().int().min(0).max(100_000)),
+        reorderQuantity: optional(z.number().int().min(1).max(100_000)),
+        supplierLeadTimeDays: optional(z.number().int().min(0).max(365)),
       }),
     }),
   } satisfies ToolSet;

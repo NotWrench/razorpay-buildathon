@@ -5,7 +5,6 @@ import { Pill } from "@workspace/ui/components/pill";
 import { formatPaise } from "@workspace/ui/lib/money";
 import type { ChangeEvent } from "react";
 import { useCallback, useId, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/manager/manager-dialogs";
 import { ManagerHeading } from "@/components/manager/manager-heading";
 import {
@@ -15,7 +14,15 @@ import {
 } from "@/components/manager/manager-menu";
 import { ManagerSearch } from "@/components/manager/manager-search";
 import { ProductCard } from "@/components/manager/product-card";
+import type { ProductDraft } from "@/components/manager/product-sheet";
 import { ProductSheet } from "@/components/manager/product-sheet";
+import { useAction } from "@/hooks/use-action";
+import {
+  createPurchaseOrderAction,
+  deactivateProductAction,
+  duplicateProductAction,
+  saveProductAction,
+} from "@/lib/actions/manager";
 import type { ManagerProduct } from "@/lib/data/types";
 
 /**
@@ -25,12 +32,17 @@ import type { ManagerProduct } from "@/lib/data/types";
  * summary's job, and answering it twice in two voices is how an operator stops
  * believing either one. This screen knows names, prices, stock and status.
  *
+ * It was a table of 44px thumbnails, which is the wrong shape for a shop that
+ * sells things you look at — five columns of 13px text told you everything
+ * except what the part is. The render is the card now.
+ *
  * Filter and Sort used to be two pills that did nothing. They do something
  * now, and there is a search beside them, because a catalogue you cannot
  * narrow is a catalogue you scroll.
  *
- * Nothing here reaches the server: saving, duplicating, removing and ordering
- * all move local state and say so in the toast.
+ * `products` is the source of truth, not a copy in state: every write here
+ * goes to the server and the page revalidates, so a card that changed is a
+ * card the database agrees changed.
  */
 
 type SortId = "name" | "price" | "stock" | "status";
@@ -60,6 +72,9 @@ const COMPARE: Record<
 };
 
 const ANY_CATEGORY = "__any__";
+
+/** The suggested raise for a part: its threshold, doubled, floor of ten. */
+const suggestedFor = (entry: ManagerProduct) => Math.max(10, entry.lowAt * 2);
 
 function matches(entry: ManagerProduct, query: string) {
   const needle = query.trim().toLowerCase();
@@ -104,7 +119,6 @@ function QuantityField({
 }
 
 function ProductsScreen({ products }: { products: ManagerProduct[] }) {
-  const [rows, setRows] = useState(products);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<ManagerProduct | null>(null);
   const [removing, setRemoving] = useState<ManagerProduct | null>(null);
@@ -119,14 +133,36 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [lowOnly, setLowOnly] = useState(false);
 
+  const save = useAction(saveProductAction, {
+    onSuccess: () => setSheetOpen(false),
+    successMessage: "Saved.",
+  });
+  const duplicate = useAction(duplicateProductAction, {
+    successMessage: "Duplicated as a draft. It is not on sale.",
+  });
+  const deactivate = useAction(deactivateProductAction, {
+    onSuccess: () => setRemoving(null),
+    successMessage: "Taken off sale. Past orders are unaffected.",
+  });
+  /*
+   * The same action the restock screen's footer calls. Ordering a part is the
+   * same act wherever you happen to be standing when you decide to, so it does
+   * not get a second implementation here.
+   */
+  const reorder = useAction(createPurchaseOrderAction, {
+    successMessage: "Raised on the restock list. Nothing has been ordered yet.",
+  });
+
   const categories = useMemo(() => {
-    const seen = new Set(rows.map((entry) => entry.product.category as string));
+    const seen = new Set(
+      products.map((entry) => entry.product.category as string)
+    );
 
     return [...seen].sort((a, b) => a.localeCompare(b));
-  }, [rows]);
+  }, [products]);
 
   const shown = useMemo(() => {
-    const filtered = rows.filter(
+    const filtered = products.filter(
       (entry) =>
         matches(entry, query) &&
         (category === ANY_CATEGORY || entry.product.category === category) &&
@@ -136,7 +172,7 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
     const sorted = [...filtered].sort(COMPARE[sortId]);
 
     return descending ? sorted.reverse() : sorted;
-  }, [category, descending, lowOnly, query, rows, sortId, status]);
+  }, [category, descending, lowOnly, products, query, sortId, status]);
 
   const filtering =
     query.trim().length > 0 ||
@@ -188,17 +224,19 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
     setSheetOpen(true);
   }, []);
 
-  const onSave = useCallback(() => {
-    setSheetOpen(false);
-    toast("Saved to the draft catalogue. Nothing is published yet.");
-  }, []);
+  const onSave = useCallback(
+    (draft: ProductDraft) =>
+      save.run({ ...draft, productId: editing?.product.id }),
+    [editing, save]
+  );
 
-  const onDuplicate = useCallback((entry: ManagerProduct) => {
-    toast(`Duplicated ${entry.product.name} as a draft.`);
-  }, []);
+  const onDuplicate = useCallback(
+    (entry: ManagerProduct) => duplicate.run(entry.product.id),
+    [duplicate]
+  );
 
   const onOrderOpen = useCallback((entry: ManagerProduct) => {
-    setQuantity(Math.max(10, entry.lowAt * 2));
+    setQuantity(suggestedFor(entry));
     setOrdering(entry);
   }, []);
 
@@ -208,20 +246,23 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
   );
 
   const onOrderConfirm = useCallback(() => {
-    if (!ordering) {
-      return;
+    if (ordering) {
+      reorder.run([{ productId: ordering.product.id, quantity }]);
+      setOrdering(null);
     }
-
-    toast(
-      `Added to restock — ${quantity} × ${ordering.product.name}. Nothing has been sent.`
-    );
-    setOrdering(null);
-  }, [ordering, quantity]);
+  }, [ordering, quantity, reorder]);
 
   const onBulkOrder = useCallback(() => {
-    toast(`Added ${selected.length} lines to restock. Nothing has been sent.`);
+    const lines = products
+      .filter((entry) => selected.includes(entry.product.id))
+      .map((entry) => ({
+        productId: entry.product.id,
+        quantity: suggestedFor(entry),
+      }));
+
+    reorder.run(lines);
     setSelected([]);
-  }, [selected.length]);
+  }, [products, reorder, selected]);
 
   const onRemoveOpen = useCallback(
     (open: boolean) => setRemoving(open ? removing : null),
@@ -229,31 +270,21 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
   );
 
   const onRemoveConfirm = useCallback(() => {
-    if (!removing) {
-      return;
+    if (removing) {
+      deactivate.run(removing.product.id);
     }
-
-    const gone = removing;
-
-    setRows((current) =>
-      current.filter((entry) => entry.product.id !== gone.product.id)
-    );
-    setSelected((current) =>
-      current.filter((entry) => entry !== gone.product.id)
-    );
-    setRemoving(null);
-    toast(`${gone.product.name} removed.`);
-  }, [removing]);
+  }, [deactivate, removing]);
 
   const sortLabel = SORTS.find((entry) => entry.id === sortId)?.label ?? "Name";
+  const busy = duplicate.pending || deactivate.pending || reorder.pending;
 
   return (
     <div className="px-5 pt-14 pb-24 sm:px-8 lg:px-8 2xl:px-12">
       <ManagerHeading
         count={
-          shown.length === rows.length
-            ? `${rows.length} products`
-            : `${shown.length} of ${rows.length}`
+          shown.length === products.length
+            ? `${products.length} products`
+            : `${shown.length} of ${products.length}`
         }
         title="Products"
       >
@@ -345,6 +376,7 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {shown.map((entry) => (
             <ProductCard
+              busy={busy}
               entry={entry}
               key={entry.product.id}
               onDuplicate={onDuplicate}
@@ -369,7 +401,7 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
             <Pill onClick={clearSelection} size="sm" variant="text">
               Clear
             </Pill>
-            <Pill onClick={onBulkOrder} size="sm">
+            <Pill disabled={reorder.pending} onClick={onBulkOrder} size="sm">
               Add to restock
             </Pill>
           </div>
@@ -377,6 +409,7 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
       ) : null}
 
       <ProductSheet
+        busy={save.pending}
         entry={editing}
         onOpenChange={setSheetOpen}
         onSave={onSave}
@@ -401,12 +434,12 @@ function ProductsScreen({ products }: { products: ManagerProduct[] }) {
       </ConfirmDialog>
 
       <ConfirmDialog
-        body={`${removing?.product.name ?? "This product"} will be taken off the store. Orders that already contain it are unaffected.`}
-        confirmLabel="Remove"
+        body={`${removing?.product.name ?? "This product"} will be taken off sale. Nothing is deleted — past orders still point at it.`}
+        confirmLabel="Take off sale"
         onConfirm={onRemoveConfirm}
         onOpenChange={onRemoveOpen}
         open={removing !== null}
-        title="Remove this product"
+        title="Take this product off sale"
       />
     </div>
   );

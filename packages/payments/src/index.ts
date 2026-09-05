@@ -41,6 +41,7 @@ export {
   verifyCheckoutPayment,
 } from "./payments";
 export {
+  chargeCampaignBudget,
   markPaymentAuthorized,
   markPaymentCaptured,
   markPaymentFailed,

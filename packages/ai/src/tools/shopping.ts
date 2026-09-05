@@ -13,8 +13,9 @@ import {
 import { compareProducts } from "../compare";
 import type { AgentContext } from "../context";
 import { describeMemories, recallMemories, rememberMemory } from "../memory";
-import { formatPaise } from "../money";
-import { quoteCart } from "../quote";
+import { formatPaise, rupeesToPaise } from "../money";
+import { getPromotedPartners, quoteCart } from "../quote";
+import { optional } from "./schema";
 
 /**
  * Discovery, recommendation and pricing tools.
@@ -259,8 +260,8 @@ export function shoppingTools(ctx: AgentContext) {
                     "Why this product, tied to what the buyer actually asked for."
                   ),
               }),
-              upgrade: z
-                .object({
+              upgrade: optional(
+                z.object({
                   benefit: z
                     .string()
                     .min(15)
@@ -280,7 +281,7 @@ export function shoppingTools(ctx: AgentContext) {
                         "upgrade — that is the right answer, not a failure."
                     ),
                 })
-                .optional(),
+              ),
             })
           )
           .min(1)
@@ -329,7 +330,19 @@ export function shoppingTools(ctx: AgentContext) {
         "returns what it does sell so you can say so and offer something " +
         "genuinely relevant. Do not retry the same search hoping for a " +
         "different list.",
-      execute: async ({ budgetMaxPaise, category, limit, query }) => {
+      execute: async ({ budgetMaxRupees, category, limit, query }) => {
+        /*
+         * Converted here, never by the model. Asked to turn rupees into paise
+         * it drops or adds a zero — an observed ₹1,25,000 budget reached the
+         * build assembler as ₹12,500 — and a price filter an order of
+         * magnitude out returns a plausible-looking page of the wrong parts.
+         * See `tools/schema.ts` for the other half of this lesson.
+         */
+        const budgetMaxPaise =
+          budgetMaxRupees === undefined
+            ? undefined
+            : rupeesToPaise(budgetMaxRupees);
+
         const result = await searchCatalog(ctx.merchantId, {
           budgetMaxPaise,
           category,
@@ -379,24 +392,18 @@ export function shoppingTools(ctx: AgentContext) {
         };
       },
       inputSchema: z.object({
-        budgetMaxPaise: z
-          .number()
-          .int()
-          .positive()
-          .optional()
-          .describe("Upper price limit in paise. ₹5,000 is 500000."),
-        category: z
-          .string()
-          .max(80)
-          .optional()
-          .describe(
-            "Narrow to one catalog category. This store uses short trade " +
-              "names — gpu, cpu, motherboard, ram, storage, psu, cooler, " +
-              "case, fan, monitor, peripheral — though common English names " +
-              'such as "graphics card" are understood too. Omit it unless ' +
-              "the buyer clearly wants one kind of part; the query alone " +
-              "already searches every category."
-          ),
+        budgetMaxRupees: optional(z.number().positive()).describe(
+          "Upper price limit in rupees, exactly as the buyer said it. 5000 " +
+            "for ₹5,000 — do not convert to paise."
+        ),
+        category: optional(z.string().max(80)).describe(
+          "Narrow to one catalog category. This store uses short trade " +
+            "names — gpu, cpu, motherboard, ram, storage, psu, cooler, " +
+            "case, fan, monitor, peripheral — though common English names " +
+            'such as "graphics card" are understood too. Omit it unless ' +
+            "the buyer clearly wants one kind of part; the query alone " +
+            "already searches every category."
+        ),
         limit: z.number().int().min(1).max(12).default(6),
         query: z
           .string()
@@ -440,12 +447,53 @@ export function shoppingTools(ctx: AgentContext) {
           ];
         });
 
+        /*
+         * What the merchant actually decided to promote.
+         *
+         * The two agents have shared a database and no strategy: this one
+         * suggested whatever the order history happened to correlate, while
+         * the merchant's approved bundles sat in `campaigns` affecting the
+         * price and nothing else. A bundle the merchant chose is a better
+         * suggestion than a pattern nobody endorsed — and it is the one the
+         * buyer will actually save money on, which is the honest reason to
+         * lead with it.
+         */
+        const promoted = await getPromotedPartners(ctx.merchantId, productId);
+
+        const promotedProducts = await getProductsByIds(
+          ctx.merchantId,
+          promoted.map((row) => row.productId)
+        );
+
+        const merchantPicks = promoted.flatMap((row) => {
+          const product = promotedProducts.get(row.productId);
+
+          if (!product || product.stock <= 0) {
+            return [];
+          }
+
+          return [
+            {
+              ...toModelProduct(product),
+              evidence: `Part of the store's "${row.campaignTitle}" bundle, so buying both is cheaper than buying them apart`,
+              merchantPromoted: true,
+            },
+          ];
+        });
+
+        const seen = new Set(merchantPicks.map((row) => row.id));
+
         return {
           note:
-            suggestions.length === 0
+            suggestions.length === 0 && merchantPicks.length === 0
               ? "No co-purchase history yet. Suggest a complement from the catalog on merit, and say that it is a suggestion rather than a pattern."
-              : undefined,
-          suggestions,
+              : merchantPicks.length > 0
+                ? "The merchantPromoted ones are in a live bundle the merchant approved — leading with those is both better for the buyer and what the store actually wants sold."
+                : undefined,
+          suggestions: [
+            ...merchantPicks,
+            ...suggestions.filter((row) => !seen.has(row.id)),
+          ],
         };
       },
       inputSchema: z.object({
