@@ -204,6 +204,20 @@ autonomous charge lands in the same `payments` rows, decrements the same
 campaign budget, and appears in the same trail as a human one. That is the whole
 argument for putting the seam here rather than beside the agent.
 
+**Order of operations**, which is the whole safety argument: the bound is
+checked and throws first, the gateway is called second, and the mandate's
+running total is advanced only *after* settlement confirms the money moved. A
+mandate debited for a charge that failed would refuse the buyer's next purchase
+for a reason that never happened — a worse failure than the one it was guarding
+against. The headroom moves by a relative update, so two charges settling at the
+same instant both count.
+
+**Found while building.** Razorpay's recurring API requires `email` and
+`contact` on every charge, and by the time `chargeMandate` runs there is no
+browser and no session left to ask. They are captured when the mandate is
+authorised and stored on the row, so the missing-detail failure surfaces at
+setup rather than at the moment money is supposed to move. Migration `0017`.
+
 **Proves.** A charge can be initiated server-side without a browser.
 
 ---

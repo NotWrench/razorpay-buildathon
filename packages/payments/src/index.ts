@@ -22,6 +22,15 @@ export {
   resolveMerchantCredentials,
 } from "./client";
 export {
+  type ChargeInput,
+  type ChargeResult,
+  type MandateChargeResult,
+  type PaymentInstrument,
+  chargeMandate,
+  instrumentFor,
+  revokeMandate,
+} from "./mandates";
+export {
   type MandateBounds,
   type MandateCheck,
   type MandateRefusal,

@@ -385,6 +385,18 @@ export const campaigns = pgTable(
 export const buyerMandates = pgTable(
   "buyer_mandates",
   {
+    /**
+     * Where to reach the buyer, captured when the mandate was authorised.
+     *
+     * Razorpay's recurring API requires both on every charge, and by then
+     * there is no browser and no session to ask — a mandate without them can
+     * be established but never charged, which is a failure that would surface
+     * at the worst possible moment. Nullable because a simulated mandate needs
+     * neither, and because `buyerIdentifier` is a guest cookie as often as it
+     * is an email.
+     */
+    buyerContact: text("buyer_contact"),
+    buyerEmail: text("buyer_email"),
     /** Who delegated. Matches `orders.buyerIdentifier`, guests included. */
     buyerIdentifier: text("buyer_identifier").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

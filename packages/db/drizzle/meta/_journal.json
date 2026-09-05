@@ -120,6 +120,13 @@
       "when": 1788615724257,
       "tag": "0016_overrated_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788615899243,
+      "tag": "0017_eager_wendigo",
+      "breakpoints": true
     }
   ]
 }
