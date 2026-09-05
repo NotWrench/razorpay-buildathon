@@ -27,6 +27,7 @@ import { merchantTools } from "../tools/merchant";
 import { paymentOpsTools } from "../tools/payment-ops";
 import { pricingTools } from "../tools/pricing";
 import { readinessTools } from "../tools/readiness";
+import { settleAbandonedToolCalls } from "./abandoned";
 import { merchantApproval } from "./approval";
 import { merchantPrompt } from "./prompts";
 import { cleanMessageHistory, repairHarmonyToolName } from "./repair";
@@ -90,7 +91,13 @@ export async function streamMerchantTurn(params: {
       pageContext: describeMerchantView(params.view) ?? undefined,
       storeName: merchant?.businessName ?? "your store",
     }),
-    messages: await convertToModelMessages(cleanMessageHistory(messages)),
+    // Settled first, cleaned second: a question the buyer answered by typing
+    // instead of tapping leaves a tool call with no result, and the SDK
+    // refuses to build a prompt from it — permanently, on every retry. See
+    // `agents/abandoned.ts`.
+    messages: await convertToModelMessages(
+      settleAbandonedToolCalls(cleanMessageHistory(messages))
+    ),
     model: chatModel(),
     onAbort: async ({ steps }) => {
       // `onFinish` does not run on an abort, so without this a turn stopped by

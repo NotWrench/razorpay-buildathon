@@ -26,6 +26,7 @@ import { jsonSafeTools } from "../tools/json-safe";
 import { requirementTools } from "../tools/requirements";
 import { shoppingTools } from "../tools/shopping";
 import { webSearchTools } from "../tools/web-search";
+import { settleAbandonedToolCalls } from "./abandoned";
 import { storefrontApproval } from "./approval";
 import { activeToolsFor, type ChatMode, modeInstructions } from "./modes";
 import { storefrontPrompt } from "./prompts";
@@ -109,7 +110,13 @@ export async function streamStorefrontTurn(params: {
       pageContext: pageContext?.description,
       storeName: merchant.businessName,
     }),
-    messages: await convertToModelMessages(cleanMessageHistory(messages)),
+    // Settled first, cleaned second: a question the buyer answered by typing
+    // instead of tapping leaves a tool call with no result, and the SDK
+    // refuses to build a prompt from it — permanently, on every retry. See
+    // `agents/abandoned.ts`.
+    messages: await convertToModelMessages(
+      settleAbandonedToolCalls(cleanMessageHistory(messages))
+    ),
     model: chatModel(),
     onAbort: async ({ steps }) => {
       // `onFinish` does not run on an abort, so without this a turn stopped by
